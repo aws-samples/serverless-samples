@@ -1,0 +1,14 @@
+{
+    "version": "2.0",
+    "routeKey": "GET /locations/{locationid}/resources",
+    "rawPath": "/locations/6db6cd70-9bd8-11eb-a21c-434bdc25fe66/resources",
+    "rawQueryString": "",
+    "headers": {},
+    "requestContext": {
+        "requestId":"e0GDshQXoAMEJug="
+    },
+    "pathParameters": {
+        "locationid": "6db6cd70-9bd8-11eb-a21c-434bdc25fe66"
+    },
+    "isBase64Encoded": false
+}

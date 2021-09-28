@@ -1,0 +1,15 @@
+{
+    "version": "2.0",
+    "routeKey": "PUT /users/{userid}/bookings",
+    "rawPath": "/users/bf6dbddc-db2e-4f70-a892-1b165556dede/bookings",
+    "rawQueryString": "",
+    "headers": {},
+    "requestContext": {
+        "requestId":"e0GDshQXoAMEJug="
+    },
+    "pathParameters": {
+        "userid": "bf6dbddc-db2e-4f70-a892-1b165556dede"
+    },
+    "body": "{\n    \"resourceid\":\"f8216640-91a2-11eb-8ab9-57aa454facef\",\n    \"starttimeepochtime\":1617278400}",
+    "isBase64Encoded": false
+}

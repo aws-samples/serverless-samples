@@ -1,0 +1,14 @@
+{
+    "version": "2.0",
+    "routeKey": "GET /users/{userid}/bookings",
+    "rawPath": "/users/bf6dbddc-db2e-4f70-a892-1b165556dede/bookings",
+    "rawQueryString": "",
+    "headers": {},
+    "requestContext": {
+        "requestId":"e0GDshQXoAMEJug="
+    },
+    "pathParameters": {
+        "userid": "bf6dbddc-db2e-4f70-a892-1b165556dede"
+    },
+    "isBase64Encoded": false
+}
