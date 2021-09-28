@@ -1,0 +1,12 @@
+{
+    "version": "2.0",
+    "routeKey": "GET /locations",
+    "rawPath": "/locations",
+    "rawQueryString": "",
+    "headers": {},
+    "requestContext": {
+        "requestId":"e0GDshQXoAMEJug="
+    },
+    "isBase64Encoded": false
+}
+

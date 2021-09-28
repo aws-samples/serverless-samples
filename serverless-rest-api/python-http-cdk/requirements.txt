@@ -1,0 +1,17 @@
+-e .
+aws-cdk.aws_dynamodb
+aws-cdk.aws_apigatewayv2
+aws-cdk.aws_apigatewayv2_integrations
+aws_cdk.aws_apigatewayv2_authorizers
+aws-cdk.aws_lambda_python
+aws-cdk.aws_lambda
+aws_cdk.aws_sns
+aws_cdk.aws_cognito
+aws_cdk.aws_logs
+aws_cdk.aws_cloudwatch
+aws_cdk.aws_cloudwatch_actions
+aws_cdk.pipelines
+aws_cdk.aws_codebuild
+aws_cdk.aws_codecommit
+aws_cdk.aws_codepipeline
+aws_cdk.aws_codepipeline_actions

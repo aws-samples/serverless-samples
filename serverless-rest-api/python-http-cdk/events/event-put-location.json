@@ -1,0 +1,12 @@
+{
+    "version": "2.0",
+    "routeKey": "PUT /locations",
+    "rawPath": "/locations",
+    "rawQueryString": "",
+    "headers": {},
+    "requestContext": {
+        "requestId":"e0GDshQXoAMEJug="
+    },
+    "body": "{\"imageUrl\":\"https://s3.amazonaws.com/spacefinder-public-image-repository/encore.jpg\",\"description\":\"Las Vegas\",\"name\":\"Encore\"}",
+    "isBase64Encoded": false
+}

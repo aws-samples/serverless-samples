@@ -1,0 +1,18 @@
+{
+    "resource": "/locations/{locationid}/resources",
+    "path": "/locations/6db6cd70-9bd8-11eb-a21c-434bdc25fe66/resources",
+    "httpMethod": "GET",
+    "headers": null,
+    "multiValueHeaders": null,
+    "queryStringParameters": null,
+    "multiValueQueryStringParameters": null,
+    "pathParameters": {
+        "locationid": "6db6cd70-9bd8-11eb-a21c-434bdc25fe66"
+    },
+    "stageVariables": null,
+    "requestContext": {
+        "requestId": "58249794-7dfc-49da-8a9e-21a8a6804f6d"
+    },
+    "body": null,
+    "isBase64Encoded": false
+}

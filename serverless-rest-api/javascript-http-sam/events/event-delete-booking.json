@@ -1,0 +1,15 @@
+{
+    "version": "2.0",
+    "routeKey": "DELETE /users/{userid}/bookings/{bookingid}",
+    "rawPath": "/users/bf6dbddc-db2e-4f70-a892-1b165556dede/bookings/ab04af90-9be1-11eb-9326-b188c945553f",
+    "rawQueryString": "",
+    "headers": {},
+    "requestContext": {
+        "requestId":"e0GDshQXoAMEJug="
+    },
+    "pathParameters": {
+        "bookingid": "ab04af90-9be1-11eb-9326-b188c945553f",
+        "userid": "bf6dbddc-db2e-4f70-a892-1b165556dede"
+    },
+    "isBase64Encoded": false
+}
