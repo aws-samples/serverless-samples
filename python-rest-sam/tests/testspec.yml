@@ -1,0 +1,20 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+version: 0.2
+phases:
+  install:
+    commands:
+      # Install all dependencies (including dependencies for running tests)
+      - cd ./python-rest-sam
+      - pip install -r requirements.txt 
+      - pip install -r ./tests/requirements.txt 
+  pre_build:
+    commands:
+  build:
+    commands:
+      # Discover and run unit tests in the 'tests/unit' directory
+      - python -m pytest tests/integration -v
+  post_build:
+    commands:
+      # Cleanup after testing

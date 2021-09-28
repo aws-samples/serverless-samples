@@ -1,0 +1,15 @@
+{
+    "version": "2.0",
+    "routeKey": "DELETE /locations/{locationid}",
+    "rawPath": "/locations/ba714640-91a1-11eb-871a-714954ad3529",
+    "rawQueryString": "",
+    "headers": {},
+    "requestContext": {
+        "requestId":"e0GDshQXoAMEJug="
+    },
+    "pathParameters": {
+        "locationid": "ba714640-91a1-11eb-871a-714954ad3529"
+    },
+    "body": "",
+    "isBase64Encoded": false
+}
