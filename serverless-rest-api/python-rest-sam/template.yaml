@@ -355,11 +355,44 @@ Resources:
         - Key: "Stack"
           Value: !Sub "${AWS::StackName}"
 
+  AlarmsKMSKey:
+    Type: AWS::KMS::Key
+    Properties: 
+      Description: CMK for SNS alarms topic
+      Enabled: true
+      EnableKeyRotation: True
+      KeyPolicy: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: 
+              Service: 
+                - "cloudwatch.amazonaws.com"
+                - "sns.amazonaws.com"
+            Action:
+              - "kms:GenerateDataKey*"
+              - "kms:Decrypt"
+            Resource: "*"
+          - Effect: Allow
+            Principal: 
+              AWS: 
+                - !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action:
+              - "kms:*"
+            Resource: "*"
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyUsage: ENCRYPT_DECRYPT
+      PendingWindowInDays: 30
+      Tags: 
+        - Key: "Stack" 
+          Value: !Sub "${AWS::StackName}"
+
   AlarmsTopic:
     Type: AWS::SNS::Topic
     Properties:
+      KmsMasterKeyId: !Ref AlarmsKMSKey
       Tags:
-        - Key: "Stack"
+        - Key: "Stack" 
           Value: !Sub "${AWS::StackName}"
 
   RestAPIErrorsAlarm:
