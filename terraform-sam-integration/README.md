@@ -4,7 +4,7 @@
 
 ## Setup the project
 
-1. Clone this repository. `git clone https://github.com/dancfox/terraform-sam-integration.git`
+1. Clone this repository. 
 
 2. Follow the directions in this [README](./terraform/README.md) to create resources with Terraform. The Terraform file in this folder will create an [Amazon SQS](https://aws.amazon.com/sqs/) queue and store its arn in the [SSM Parameter Store](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html).
 
