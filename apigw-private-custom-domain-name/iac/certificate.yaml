@@ -1,0 +1,22 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: APIGW private certificate
+Transform: AWS::Serverless-2016-10-31
+Parameters:
+  pDomainName:
+    Type: String
+  pHostedZoneId:
+    Type: String
+Resources:
+  Certificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref pDomainName
+      ValidationMethod: EMAIL
+      # NOTE: Route 53 validation only works with public hosted zones
+      # DomainValidationOptions:
+      #   - DomainName: !Ref pDomainName
+      #     HostedZoneId: !Ref pHostedZoneId
+      # ValidationMethod: DNS
+Outputs:
+  outCertificateArn:
+    Value: !Ref Certificate

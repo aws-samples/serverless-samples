@@ -1,0 +1,141 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: APIGW private custom domain name implementation
+Transform: AWS::Serverless-2016-10-31
+Globals:
+  Api:
+    OpenApiVersion: 3.0.1
+  Function:
+    MemorySize: !Ref pFnMemory
+    Runtime: python3.9
+    Timeout: !Ref pFnTimeout
+    Tracing: Active
+Parameters:
+  pApiStage:
+    Type: String
+  pVpcEndpointId:
+    Type: String
+  pVpcId:
+    Type: String
+  pCertificateArn:
+    Type: String
+  pDomainName:
+    Type: String
+  pPayloadVersion:
+    Type: String
+  pFnMemory:
+    Type: Number
+  pFnTimeout:
+    Type: Number
+Resources:
+  # APIGW
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      AccessLogSetting:
+        DestinationArn: !GetAtt ApiLogGroup.Arn
+        Format: '{ "requestId":"$context.requestId", "ip": "$context.identity.sourceIp", "requestTime":"$context.requestTime", "httpMethod":"$context.httpMethod","routeKey":"$context.routeKey", "status":"$context.status","protocol":"$context.protocol", "responseLength":"$context.responseLength", "auth.status":"$context.authorizer.status", "auth.error":"$context.authorizer.error", "auth.token":"$context.authorizer.token", "auth.reason":"$context.authorizer.reason", "auth.simple":"$context.authorizer.simple", "auth.pversion":"$context.authorizer.pversion" }'
+      StageName: !Ref pApiStage
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: ./swagger.yaml
+      EndpointConfiguration:
+        Type: PRIVATE
+        VPCEndpointIds:
+          - !Ref pVpcEndpointId
+      Auth:
+        ResourcePolicy:
+          SourceVpcWhitelist:
+            - !Ref pVpcId
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/apigateway/apigw-pcdn-${Api}"
+      RetentionInDays: 7
+  ApiDomain:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      DomainName: !Ref pDomainName
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      RegionalCertificateArn: !Ref pCertificateArn
+      SecurityPolicy: TLS_1_2
+  ApiMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Properties:
+      RestApiId: !Ref Api
+      BasePath: demo
+      DomainName: !Ref ApiDomain
+      Stage: !Ref pApiStage
+    DependsOn:
+      - ApiStage
+# Lambda
+  FnRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: '/service-role/'
+      Policies:
+        - PolicyName: cloudwatch-insights
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                Resource: '*'
+        - PolicyName: cloudwatch-logs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: 'arn:aws:logs:*:*:log-group:*:*'
+        - PolicyName: xray
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                  - xray:GetSamplingRules
+                  - xray:GetSamplingTargets
+                  - xray:GetSamplingStatisticSummaries
+                Resource: '*'
+  Fn:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../src
+      Handler: fn.handler
+      Role: !GetAtt FnRole.Arn
+  FnLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${Fn}'
+      RetentionInDays: 7
+  FnPerm:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt Fn.Arn
+      Principal: apigateway.amazonaws.com
+      Action: lambda:InvokeFunction
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/*/*/*'
+Outputs:
+  outApi:
+    Value: !Ref Api
+  outFn:
+    Value: !Ref Fn
