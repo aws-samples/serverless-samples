@@ -60,7 +60,7 @@ The first command will build the source of your application. The second command 
 Once your deployment is complete you can send a message to the queue. The Lambda function will process the message. You can view the log results in CloudWatch logs.
 
 ```bash
-aws sqs send-message --queue-url "<insert queue url here>" --message-body "Red five standing by." 
+aws sqs send-message --queue-url "<insert queue url here>" --message-body "Red five standing by." --region=us-west-1
 ```
 
 ## Check out SAM sync
