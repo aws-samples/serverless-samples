@@ -1,0 +1,506 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+swagger: "2.0"
+info:
+  version: "1.0"
+  title: 
+    Fn::Sub: "${AWS::StackName}-API"
+basePath: "/Prod"
+schemes:
+- "https"
+paths:
+  /locations:
+    get:
+      responses: {}
+      x-amazon-apigateway-request-validator: "Validate query string parameters and headers"
+      security:
+      - LambdaAuthorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Join:
+            - ""
+            - - http://
+              - Fn::GetAtt: LocationsServiceLoadBalancer.DNSName
+              - /locations
+        connectionId: 
+          Ref: LocationsServiceVPCLink
+        connectionType: VPC_LINK
+        httpMethod: GET
+        type: http_proxy
+        passthroughBehavior: "when_no_match"
+        requestParameters:
+          integration.request.header.requestId: context.requestId
+          integration.request.header.X-Amzn-Trace-Id: context.xrayTraceId
+    put:
+      consumes:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "LocationModel"
+        required: true
+        schema:
+          $ref: "#/definitions/LocationModel"
+      responses: {}
+      x-amazon-apigateway-request-validator: "Validate body, query string parameters, and headers"
+      security:
+      - LambdaAuthorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Join:
+            - ""
+            - - http://
+              - Fn::GetAtt: LocationsServiceLoadBalancer.DNSName
+              - /locations
+        connectionId: 
+          Ref: LocationsServiceVPCLink
+        connectionType: VPC_LINK
+        httpMethod: PUT
+        type: http_proxy
+        passthroughBehavior: "when_no_match"
+        requestParameters:
+          integration.request.header.requestId: context.requestId
+  /locations/{locationid}:
+    get:
+      responses: {}
+      x-amazon-apigateway-request-validator: "Validate query string parameters and headers"
+      security:
+      - LambdaAuthorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Join:
+            - ""
+            - - http://
+              - Fn::GetAtt: LocationsServiceLoadBalancer.DNSName
+              - /locations/{locationid}
+        connectionId: 
+          Ref: LocationsServiceVPCLink
+        connectionType: VPC_LINK
+        httpMethod: GET
+        type: http_proxy
+        passthroughBehavior: "when_no_match"
+        requestParameters:
+          integration.request.header.requestId: context.requestId
+          integration.request.header.X-Amzn-Trace-Id: context.xrayTraceId
+          integration.request.path.locationid: method.request.path.locationid
+    put:
+      consumes:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "LocationModel"
+        required: true
+        schema:
+          $ref: "#/definitions/LocationModel"
+      responses: {}
+      x-amazon-apigateway-request-validator: "Validate body, query string parameters, and headers"
+      security:
+      - LambdaAuthorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Join:
+            - ""
+            - - http://
+              - Fn::GetAtt: LocationsServiceLoadBalancer.DNSName
+              - /locations/{locationid}
+        connectionId: 
+          Ref: LocationsServiceVPCLink
+        connectionType: VPC_LINK
+        httpMethod: PUT
+        type: http_proxy
+        passthroughBehavior: "when_no_match"
+        requestParameters:
+          integration.request.header.requestId: context.requestId
+          integration.request.header.X-Amzn-Trace-Id: context.xrayTraceId
+          integration.request.path.locationid: method.request.path.locationid
+    delete:
+      responses: {}
+      x-amazon-apigateway-request-validator: "Validate query string parameters and headers"
+      security:
+      - LambdaAuthorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Join:
+            - ""
+            - - http://
+              - Fn::GetAtt: LocationsServiceLoadBalancer.DNSName
+              - /locations/{locationid}
+        connectionId: 
+          Ref: LocationsServiceVPCLink
+        connectionType: VPC_LINK
+        httpMethod: DELETE
+        type: http_proxy
+        passthroughBehavior: "when_no_match"
+        requestParameters:
+          integration.request.header.requestId: context.requestId
+          integration.request.header.X-Amzn-Trace-Id: context.xrayTraceId
+          integration.request.path.locationid: method.request.path.locationid
+    options:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: Default response for CORS method
+          headers:
+            Access-Control-Allow-Headers:
+              type: string
+            Access-Control-Allow-Methods:
+              type: string
+            Access-Control-Allow-Origin:
+              type: string
+      summary: CORS support
+      x-amazon-apigateway-integration:
+        requestTemplates:
+          application/json: "{\n  \"statusCode\" : 200\n}\n"
+        responses:
+          default:
+            responseParameters:
+              method.response.header.Access-Control-Allow-Headers: '''Content-Type'',
+                ''Authorization'', ''X-Forwarded-For'', ''X-Api-Key'', ''X-Amz-Date'',
+                ''X-Amz-Security-Token'''
+              method.response.header.Access-Control-Allow-Methods: '''PUT,
+                GET, DELETE, OPTIONS'''
+              method.response.header.Access-Control-Allow-Origin: '''*'''
+            responseTemplates:
+              application/json: '{}'
+            statusCode: '200'
+        type: mock
+  /locations/{locationid}/resources:
+    get:
+      responses: {}
+      x-amazon-apigateway-request-validator: "Validate query string parameters and headers"
+      security:
+      - LambdaAuthorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Join:
+            - ""
+            - - http://
+              - Fn::GetAtt: ResourcesServiceLoadBalancer.DNSName
+              - /locations/{locationid}/resources
+        connectionId: 
+          Ref: ResourcesServiceVPCLink
+        connectionType: VPC_LINK
+        httpMethod: GET
+        type: http_proxy
+        passthroughBehavior: "when_no_match"
+        requestParameters:
+          integration.request.header.requestId: context.requestId
+          integration.request.header.X-Amzn-Trace-Id: context.xrayTraceId
+          integration.request.path.locationid: method.request.path.locationid
+    put:
+      consumes:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "ResourceModel"
+        required: true
+        schema:
+          $ref: "#/definitions/ResourceModel"
+      responses: {}
+      x-amazon-apigateway-request-validator: "Validate body, query string parameters, and headers"
+      security:
+      - LambdaAuthorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Join:
+            - ""
+            - - http://
+              - Fn::GetAtt: ResourcesServiceLoadBalancer.DNSName
+              - /locations/{locationid}/resources
+        connectionId: 
+          Ref: ResourcesServiceVPCLink
+        connectionType: VPC_LINK
+        httpMethod: PUT
+        type: http_proxy
+        passthroughBehavior: "when_no_match"
+        requestParameters:
+          integration.request.header.requestId: context.requestId
+          integration.request.header.X-Amzn-Trace-Id: context.xrayTraceId
+          integration.request.path.locationid: method.request.path.locationid
+  /locations/{locationid}/resources/{resourceid}:
+    get:
+      responses: {}
+      x-amazon-apigateway-request-validator: "Validate query string parameters and headers"
+      security:
+      - LambdaAuthorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Join:
+            - ""
+            - - http://
+              - Fn::GetAtt: ResourcesServiceLoadBalancer.DNSName
+              - /locations/{locationid}/resources/{resourceid}
+        connectionId: 
+          Ref: ResourcesServiceVPCLink
+        connectionType: VPC_LINK
+        httpMethod: GET
+        type: http_proxy
+        passthroughBehavior: "when_no_match"
+        requestParameters:
+          integration.request.header.requestId: context.requestId
+          integration.request.header.X-Amzn-Trace-Id: context.xrayTraceId
+          integration.request.path.locationid: method.request.path.locationid
+          integration.request.path.resourceid: method.request.path.resourceid
+    delete:
+      responses: {}
+      x-amazon-apigateway-request-validator: "Validate query string parameters and headers"
+      security:
+      - LambdaAuthorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Join:
+            - ""
+            - - http://
+              - Fn::GetAtt: ResourcesServiceLoadBalancer.DNSName
+              - /locations/{locationid}/resources/{resourceid}
+        connectionId: 
+          Ref: ResourcesServiceVPCLink
+        connectionType: VPC_LINK
+        httpMethod: DELETE
+        type: http_proxy
+        passthroughBehavior: "when_no_match"
+        requestParameters:
+          integration.request.header.requestId: context.requestId
+          integration.request.header.X-Amzn-Trace-Id: context.xrayTraceId
+          integration.request.path.locationid: method.request.path.locationid
+          integration.request.path.resourceid: method.request.path.resourceid
+  /locations/{locationid}/resources/{resourceid}/bookings:
+    get:
+      responses: {}
+      x-amazon-apigateway-request-validator: "Validate query string parameters and headers"
+      security:
+      - LambdaAuthorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Join:
+            - ""
+            - - http://
+              - Fn::GetAtt: BookingsServiceLoadBalancer.DNSName
+              - /locations/{locationid}/resources/{resourceid}/bookings
+        connectionId: 
+          Ref: BookingsServiceVPCLink
+        connectionType: VPC_LINK
+        httpMethod: GET
+        type: http_proxy
+        passthroughBehavior: "when_no_match"
+        requestParameters:
+          integration.request.header.requestId: context.requestId
+          integration.request.header.X-Amzn-Trace-Id: context.xrayTraceId
+          integration.request.path.locationid: method.request.path.locationid
+          integration.request.path.resourceid: method.request.path.resourceid
+  /users/{userid}/bookings:
+    get:
+      responses: {}
+      x-amazon-apigateway-request-validator: "Validate query string parameters and headers"
+      security:
+      - LambdaAuthorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Join:
+            - ""
+            - - http://
+              - Fn::GetAtt: BookingsServiceLoadBalancer.DNSName
+              - /users/{userid}/bookings
+        connectionId: 
+          Ref: BookingsServiceVPCLink
+        connectionType: VPC_LINK
+        httpMethod: GET
+        type: http_proxy
+        passthroughBehavior: "when_no_match"
+        requestParameters:
+          integration.request.header.requestId: context.requestId
+          integration.request.header.X-Amzn-Trace-Id: context.xrayTraceId
+          integration.request.path.userid: method.request.path.userid
+    put:
+      consumes:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "BookingModel"
+        required: true
+        schema:
+          $ref: "#/definitions/BookingModel"
+      responses: {}
+      x-amazon-apigateway-request-validator: "Validate body, query string parameters, and headers"
+      security:
+      - LambdaAuthorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Join:
+            - ""
+            - - http://
+              - Fn::GetAtt: BookingsServiceLoadBalancer.DNSName
+              - /users/{userid}/bookings
+        connectionId: 
+          Ref: BookingsServiceVPCLink
+        connectionType: VPC_LINK
+        httpMethod: PUT
+        type: http_proxy
+        passthroughBehavior: "when_no_match"
+        requestParameters:
+          integration.request.header.requestId: context.requestId
+          integration.request.header.X-Amzn-Trace-Id: context.xrayTraceId
+          integration.request.path.userid: method.request.path.userid
+  /users/{userid}/bookings/{bookingid}:
+    get:
+      responses: {}
+      x-amazon-apigateway-request-validator: "Validate query string parameters and headers"
+      security:
+      - LambdaAuthorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Join:
+            - ""
+            - - http://
+              - Fn::GetAtt: BookingsServiceLoadBalancer.DNSName
+              - /users/{userid}/bookings/{bookingid}
+        connectionId: 
+          Ref: BookingsServiceVPCLink
+        connectionType: VPC_LINK
+        httpMethod: GET
+        type: http_proxy
+        passthroughBehavior: "when_no_match"
+        requestParameters:
+          integration.request.header.requestId: context.requestId
+          integration.request.header.X-Amzn-Trace-Id: context.xrayTraceId
+          integration.request.path.userid: method.request.path.userid
+          integration.request.path.bookingid: method.request.path.bookingid
+    put:
+      consumes:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "BookingModel"
+        required: true
+        schema:
+          $ref: "#/definitions/BookingModel"
+      responses: {}
+      x-amazon-apigateway-request-validator: "Validate body, query string parameters, and headers"
+      security:
+      - LambdaAuthorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Join:
+            - ""
+            - - http://
+              - Fn::GetAtt: BookingsServiceLoadBalancer.DNSName
+              - /users/{userid}/bookings/{bookingid}
+        connectionId: 
+          Ref: BookingsServiceVPCLink
+        connectionType: VPC_LINK
+        httpMethod: PUT
+        type: http_proxy
+        passthroughBehavior: "when_no_match"
+        requestParameters:
+          integration.request.header.requestId: context.requestId
+          integration.request.header.X-Amzn-Trace-Id: context.xrayTraceId
+          integration.request.path.userid: method.request.path.userid
+          integration.request.path.bookingid: method.request.path.bookingid
+    delete:
+      responses: {}
+      x-amazon-apigateway-request-validator: "Validate query string parameters and headers"
+      security:
+      - LambdaAuthorizer: []
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Join:
+            - ""
+            - - http://
+              - Fn::GetAtt: BookingsServiceLoadBalancer.DNSName
+              - /users/{userid}/bookings/{bookingid}
+        connectionId: 
+          Ref: BookingsServiceVPCLink
+        connectionType: VPC_LINK
+        httpMethod: DELETE
+        type: http_proxy
+        passthroughBehavior: "when_no_match"
+        requestParameters:
+          integration.request.header.requestId: context.requestId
+          integration.request.header.X-Amzn-Trace-Id: context.xrayTraceId
+          integration.request.path.userid: method.request.path.userid
+          integration.request.path.bookingid: method.request.path.bookingid
+definitions:
+  BookingModel:
+    type: "object"
+    required:
+    - "resourceid"
+    - "starttimeepochtime"
+    properties:
+      userid:
+        type: "string"
+      resourceid:
+        type: "string"
+      starttimeepochtime:
+        type: "number"
+  ResourceModel:
+    type: "object"
+    required:
+    - "name"
+    properties:
+      locationid:
+        type: "string"
+      resourceid:
+        type: "string"
+      name:
+        type: "string"
+      type:
+        type: "string"
+        enum:
+        - "room"
+        - "demo"
+        - "arena"
+        - "hall"
+  LocationModel:
+    type: "object"
+    required:
+    - "name"
+    properties:
+      locationid:
+        type: "string"
+      imageUrl:
+        type: "string"
+      name:
+        type: "string"
+      description:
+        type: "string"
+x-amazon-apigateway-request-validators:
+  Validate query string parameters and headers:
+    validateRequestParameters: true
+    validateRequestBody: false
+  Validate body, query string parameters, and headers:
+    validateRequestParameters: true
+    validateRequestBody: true
+x-amazon-apigateway-gateway-responses:
+  BAD_REQUEST_BODY:
+    statusCode: 400
+    responseParameters:
+      "gatewayresponse.header.Access-Control-Allow-Origin": "'*'"
+    responseTemplates:
+      application/json: |-
+        {
+            "message": $context.error.messageString,
+            "responseType": "$context.error.responseType",
+            "validationErrorString": "$context.error.validationErrorString"
+        }
+  DEFAULT_4XX:
+    "responseParameters":
+      "gatewayresponse.header.Access-Control-Allow-Origin": "'*'"
+  DEFAULT_5XX:
+    "responseParameters":
+      "gatewayresponse.header.Access-Control-Allow-Origin": "'*'"
+securityDefinitions:
+  LambdaAuthorizer:
+    type: "apiKey"
+    name: "Authorization"
+    in: "header"
+    x-amazon-apigateway-authtype: "custom"
+    x-amazon-apigateway-authorizer:
+      type: "token"
+      authorizerUri: 
+        Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AuthorizerFunction.Arn}/invocations"
+      authorizerCredentials: 
+        Fn::Sub: "${AuthorizerFunctionExecutionRole.Arn}"
+      authorizerResultTtlInSeconds: 300

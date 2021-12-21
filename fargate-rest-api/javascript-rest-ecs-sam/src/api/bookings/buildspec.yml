@@ -1,0 +1,30 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+version: 0.2
+phases:
+  install:
+    commands:
+      # Install all dependencies (including dependencies for running tests)
+      - cd ./javascript-rest-ecs-sam/src/api/bookings
+      - npm install
+      # Authenticate with Docker
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+  pre_build:
+    commands:
+      # Discover and run unit tests in the '__tests__/unit' directory
+      - npm run test:unit
+      # Remove all unit tests to reduce the size of the package that will be ultimately uploaded to Lambda
+      - rm -rf ./__tests__
+      # Build docker image
+      - echo Build started on `date`
+      - echo Building the Docker image...
+      - docker build --build-arg BASE_IMAGE=$BASE_IMAGE -t $BOOKINGS_SERVICE_ECR_REPOSITORY_URI:latest .
+      - docker tag $BOOKINGS_SERVICE_ECR_REPOSITORY_URI:latest $BOOKINGS_SERVICE_ECR_REPOSITORY_URI:$BOOKINGS_SERVICE_IMAGE_TAG
+  build:
+    commands:
+      # Use AWS SAM to package the application by using AWS CloudFormation
+      - echo Build completed on `date`
+      - echo Pushing the Docker images...
+      - docker push $BOOKINGS_SERVICE_ECR_REPOSITORY_URI:latest
+      - docker push $BOOKINGS_SERVICE_ECR_REPOSITORY_URI:$BOOKINGS_SERVICE_IMAGE_TAG

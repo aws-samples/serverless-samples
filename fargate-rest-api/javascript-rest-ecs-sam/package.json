@@ -1,0 +1,17 @@
+{
+  "name": "fargate-rest-api",
+  "version": "0.0.1",
+  "description": "This is implementation of the backend API using AWS API Gateway HTTP endpoint, Node.js and AWS SAM.",
+  "scripts": {
+    "test:integration": "jest --testPathPattern=__tests__/integration"
+  },
+  "devDependencies": {
+    "jest": "^27.4.4",
+    "supertest": "^6.1.6"
+  },
+  "dependencies": {
+    "jsonwebtoken": "^8.5.1",
+    "jwk-to-pem": "^2.0.5",
+    "request": "^2.88.2"
+  }
+}

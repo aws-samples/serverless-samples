@@ -1,0 +1,23 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+version: 0.2
+phases:
+  install:
+    commands:
+      # Install all dependencies (including dependencies for running tests)
+      - cd ./javascript-rest-ecs-sam
+      - npm ci --only=production
+  pre_build:
+    commands:
+  build:
+    commands:
+      # Package app
+      - aws cloudformation package --template template.yaml --s3-bucket $BUILD_OUTPUT_BUCKET --output-template application.yaml
+artifacts:
+  type: zip
+  discard-paths: yes
+  files:
+    - ./javascript-rest-ecs-sam/application.yaml
+    - ./shared/cognito.yaml
+    - ./shared/vpc.yaml
