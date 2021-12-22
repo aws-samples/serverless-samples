@@ -72,9 +72,9 @@ app.put('/locations/:locationid/resources/:resourceid?', logBusinessMetric, json
 
 app.delete('/locations/:locationid/resources/:resourceid', logBusinessMetric, async (req, res, next) => {
     try {
-        const { locationid, resourceid } = req.params;
+        const { resourceid } = req.params;
 
-        // Delete location
+        // Delete resource
         await handlers.deleteResource(resourceid);
 
         res.status(200).send();

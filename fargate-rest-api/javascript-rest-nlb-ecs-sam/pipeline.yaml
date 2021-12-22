@@ -274,7 +274,7 @@ Resources:
                 StackName: !Sub ${AWS::StackName}-Testing
                 ChangeSetName: !Sub ${AWS::StackName}-ChangeSet-Testing
                 TemplatePath: BuildArtifactAsZip::application.yaml
-                ParameterOverrides: !Sub '{"LocationsServiceRepositoryUri": "${LocationsServiceRepository.RepositoryUri}::#{LocationsServiceVariables.IMAGE_TAG}", "ResourcesServiceRepositoryUri": "${ResourcesServiceRepository.RepositoryUri}:#{ResourcesServiceVariables.IMAGE_TAG}", "BookingsServiceRepositoryUri": "${BookingsServiceRepository.RepositoryUri}:#{BookingsServiceVariables.IMAGE_TAG}"}'
+                ParameterOverrides: !Sub '{"LocationsServiceRepositoryUri": "${LocationsServiceRepository.RepositoryUri}:#{LocationsServiceVariables.IMAGE_TAG}", "ResourcesServiceRepositoryUri": "${ResourcesServiceRepository.RepositoryUri}:#{ResourcesServiceVariables.IMAGE_TAG}", "BookingsServiceRepositoryUri": "${BookingsServiceRepository.RepositoryUri}:#{BookingsServiceVariables.IMAGE_TAG}"}'
                 Capabilities: CAPABILITY_IAM
               InputArtifacts:
                 - Name: BuildArtifactAsZip
@@ -325,7 +325,7 @@ Resources:
                 StackName: !Sub ${AWS::StackName}-Production
                 ChangeSetName: !Sub ${AWS::StackName}-ChangeSet-Production
                 TemplatePath: BuildArtifactAsZip::application.yaml
-                ParameterOverrides: !Sub '{"LocationsServiceRepositoryUri": "${LocationsServiceRepository.RepositoryUri}::#{LocationsServiceVariables.IMAGE_TAG}", "ResourcesServiceRepositoryUri": "${ResourcesServiceRepository.RepositoryUri}:#{ResourcesServiceVariables.IMAGE_TAG}", "BookingsServiceRepositoryUri": "${BookingsServiceRepository.RepositoryUri}:#{BookingsServiceVariables.IMAGE_TAG}"}'
+                ParameterOverrides: !Sub '{"LocationsServiceRepositoryUri": "${LocationsServiceRepository.RepositoryUri}:#{LocationsServiceVariables.IMAGE_TAG}", "ResourcesServiceRepositoryUri": "${ResourcesServiceRepository.RepositoryUri}:#{ResourcesServiceVariables.IMAGE_TAG}", "BookingsServiceRepositoryUri": "${BookingsServiceRepository.RepositoryUri}:#{BookingsServiceVariables.IMAGE_TAG}"}'
                 Capabilities: CAPABILITY_IAM
               InputArtifacts:
                 - Name: BuildArtifactAsZip

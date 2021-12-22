@@ -70,7 +70,7 @@ git remote add origin <URL to AWS CodeCommit repository>
 git push origin main
 ```
 
-This will trigger a new deployment in CodePipeline. Navigate to the CodePipeline in AWS Management Console to see the process and status. You can also release changes manually by clicking the "Release change" button.
+This will trigger a new deployment in CodePipeline. Navigate to the CodePipeline in AWS Management Console to see the process and status. You can also release changes manually by clicking the "Release change" button. For the proceeding commands to run successfully, the Production environment has to be deployed, which requires manual approval (via CodePipline in AWS Console) once the integration tests have successfully completed.
 
 ![CodePipeline](./assets/CodePipeline.png)
 
@@ -103,6 +103,18 @@ Unit tests are defined in the `__tests__` folder within each service (i.e. `src/
 ```bash
 npm install
 npm run test:unit
+```
+
+## Calling the endpoint
+
+```bash
+# Here is an example curl command to hit the /locations endopint
+
+# Fetch the API Gateway REST endpoint
+API_ENDPOINT=$(aws cloudformation describe-stacks --stack-name $STACK_NAME-Production | jq -r '.Stacks[0].Outputs[] | select(.OutputKey == "APIEndpoint") | .OutputValue')
+
+# Since there is no data in the database you should receive an empty array ("[]") as a response.
+curl -H "Authorization: Bearer <ID_TOKEN>" $API_ENDPOINT/locations
 ```
 
 ## Cleanup

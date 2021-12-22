@@ -1,7 +1,7 @@
 {
   "name": "fargate-rest-api",
   "version": "0.0.1",
-  "description": "This is implementation of the backend API using AWS API Gateway HTTP endpoint, Node.js and AWS SAM.",
+  "description": "This is implementation of the backend API using AWS API Gateway REST endpoint, Node.js and AWS SAM.",
   "scripts": {
     "test:integration": "jest --testPathPattern=__tests__/integration"
   },

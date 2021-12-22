@@ -161,6 +161,9 @@ Resources:
       HealthCheckProtocol: HTTP
       HealthCheckPath: /health
       HealthCheckPort: 8080
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 30
       VpcId: !GetAtt VPCStack.Outputs.VPCID
 
   LocationsServiceLoadBalancerHTTPListener:
@@ -373,6 +376,9 @@ Resources:
       HealthCheckProtocol: HTTP
       HealthCheckPath: /health
       HealthCheckPort: 8080
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 30
       VpcId: !GetAtt VPCStack.Outputs.VPCID
 
   ResourcesServiceLoadBalancerHTTPListener:
@@ -588,6 +594,9 @@ Resources:
       HealthCheckProtocol: HTTP
       HealthCheckPath: /health
       HealthCheckPort: 8080
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 30
       VpcId: !GetAtt VPCStack.Outputs.VPCID
 
   BookingsServiceLoadBalancerHTTPListener:

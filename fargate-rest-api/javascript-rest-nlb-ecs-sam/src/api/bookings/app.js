@@ -59,7 +59,7 @@ app.get('/users/:userid/bookings/:bookingid', logBusinessMetric, async (req, res
     try {
         const { userid, bookingid } = req.params;
 
-        // Get resource
+        // Get booking
         const resource = await handlers.getBooking(bookingid);
 
         res.json(resource);
@@ -88,7 +88,7 @@ app.delete('/users/:userid/bookings/:bookingid', logBusinessMetric, async (req, 
     try {
         const { userid, bookingid } = req.params;
 
-        // Delete location
+        // Delete booking
         await handlers.deleteBooking(bookingid);
 
         res.status(200).send();
