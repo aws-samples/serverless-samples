@@ -307,9 +307,9 @@ Resources:
               InputArtifacts:
                 - Name: SourceCodeAsZip
               RunOrder: 3
-        - Name: Deployment
+        - Name: Production
           Actions:
-            - Name: DeploymentApproval
+            - Name: ProductionApproval
               ActionTypeId:
                 Category: Approval
                 Owner: AWS
@@ -325,8 +325,8 @@ Resources:
               Configuration:
                 ActionMode: CHANGE_SET_REPLACE
                 RoleArn: !GetAtt CloudFormationExecutionRole.Arn
-                StackName: !Sub ${AWS::StackName}-Deployment
-                ChangeSetName: !Sub ${AWS::StackName}-ChangeSet-Deployment
+                StackName: !Sub ${AWS::StackName}-Production
+                ChangeSetName: !Sub ${AWS::StackName}-ChangeSet-Production
                 TemplatePath: BuildArtifactAsZip::application.yaml
                 ParameterOverrides: !Sub '{"LocationsServiceRepositoryUri": "${LocationsServiceRepository.RepositoryUri}", "ResourcesServiceRepositoryUri": "${ResourcesServiceRepository.RepositoryUri}", "BookingsServiceRepositoryUri": "${BookingsServiceRepository.RepositoryUri}"}'
                 Capabilities: CAPABILITY_IAM
@@ -342,10 +342,10 @@ Resources:
               Configuration:
                 ActionMode: CHANGE_SET_EXECUTE
                 RoleArn: !GetAtt CloudFormationExecutionRole.Arn
-                StackName: !Sub ${AWS::StackName}-Deployment
-                ChangeSetName: !Sub ${AWS::StackName}-ChangeSet-Deployment
+                StackName: !Sub ${AWS::StackName}-Production
+                ChangeSetName: !Sub ${AWS::StackName}-ChangeSet-Production
               OutputArtifacts:
-                - Name: !Sub ${AWS::StackName}DeploymentChangeSet
+                - Name: !Sub ${AWS::StackName}ProductionChangeSet
               RunOrder: 3
 
   # IAM roles/policies for the pipeline

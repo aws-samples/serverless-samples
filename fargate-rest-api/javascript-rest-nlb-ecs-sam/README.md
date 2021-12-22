@@ -1,10 +1,11 @@
 # javascript-ecs-nlb-sam
-This is implementation of the backend API using AWS API Gateway HTTP endpoint, Node.js and AWS SAM. 
+This is implementation of the backend API using AWS API Gateway REST endpoint, Node.js and AWS SAM. 
 
 ## Project structure
 This project contains source code and supporting files for a serverless application that you can deploy with the AWS Serverless Application Model (AWS SAM) command line interface (CLI). It includes the following files and folders:
 
 - `src/api` - Code for the application's containers
+- `src/api/authorizer.js` - Lambda function used for authorization by API Gateway
 - `src/api/bookings` - Application code for the Bookings Service
 - `src/api/bookings/__tests__` - Unit tests for the Bookings Service
 - `src/api/locations` - Application code for the Locations Service
@@ -14,6 +15,9 @@ This project contains source code and supporting files for a serverless applicat
 - `__tests__/integration` - Integration tests for the API. 
 - `__tests__/testspec.yml` - A template that defines the API's test process used by the CI/CD pipeline (both unit and integration testing).
 - `template.yaml` - A template that defines the application's AWS resources.
+- `swagger.yaml` - Swagger (OpenAPI) API definition used to defined the API Gateway 
+- `vpc.yaml` - A template (nested stack) that defines the application's VPC
+- `cognito.yaml` - A template (nested stack) that defines the application's Cognito User Pool used for authentication
 - `pipeline.yaml` - A template that defines the application's CI/CD pipeline.
 - `buildspec.yml` - A template that defines the application's build process used by the CI/CD pipeline.
 
@@ -81,14 +85,16 @@ After the application is deployed, you will need to create user account for auth
 
 - As an alternative to the AWS Console you can use AWS CLI to create and confirm user signup:
 ```bash
-    aws cognito-idp sign-up --client-id <cognito user pool application client id> --username <username> --password <password> --user-attributes Name="name",Value="<username>"
-    aws cognito-idp admin-confirm-sign-up --user-pool-id <cognito user pool id> --username <username> 
+    USER_POOL_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME-Production | jq -r '.Stacks[0].Outputs[] | select(.OutputKey == "UserPool") | .OutputValue')
+    USER_POOL_CLIENT_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME-Production | jq -r '.Stacks[0].Outputs[] | select(.OutputKey == "UserPoolClient") | .OutputValue')
+    aws cognito-idp sign-up --client-id $USER_POOL_CLIENT_ID --username <username> --password <password> --user-attributes Name="name",Value="<username>"
+    aws cognito-idp admin-confirm-sign-up --user-pool-id $USER_POOL_ID --username <username> 
 ```
 
 While using command line or third party tools such as Postman to test APIs, you will need to provide Identity Token in the request "Authorization" header. You can authenticate with Amazon Cognito User Pool using AWS CLI (this command is also available in SAM template outputs) and use IdToken value present in the output of the command:
 
 ```bash
-aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id <cognito user pool application client id> --auth-parameters USERNAME=<username>,PASSWORD=<password>
+aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id $USER_POOL_CLIENT_ID --auth-parameters USERNAME=<username>,PASSWORD=<password>
 ```
 
 ## Unit tests
@@ -105,12 +111,12 @@ To delete the sample application that you created, use the AWS CLI:
 
 ```bash
 # Delete the application stacks
-aws cloudformation delete-stack --stack-name fargate-rest-api-pipeline-Testing
-aws cloudformation delete-stack --stack-name fargate-rest-api-pipeline-Deployment
+aws cloudformation delete-stack --stack-name $STACK_NAME-Testing
+aws cloudformation delete-stack --stack-name f$STACK_NAME-Production
 
 # Wait for the deletions to complete before deleting the pipeline stacks
-aws cloudformation wait stack-delete-complete --stack-name fargate-rest-api-pipeline-Testing
-aws cloudformation wait stack-delete-complete --stack-name fargate-rest-api-pipeline-Deployment
+aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME-Testing
+aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME-Production
 
 # Delete/empty ECR repositories and S3 buckets
 pipelineStackOutputs=$(aws cloudformation describe-stacks --stack-name $STACK_NAME | jq -r '.Stacks[0].Outputs')

@@ -18,5 +18,3 @@ artifacts:
   discard-paths: yes
   files:
     - ./application.yaml
-    - ./shared/cognito.yaml
-    - ./shared/vpc.yaml
