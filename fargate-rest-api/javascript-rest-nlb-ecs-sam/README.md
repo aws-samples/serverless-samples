@@ -36,7 +36,7 @@ To create the CI/CD pipeline we will split out code for this set of examples fro
 First, navigate to the root directory of the repository. To verify it run command *basename "$PWD"* - it should return serverless-samples as an output. Then run the following commands:
 
 ```bash
-git subtree split -P fargate-rest-api/javascript-rest-ecs-sam -b fargate-rest-api
+git subtree split -P fargate-rest-api/javascript-rest-nlb-ecs-sam -b fargate-rest-api
 mkdir ../fargate-rest-api-cicd && cd ../fargate-rest-api-cicd
 git init -b main
 git pull ../serverless-samples fargate-rest-api
@@ -54,7 +54,7 @@ aws cloudformation deploy --stack-name $STACK_NAME --template-file ./pipeline.ya
 
 Once the stack is created, the pipeline will attempt to run and will fail at the SourceCodeRepo stage as there is no code in the AWS CodeCommit yet.
 
-***NOTE:** If you change stack name, avoid stack names longer than 25 characters. IUn case you need longer stack names check comments in the pipeline.yaml and update accordingly.*
+***NOTE:** If you change stack name, avoid stack names longer than 25 characters. In case you need longer stack names check comments in the pipeline.yaml and update accordingly.*
 
 ***Note:** You may need to set up AWS CodeCommit repository access for HTTPS users [using Git credentials](https://docs.aws.amazon.com/codecommit/latest/userguide/setting-up-gc.html?icmpid=docs_acc_console_connect_np) and [set up the AWS CLI Credential Helper](https://docs.aws.amazon.com/console/codecommit/connect-tc-alert-np).*
 
@@ -98,7 +98,7 @@ aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id $USER_P
 ```
 
 ## Unit tests
-Unit tests are defined in the `__tests__` folder iwithin each service (i.e. `src/api/locations`). Use `npm` to install the [Jest test framework](https://jestjs.io/) and run unit tests.
+Unit tests are defined in the `__tests__` folder within each service (i.e. `src/api/locations`). Use `npm` to install the [Jest test framework](https://jestjs.io/) and run unit tests.
 
 ```bash
 npm install
