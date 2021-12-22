@@ -66,8 +66,6 @@ Resources:
             Value: !Ref AWS::AccountId
           - Name: LOCATIONS_SERVICE_ECR_REPOSITORY_URI
             Value: !GetAtt LocationsServiceRepository.RepositoryUri
-          - Name: LOCATIONS_SERVICE_IMAGE_TAG
-            Value: 1.0.0
       Cache:
         Type: S3
         Location: !Sub ${BuildArtifactsBucket}/locations-service/codebuild-cache
@@ -98,8 +96,6 @@ Resources:
             Value: !Ref AWS::AccountId
           - Name: RESOURCES_SERVICE_ECR_REPOSITORY_URI
             Value: !GetAtt ResourcesServiceRepository.RepositoryUri
-          - Name: RESOURCES_SERVICE_IMAGE_TAG
-            Value: 1.0.0
       Cache:
         Type: S3
         Location: !Sub ${BuildArtifactsBucket}/resources-service/codebuild-cache
@@ -130,8 +126,6 @@ Resources:
             Value: !Ref AWS::AccountId
           - Name: BOOKINGS_SERVICE_ECR_REPOSITORY_URI
             Value: !GetAtt BookingsServiceRepository.RepositoryUri
-          - Name: BOOKINGS_SERVICE_IMAGE_TAG
-            Value: 1.0.0
       Cache:
         Type: S3
         Location: !Sub ${BuildArtifactsBucket}/bookings-service/codebuild-cache
@@ -227,6 +221,7 @@ Resources:
                 ProjectName: !Ref LocationsServiceCodeBuildProject
               InputArtifacts:
                 - Name: SourceCodeAsZip
+              Namespace: LocationsServiceVariables
               RunOrder: 1
             - Name: ResourcesServiceCodeBuild
               ActionTypeId:
@@ -238,6 +233,7 @@ Resources:
                 ProjectName: !Ref ResourcesServiceCodeBuildProject
               InputArtifacts:
                 - Name: SourceCodeAsZip
+              Namespace: ResourcesServiceVariables
               RunOrder: 1
             - Name: BookingsServiceCodeBuild
               ActionTypeId:
@@ -249,6 +245,7 @@ Resources:
                 ProjectName: !Ref BookingsServiceCodeBuildProject
               InputArtifacts:
                 - Name: SourceCodeAsZip
+              Namespace: BookingsServiceVariables
               RunOrder: 1
             - Name: ApplicationCodeBuild
               ActionTypeId:
@@ -277,7 +274,7 @@ Resources:
                 StackName: !Sub ${AWS::StackName}-Testing
                 ChangeSetName: !Sub ${AWS::StackName}-ChangeSet-Testing
                 TemplatePath: BuildArtifactAsZip::application.yaml
-                ParameterOverrides: !Sub '{"LocationsServiceRepositoryUri": "${LocationsServiceRepository.RepositoryUri}", "ResourcesServiceRepositoryUri": "${ResourcesServiceRepository.RepositoryUri}", "BookingsServiceRepositoryUri": "${BookingsServiceRepository.RepositoryUri}"}'
+                ParameterOverrides: !Sub '{"LocationsServiceRepositoryUri": "${LocationsServiceRepository.RepositoryUri}::#{LocationsServiceVariables.IMAGE_TAG}", "ResourcesServiceRepositoryUri": "${ResourcesServiceRepository.RepositoryUri}:#{ResourcesServiceVariables.IMAGE_TAG}", "BookingsServiceRepositoryUri": "${BookingsServiceRepository.RepositoryUri}:#{BookingsServiceVariables.IMAGE_TAG}"}'
                 Capabilities: CAPABILITY_IAM
               InputArtifacts:
                 - Name: BuildArtifactAsZip
@@ -328,7 +325,7 @@ Resources:
                 StackName: !Sub ${AWS::StackName}-Production
                 ChangeSetName: !Sub ${AWS::StackName}-ChangeSet-Production
                 TemplatePath: BuildArtifactAsZip::application.yaml
-                ParameterOverrides: !Sub '{"LocationsServiceRepositoryUri": "${LocationsServiceRepository.RepositoryUri}", "ResourcesServiceRepositoryUri": "${ResourcesServiceRepository.RepositoryUri}", "BookingsServiceRepositoryUri": "${BookingsServiceRepository.RepositoryUri}"}'
+                ParameterOverrides: !Sub '{"LocationsServiceRepositoryUri": "${LocationsServiceRepository.RepositoryUri}::#{LocationsServiceVariables.IMAGE_TAG}", "ResourcesServiceRepositoryUri": "${ResourcesServiceRepository.RepositoryUri}:#{ResourcesServiceVariables.IMAGE_TAG}", "BookingsServiceRepositoryUri": "${BookingsServiceRepository.RepositoryUri}:#{BookingsServiceVariables.IMAGE_TAG}"}'
                 Capabilities: CAPABILITY_IAM
               InputArtifacts:
                 - Name: BuildArtifactAsZip

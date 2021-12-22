@@ -2,29 +2,36 @@
 # SPDX-License-Identifier: MIT-0
 
 version: 0.2
+env:
+  exported-variables:
+    - IMAGE_TAG
 phases:
   install:
     commands:
       # Install all dependencies (including dependencies for running tests)
       - cd ./src/api/resources
       - npm install
-      # Authenticate with Docker
-      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
   pre_build:
     commands:
       # Discover and run unit tests in the '__tests__/unit' directory
       - npm run test:unit
       # Remove all unit tests to reduce the size of the package that will be ultimately uploaded to Lambda
       - rm -rf ./__tests__
+      # Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - export IMAGE_TAG=${COMMIT_HASH:=latest}
+  build:
+    commands:
       # Build docker image
       - echo Build started on `date`
       - echo Building the Docker image...
       - docker build -t $RESOURCES_SERVICE_ECR_REPOSITORY_URI:latest .
-      - docker tag $RESOURCES_SERVICE_ECR_REPOSITORY_URI:latest $RESOURCES_SERVICE_ECR_REPOSITORY_URI:$RESOURCES_SERVICE_IMAGE_TAG
-  build:
+      - docker tag $RESOURCES_SERVICE_ECR_REPOSITORY_URI:latest $RESOURCES_SERVICE_ECR_REPOSITORY_URI:$IMAGE_TAG
+  post_build:
     commands:
-      # Use AWS SAM to package the application by using AWS CloudFormation
+      # Push to ECR
       - echo Build completed on `date`
       - echo Pushing the Docker images...
       - docker push $RESOURCES_SERVICE_ECR_REPOSITORY_URI:latest
-      - docker push $RESOURCES_SERVICE_ECR_REPOSITORY_URI:$RESOURCES_SERVICE_IMAGE_TAG
+      - docker push $RESOURCES_SERVICE_ECR_REPOSITORY_URI:$IMAGE_TAG
