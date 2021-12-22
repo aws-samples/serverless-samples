@@ -19,7 +19,7 @@ phases:
       # Build docker image
       - echo Build started on `date`
       - echo Building the Docker image...
-      - docker build --build-arg BASE_IMAGE=$BASE_IMAGE -t $BOOKINGS_SERVICE_ECR_REPOSITORY_URI:latest .
+      - docker build -t $BOOKINGS_SERVICE_ECR_REPOSITORY_URI:latest .
       - docker tag $BOOKINGS_SERVICE_ECR_REPOSITORY_URI:latest $BOOKINGS_SERVICE_ECR_REPOSITORY_URI:$BOOKINGS_SERVICE_IMAGE_TAG
   build:
     commands:

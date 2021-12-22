@@ -64,8 +64,6 @@ Resources:
             Value: !Ref BuildArtifactsBucket
           - Name: ACCOUNT_ID
             Value: !Ref AWS::AccountId
-          - Name: BASE_IMAGE
-            Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/nodejsbase:latest"
           - Name: LOCATIONS_SERVICE_ECR_REPOSITORY_URI
             Value: !GetAtt LocationsServiceRepository.RepositoryUri
           - Name: LOCATIONS_SERVICE_IMAGE_TAG
@@ -98,8 +96,6 @@ Resources:
             Value: !Ref BuildArtifactsBucket
           - Name: ACCOUNT_ID
             Value: !Ref AWS::AccountId
-          - Name: BASE_IMAGE
-            Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/nodejsbase:latest"
           - Name: RESOURCES_SERVICE_ECR_REPOSITORY_URI
             Value: !GetAtt ResourcesServiceRepository.RepositoryUri
           - Name: RESOURCES_SERVICE_IMAGE_TAG
@@ -132,8 +128,6 @@ Resources:
             Value: !Ref BuildArtifactsBucket
           - Name: ACCOUNT_ID
             Value: !Ref AWS::AccountId
-          - Name: BASE_IMAGE
-            Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/nodejsbase:latest"
           - Name: BOOKINGS_SERVICE_ECR_REPOSITORY_URI
             Value: !GetAtt BookingsServiceRepository.RepositoryUri
           - Name: BOOKINGS_SERVICE_IMAGE_TAG
