@@ -76,7 +76,7 @@ Resources:
       ServiceRole: !GetAtt ApplicationCodeBuildServiceRole.Arn
       Source:
         Type: CODEPIPELINE
-        BuildSpec: ./javascript-rest-ecs-sam/src/api/locations/buildspec.yml
+        BuildSpec: ./src/api/locations/buildspec.yml
       Tags:
         - Key: "Stack"
           Value: !Ref AWS::StackName
@@ -110,7 +110,7 @@ Resources:
       ServiceRole: !GetAtt ApplicationCodeBuildServiceRole.Arn
       Source:
         Type: CODEPIPELINE
-        BuildSpec: ./javascript-rest-ecs-sam/src/api/resources/buildspec.yml
+        BuildSpec: ./src/api/resources/buildspec.yml
       Tags:
         - Key: "Stack"
           Value: !Ref AWS::StackName
@@ -144,7 +144,7 @@ Resources:
       ServiceRole: !GetAtt ApplicationCodeBuildServiceRole.Arn
       Source:
         Type: CODEPIPELINE
-        BuildSpec: ./javascript-rest-ecs-sam/src/api/bookings/buildspec.yml
+        BuildSpec: ./src/api/bookings/buildspec.yml
       Tags:
         - Key: "Stack"
           Value: !Ref AWS::StackName
@@ -169,7 +169,7 @@ Resources:
       ServiceRole: !GetAtt ApplicationCodeBuildServiceRole.Arn
       Source:
         Type: CODEPIPELINE
-        BuildSpec: ./javascript-rest-ecs-sam/buildspec.yml
+        BuildSpec: ./buildspec.yml
       Tags:
         - Key: "Stack"
           Value: !Ref AWS::StackName
@@ -192,7 +192,7 @@ Resources:
       ServiceRole: !GetAtt IntegrationTestCodeBuildServiceRole.Arn
       Source:
         Type: CODEPIPELINE
-        BuildSpec: ./javascript-rest-ecs-sam/__tests__/testspec.yml
+        BuildSpec: ./__tests__/testspec.yml
       Tags:
         - Key: "Stack"
           Value: !Ref AWS::StackName

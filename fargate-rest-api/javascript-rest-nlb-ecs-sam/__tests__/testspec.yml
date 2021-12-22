@@ -6,7 +6,6 @@ phases:
   install:
     commands:
       # Install all dependencies (including dependencies for running tests)
-      - cd ./javascript-rest-ecs-sam
       - npm install
       - chmod +x ./__tests__/integration/test_init.sh
       - chmod +x ./__tests__/integration/test_cleanup.sh

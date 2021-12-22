@@ -30,12 +30,12 @@ Resources:
   VPCStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: ../shared/vpc.yaml
+      TemplateURL: ./vpc.yaml
 
   CognitoStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: ../shared/cognito.yaml
+      TemplateURL: ./cognito.yaml
 
   Cluster:
     Type: AWS::ECS::Cluster

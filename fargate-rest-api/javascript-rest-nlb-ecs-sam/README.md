@@ -32,11 +32,10 @@ To create the CI/CD pipeline we will split out code for this set of examples fro
 First, navigate to the root directory of the repository. To verify it run command *basename "$PWD"* - it should return serverless-samples as an output. Then run the following commands:
 
 ```bash
-git subtree split -P fargate-rest-api -b fargate-rest-api
+git subtree split -P fargate-rest-api/javascript-rest-ecs-sam -b fargate-rest-api
 mkdir ../fargate-rest-api-cicd && cd ../fargate-rest-api-cicd
 git init -b main
 git pull ../serverless-samples fargate-rest-api
-cd javascript-rest-ecs-sam
 ```
 
 To create the pipeline you will need to run the following command:

@@ -6,7 +6,7 @@ phases:
   install:
     commands:
       # Install all dependencies (including dependencies for running tests)
-      - cd ./javascript-rest-ecs-sam/src/api/resources
+      - cd ./src/api/locations
       - npm install
       # Authenticate with Docker
       - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
@@ -19,12 +19,12 @@ phases:
       # Build docker image
       - echo Build started on `date`
       - echo Building the Docker image...
-      - docker build --build-arg BASE_IMAGE=$BASE_IMAGE -t $RESOURCES_SERVICE_ECR_REPOSITORY_URI:latest .
-      - docker tag $RESOURCES_SERVICE_ECR_REPOSITORY_URI:latest $RESOURCES_SERVICE_ECR_REPOSITORY_URI:$RESOURCES_SERVICE_IMAGE_TAG
+      - docker build --build-arg BASE_IMAGE=$BASE_IMAGE -t $LOCATIONS_SERVICE_ECR_REPOSITORY_URI:latest .
+      - docker tag $LOCATIONS_SERVICE_ECR_REPOSITORY_URI:latest $LOCATIONS_SERVICE_ECR_REPOSITORY_URI:$LOCATIONS_SERVICE_IMAGE_TAG
   build:
     commands:
       # Use AWS SAM to package the application by using AWS CloudFormation
       - echo Build completed on `date`
       - echo Pushing the Docker images...
-      - docker push $RESOURCES_SERVICE_ECR_REPOSITORY_URI:latest
-      - docker push $RESOURCES_SERVICE_ECR_REPOSITORY_URI:$RESOURCES_SERVICE_IMAGE_TAG
+      - docker push $LOCATIONS_SERVICE_ECR_REPOSITORY_URI:latest
+      - docker push $LOCATIONS_SERVICE_ECR_REPOSITORY_URI:$LOCATIONS_SERVICE_IMAGE_TAG

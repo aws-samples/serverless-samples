@@ -1,5 +1,4 @@
-ARG BASE_IMAGE
-FROM ${BASE_IMAGE}
+FROM public.ecr.aws/docker/library/node:14.18
 
 # Create app directory
 WORKDIR /usr/src/app
