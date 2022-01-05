@@ -114,3 +114,12 @@ To have the same load balancer point to multiple backend API Gateway endpoints:
 2. Create another API Gateway resource with the associated resources above.
 3. Create another Route 53 CNAMEs for the new domain name pointing to the load balancer.
 4. Add the additional ACM certificate to the listener of that same load balancer. This will require passing in an additional certificate ARN parameter. An example of this is demonstrated in `nlb_multi.yaml` and `alb_multi.yaml`. Note to skip this step, you could also apply wildcard certificates. 
+
+## Cleanup
+To cleanup this implementation, delete the stacks in reverse order of creation:
+1. Route 53 CNAME
+2. Load balancer (NLB/ALB) with listener and target group
+3. API Gateway endpoint
+4. ACM certificate
+
+And finally delete the VPC endpoint for API Gateway.
