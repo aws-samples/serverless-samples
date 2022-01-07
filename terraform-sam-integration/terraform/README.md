@@ -88,7 +88,12 @@ Terraform uses [AWS access keys](https://docs.aws.amazon.com/IAM/latest/UserGuid
 
 * Clean up.
 
-  When you have finished with this project and you are ready to destroy your resources, run the command:
+  When you have finished with this project and you are ready to destroy your resources, cleanup your SAM resources by running this command from the `sam` directory:
+
+  ```bash
+  sam delete
+  ```  
+  Then run the terraform cleanup command from this directory:
 
   ```bash
   terraform destroy
