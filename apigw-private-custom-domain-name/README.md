@@ -14,7 +14,7 @@ The architecture diagram below illustrates the interactions between the componen
 ![NLB](assets/apigw_pcdn_nlb_200.png)
 
 ## Traffic Flow
-A user or application makes an API request to the fully qualified domain name (FQDN) of the custom domain name, in this example `private.internal.example.com`. We use a private hosted zone in association with the VPC. The CNAME resolves to the FQDN of the private load balancer, in this example `internal-0123-abcd.elb.us-east-1.amazonaws.com`. The load balancer terminates TLS with the ACM certificate for `private.internal.example.com`.
+A user or application makes an API request to the fully qualified domain name (FQDN) of the custom domain name, in this example `private.internal.example.com`. We use a private hosted zone in association with the VPC. The CNAME resolves to the FQDN of the private load balancer, in this example `internal-0123-abcd.elb.us-east-1.amazonaws.com`. The load balancer terminates TLS with the ACM certificate for `private.internal.example.com`. For more details, refer to the [documentation](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/hosted-zone-private-creating.html) on private hosted zones.
 
 The load balancer then re-initiates the TLS connection with a listener for TLS:443 for NLB or alternatively HTTPS:443 for ALB. The listener redirects to the IP addresses of the VPC endpoint for API Gateway, in this example at 10.0.110.74 and 10.0.120.81. The listener also has a TCP:443 health check for NLB and an HTTPS:443 health check for ALB. Note that ALB also requires matcher against HTTP 200 and 403. The load balancers then establishes a TLS connection to the VPC endpoint using the FQDN of the custom domain, allowing it to resolve to the regional custom domain name that we configured.
 
@@ -39,7 +39,9 @@ P_DOMAIN_NAME=your_domain_name
 P_HOSTED_ZONE_ID=your_private_hosted_zone_id
 ```
 
-This will create a CloudFormation stack named `pcdn-certificate`. ACM certificates associated with private custom hosted zones do not support DNS verification and only support email verification. Be sure to login to the appropriate inbox to receive the validation request, which will be from "Amazon Certificates" with a subject line "Certificate request for [your_domain_name]". Click the link to approve the request, and the CloudFormation stack will complete. If you did not receive the validation email, navigate to the ACM dashboard, click on the certificate, and click the "Resend validation email" button. Capture the output of the stack and update the following parameter in `environment.sh`.
+This will create a CloudFormation stack named `pcdn-certificate`. ACM certificates associated with private custom hosted zones do not support DNS verification and only support email verification. For this reason, be sure to create a certificate with a sub-domain rather than the apex domain.
+
+Login to the registrar inbox to receive the validation request, which will be from "Amazon Certificates" with a subject line "Certificate request for [your_domain_name]". Click the link to approve the request, and the CloudFormation stack will complete. If you did not receive the validation email, navigate to the ACM dashboard, click on the certificate, and click the "Resend validation email" button. Capture the output of the stack and update the following parameter in `environment.sh`. For more details, refer to the [documentation](https://docs.aws.amazon.com/acm/latest/userguide/email-validation.html) for email validation with ACM.
 
 ```bash
 O_CERT_ARN=output_certificate_arn
@@ -73,6 +75,9 @@ P_VPC_ENDPOINT_IPS=your_comma_delimited_endpoint_ip_addresses
 ```
 
 This will create a CloudFormation stack named either `pcdn-nlb` or `pcdn-alb` depending on which you chose. This will create the load balancer, the listener, and the target group pointing to your VPC endpoint. To get the IP addresses of your VPC endpoint, you can run `nslookup` or `dig` against your VPC endpoint FQDN, e.g. `dig +short vpce-0123-abcde.execute-api.us-east-1.vpce.amazonaws.com`. Capture the output of the stack and update the following parameters in `environment.sh`. Note you only need to update the one that you created.
+
+Note that the subnet ids do not necessarily need to be the ones that contain the VPC endpoint addresses but minimally do need to be routable. That said, they should at least be in the same availability zone to avoid cross-AZ charges. Note that you need to provide a minimum of two subnets for defining a load balancer. Note that when specifying a comma-delimited list, do not include spaces after the comma.
+
 
 ```bash
 O_DNS_NAME_NLB=your_nlb_fqdn

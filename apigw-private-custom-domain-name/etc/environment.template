@@ -25,6 +25,9 @@ APIGW_TEMPLATE=iac/apigw.yaml
 APIGW_OUTPUT=iac/apigw_output.yaml
 APIGW_PARAMS="ParameterKey=pApiStage,ParameterValue=${P_API_STAGE} ParameterKey=pVpcEndpointId,ParameterValue=${P_VPC_ENDPOINT_ID} ParameterKey=pVpcId,ParameterValue=${P_VPC_ID} ParameterKey=pCertificateArn,ParameterValue=${O_CERT_ARN} ParameterKey=pDomainName,ParameterValue=${P_DOMAIN_NAME} ParameterKey=pPayloadVersion,ParameterValue=${P_PVERSION} ParameterKey=pFnMemory,ParameterValue=${P_FN_MEMORY} ParameterKey=pFnTimeout,ParameterValue=${P_FN_TIMEOUT}"
 
+O_API=output_api_id
+O_FN=output_function_id
+
 ## Load Balancers
 P_VPC_SUBNET_IDS=your_comma_delimited_subnet_ids
 P_VPC_ENDPOINT_IPS=your_comma_delimited_endpoint_ip_addresses
