@@ -1,0 +1,23 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: APIGW private custom domain name implementation
+Transform: AWS::Serverless-2016-10-31
+Parameters:
+  pDnsName:
+    Type: String
+  pHostedZoneId:
+    Type: String
+  pDomainName:
+    Type: String
+Resources:
+  Alias:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref pHostedZoneId
+      Name: !Ref pDomainName
+      ResourceRecords:
+        - !Ref pDnsName
+      TTL: 60
+      Type: CNAME
+Outputs:
+  outAlias:
+    Value: !Ref Alias
