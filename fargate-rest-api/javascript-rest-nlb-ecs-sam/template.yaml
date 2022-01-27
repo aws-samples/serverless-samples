@@ -1,0 +1,1327 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: 2010-09-09
+Transform:
+- AWS::Serverless-2016-10-31
+
+Description: >
+  Backend API with ECS, Fargate and DynamoDB, Lambda Authorizer
+
+Globals:
+  Function:
+    Runtime: nodejs14.x
+    MemorySize: 128
+    Timeout: 100
+    Tracing: Active
+
+Parameters:
+  LocationsServiceImageUri:
+    Type: String
+    Description: URI of the container image for the Locations Service.
+  ResourcesServiceImageUri:
+    Type: String
+    Description: URI of the container image for the Resources Service.
+  BookingsServiceImageUri:
+    Type: String
+    Description: URI of the container image for the Bookings Service.
+  VPCID:
+    Type: String
+    Description: ID of the VPC to deploy ECS tasks in
+  VPCCIDR:
+    Type: String
+    Description: CIDR of the VPC (used for security groups)
+  PrivateSubnet1:
+    Type: String
+    Description: Private subnet used for internal resources (i.e. ECS tasks, NLB)
+  PrivateSubnet2:
+    Type: String
+    Description: Private subnet used for internal resources (i.e. ECS tasks, NLB)
+  UserPool:
+    Type: String
+    Description: ID of the Cognito User Pool
+  UserPoolAdminGroupName:
+    Type: String
+    Description: Admin group used by users to allow for broader API permissions
+
+Resources:
+
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub "${AWS::StackName}-ecs-cluster"
+
+  LocationsServiceTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Memory: 1GB
+      Cpu: 512
+      ExecutionRoleArn: !GetAtt LocationsServiceExecutionRole.Arn
+      TaskRoleArn: !GetAtt LocationsServiceTaskRole.Arn
+      ContainerDefinitions:
+        - Name: locations-service
+          Environment:
+            - Name: LOCATIONS_TABLE
+              Value: !Ref LocationsTable
+            - Name: AWS_EMF_SERVICE_NAME
+              Value: LocationsService
+            - Name: AWS_EMF_LOG_GROUP_NAME
+              Value: !Ref LocationsServiceLogGroup
+            - Name: AWS_EMF_NAMESPACE
+              Value: !Sub ${AWS::StackName}
+          Image: !Ref LocationsServiceImageUri
+          PortMappings:
+            - ContainerPort: 8080
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Ref LocationsServiceLogGroup
+              awslogs-stream-prefix: ecs
+        - Name: cwagent
+          Essential: true
+          Image: public.ecr.aws/cloudwatch-agent/cloudwatch-agent:latest
+          PortMappings:
+            - ContainerPort: 25888
+              Protocol: TCP
+          Environment:
+            - Name: CW_CONFIG_CONTENT
+              Value: |
+                {
+                  "logs": {
+                    "metrics_collected": {
+                      "emf": { }
+                    }
+                  }
+                }
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Ref LocationsServiceLogGroup
+              awslogs-stream-prefix: ecs
+        - Name: xray-daemon
+          Essential: true
+          Image: amazon/aws-xray-daemon
+          PortMappings:
+            - HostPort: 2000
+              ContainerPort: 2000
+              Protocol: UDP
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Ref LocationsServiceLogGroup
+              awslogs-stream-prefix: ecs
+
+  LocationsService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref Cluster
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+      DesiredCount: 2
+      EnableECSManagedTags: false
+      HealthCheckGracePeriodSeconds: 5
+      LaunchType: FARGATE
+      LoadBalancers:
+        - ContainerName: locations-service
+          ContainerPort: 8080
+          TargetGroupArn: !Ref LocationsServiceLoadBalancerTargetGroup
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - !GetAtt LocationsServiceSecurityGroup.GroupId
+          Subnets:
+            - !Ref PrivateSubnet1
+            - !Ref PrivateSubnet2
+      TaskDefinition: !Ref LocationsServiceTaskDefinition
+    DependsOn:
+      - LocationsServiceLoadBalancerHTTPListener
+
+  LocationsServiceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName}/ECS/LocationsService/SecurityGroup"
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      SecurityGroupIngress:
+        - CidrIp: !Ref VPCCIDR
+          Description: Allow from within the VPC for port 8080
+          FromPort: 8080
+          IpProtocol: tcp
+          ToPort: 8080
+      VpcId: !Ref VPCID
+
+  LocationsServiceLoadBalancerTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 8080
+      Protocol: TCP
+      TargetType: ip
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /health
+      HealthCheckPort: 8080
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 30
+      VpcId: !Ref VPCID
+
+  LocationsServiceLoadBalancerHTTPListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref LocationsServiceLoadBalancerTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref LocationsServiceLoadBalancer
+      Port: 80
+      Protocol: TCP
+
+  LocationsServiceLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      LoadBalancerAttributes:
+        - Key: deletion_protection.enabled
+          Value: "false"
+      Scheme: internal
+      Subnets:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Type: network
+
+  LocationsServiceVPCLink:
+    Type: AWS::ApiGateway::VpcLink
+    Properties:
+      Name: !Sub "${AWS::StackName}LocationsServiceVPCLink"
+      TargetArns:
+        - !Ref LocationsServiceLoadBalancer
+
+  LocationsServiceExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+
+  LocationsServiceTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+      Policies:
+        - PolicyName: DynamoDBCrudAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:PutItem
+                  - dynamodb:Scan
+                  - dynamodb:Query
+                  - dynamodb:UpdateItem
+                  - dynamodb:BatchWriteItem
+                  - dynamodb:BatchGetItem
+                  - dynamodb:DescribeTable
+                  - dynamodb:ConditionCheckItem
+                Resource: 
+                  Fn::Sub:
+                    - "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}"
+                    - tableName: !Ref LocationsTable
+        - PolicyName: CloudWatchLogs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStream
+                Resource: 'arn:aws:logs:*:*:*'
+
+  LocationsServiceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/ecs/${AWS::StackName}-locations-service"
+      RetentionInDays: 7
+
+  ResourcesServiceTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Memory: 1GB
+      Cpu: 512
+      ExecutionRoleArn: !GetAtt ResourcesServiceExecutionRole.Arn
+      TaskRoleArn: !GetAtt ResourcesServiceTaskRole.Arn
+      ContainerDefinitions:
+        - Name: resources-service
+          Environment:
+            - Name: RESOURCES_TABLE
+              Value: !Ref ResourcesTable
+            - Name: AWS_EMF_SERVICE_NAME
+              Value: ResourcesService
+            - Name: AWS_EMF_LOG_GROUP_NAME
+              Value: !Ref ResourcesServiceLogGroup
+            - Name: AWS_EMF_NAMESPACE
+              Value: !Sub ${AWS::StackName}
+          Image: !Ref ResourcesServiceImageUri
+          PortMappings:
+            - ContainerPort: 8080
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Ref ResourcesServiceLogGroup
+              awslogs-stream-prefix: ecs
+        - Name: cwagent
+          Essential: true
+          Image: public.ecr.aws/cloudwatch-agent/cloudwatch-agent:latest
+          PortMappings:
+            - ContainerPort: 25888
+              Protocol: TCP
+          Environment:
+            - Name: CW_CONFIG_CONTENT
+              Value: |
+                {
+                  "logs": {
+                    "metrics_collected": {
+                      "emf": { }
+                    }
+                  }
+                }
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Ref ResourcesServiceLogGroup
+              awslogs-stream-prefix: ecs
+        - Name: xray-daemon
+          Essential: true
+          Image: amazon/aws-xray-daemon
+          PortMappings:
+            - HostPort: 2000
+              ContainerPort: 2000
+              Protocol: UDP
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Ref ResourcesServiceLogGroup
+              awslogs-stream-prefix: ecs
+
+  ResourcesService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref Cluster
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+      DesiredCount: 2
+      EnableECSManagedTags: false
+      HealthCheckGracePeriodSeconds: 5
+      LaunchType: FARGATE
+      LoadBalancers:
+        - ContainerName: resources-service
+          ContainerPort: 8080
+          TargetGroupArn: !Ref ResourcesServiceLoadBalancerTargetGroup
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - !GetAtt ResourcesServiceSecurityGroup.GroupId
+          Subnets:
+            - !Ref PrivateSubnet1
+            - !Ref PrivateSubnet2
+      TaskDefinition: !Ref ResourcesServiceTaskDefinition
+    DependsOn:
+      - ResourcesServiceLoadBalancerHTTPListener
+
+  ResourcesServiceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName}/ECS/ResourcesService/SecurityGroup"
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      SecurityGroupIngress:
+        - CidrIp: !Ref VPCCIDR
+          Description: Allow from within the VPC for port 8080
+          FromPort: 8080
+          IpProtocol: tcp
+          ToPort: 8080
+      VpcId: !Ref VPCID
+
+  ResourcesServiceLoadBalancerTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 8080
+      Protocol: TCP
+      TargetType: ip
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /health
+      HealthCheckPort: 8080
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 30
+      VpcId: !Ref VPCID
+
+  ResourcesServiceLoadBalancerHTTPListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref ResourcesServiceLoadBalancerTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref ResourcesServiceLoadBalancer
+      Port: 80
+      Protocol: TCP
+
+  ResourcesServiceLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      LoadBalancerAttributes:
+        - Key: deletion_protection.enabled
+          Value: "false"
+      Scheme: internal
+      Subnets:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Type: network
+
+  ResourcesServiceVPCLink:
+    Type: AWS::ApiGateway::VpcLink
+    Properties:
+      Name: !Sub "${AWS::StackName}ResourcesServiceVPCLink"
+      TargetArns:
+        - !Ref ResourcesServiceLoadBalancer
+
+  ResourcesServiceExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+
+  ResourcesServiceTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+      Policies:
+        - PolicyName: DynamoDBCrudAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:PutItem
+                  - dynamodb:Scan
+                  - dynamodb:Query
+                  - dynamodb:UpdateItem
+                  - dynamodb:BatchWriteItem
+                  - dynamodb:BatchGetItem
+                  - dynamodb:DescribeTable
+                  - dynamodb:ConditionCheckItem
+                Resource: 
+                  - Fn::Sub:
+                      - "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}"
+                      - tableName: !Ref ResourcesTable
+                  - Fn::Sub:
+                      - "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*"
+                      - tableName: !Ref ResourcesTable
+        - PolicyName: CloudWatchLogs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStream
+                Resource: 'arn:aws:logs:*:*:*'
+
+  ResourcesServiceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/ecs/${AWS::StackName}-resources-service"
+      RetentionInDays: 7
+
+  BookingsServiceTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Memory: 1GB
+      Cpu: 512
+      ExecutionRoleArn: !GetAtt BookingsServiceExecutionRole.Arn
+      TaskRoleArn: !GetAtt BookingsServiceTaskRole.Arn
+      ContainerDefinitions:
+        - Name: bookings-service
+          Environment:
+            - Name: BOOKINGS_TABLE
+              Value: !Ref BookingsTable
+            - Name: AWS_EMF_SERVICE_NAME
+              Value: BookingsService
+            - Name: AWS_EMF_LOG_GROUP_NAME
+              Value: !Ref BookingsServiceLogGroup
+            - Name: AWS_EMF_NAMESPACE
+              Value: !Sub ${AWS::StackName}
+          Image: !Ref BookingsServiceImageUri
+          PortMappings:
+            - ContainerPort: 8080
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Ref BookingsServiceLogGroup
+              awslogs-stream-prefix: ecs
+        - Name: cwagent
+          Essential: true
+          Image: public.ecr.aws/cloudwatch-agent/cloudwatch-agent:latest
+          PortMappings:
+            - ContainerPort: 25888
+              Protocol: TCP
+          Environment:
+            - Name: CW_CONFIG_CONTENT
+              Value: |
+                {
+                  "logs": {
+                    "metrics_collected": {
+                      "emf": { }
+                    }
+                  }
+                }
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Ref BookingsServiceLogGroup
+              awslogs-stream-prefix: ecs
+        - Name: xray-daemon
+          Essential: true
+          Image: amazon/aws-xray-daemon
+          PortMappings:
+            - HostPort: 2000
+              ContainerPort: 2000
+              Protocol: UDP
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Ref BookingsServiceLogGroup
+              awslogs-stream-prefix: ecs
+
+  BookingsService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref Cluster
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+      DesiredCount: 2
+      EnableECSManagedTags: false
+      HealthCheckGracePeriodSeconds: 5
+      LaunchType: FARGATE
+      LoadBalancers:
+        - ContainerName: bookings-service
+          ContainerPort: 8080
+          TargetGroupArn: !Ref BookingsServiceLoadBalancerTargetGroup
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - !GetAtt BookingsServiceSecurityGroup.GroupId
+          Subnets:
+            - !Ref PrivateSubnet1
+            - !Ref PrivateSubnet2
+      TaskDefinition: !Ref BookingsServiceTaskDefinition
+    DependsOn:
+      - BookingsServiceLoadBalancerHTTPListener
+
+  BookingsServiceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${AWS::StackName}/ECS/BookingsService/SecurityGroup"
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      SecurityGroupIngress:
+        - CidrIp: !Ref VPCCIDR
+          Description: Allow from within the VPC for port 8080
+          FromPort: 8080
+          IpProtocol: tcp
+          ToPort: 8080
+      VpcId: !Ref VPCID
+
+  BookingsServiceLoadBalancerTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 8080
+      Protocol: TCP
+      TargetType: ip
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /health
+      HealthCheckPort: 8080
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 30
+      VpcId: !Ref VPCID
+
+  BookingsServiceLoadBalancerHTTPListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref BookingsServiceLoadBalancerTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref BookingsServiceLoadBalancer
+      Port: 80
+      Protocol: TCP
+
+  BookingsServiceLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      LoadBalancerAttributes:
+        - Key: deletion_protection.enabled
+          Value: "false"
+      Scheme: internal
+      Subnets:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Type: network
+
+  BookingsServiceVPCLink:
+    Type: AWS::ApiGateway::VpcLink
+    Properties:
+      Name: !Sub "${AWS::StackName}BookingsServiceVPCLink"
+      TargetArns:
+        - !Ref BookingsServiceLoadBalancer
+
+  BookingsServiceExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+
+  BookingsServiceTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+      Policies:
+        - PolicyName: DynamoDBCrudAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:PutItem
+                  - dynamodb:Scan
+                  - dynamodb:Query
+                  - dynamodb:UpdateItem
+                  - dynamodb:BatchWriteItem
+                  - dynamodb:BatchGetItem
+                  - dynamodb:DescribeTable
+                  - dynamodb:ConditionCheckItem
+                Resource: 
+                  - Fn::Sub:
+                    - "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}"
+                    - tableName: !Ref BookingsTable
+                  - Fn::Sub:
+                      - "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${tableName}/index/*"
+                      - tableName: !Ref BookingsTable
+        - PolicyName: CloudWatchLogs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStream
+                Resource: 'arn:aws:logs:*:*:*'
+
+  BookingsServiceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/ecs/${AWS::StackName}-bookings-service"
+      RetentionInDays: 7
+
+  AuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: authorizer.handler
+      CodeUri: src/api/authorizer
+      Description: Handler for Lambda authorizer
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref UserPool
+          ADMIN_GROUP_NAME: !Ref UserPoolAdminGroupName
+      Tags:
+        Stack: !Sub "${AWS::StackName}"
+
+  AuthorizerFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AuthorizerFunction}"
+      RetentionInDays: 7
+
+  AuthorizerFunctionExecutionRole: 
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Effect: Allow
+            Principal: 
+              Service: 
+                - apigateway.amazonaws.com
+            Action: 
+              - sts:AssumeRole
+      Path: "/"
+      Tags:
+        - Key: "Stack" 
+          Value: !Sub "${AWS::StackName}"
+
+  AuthorizerFunctionExecutionRolePolicy: 
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyName: !Sub ${AWS::StackName}-Authorizer-Policy
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - Effect: Allow
+            Action: lambda:InvokeFunction
+            Resource: !GetAtt AuthorizerFunction.Arn
+      Roles: 
+        - Ref: AuthorizerFunctionExecutionRole
+
+  RestAPI:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      EndpointConfiguration:
+        Type: REGIONAL
+      TracingEnabled: true
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: ./swagger.yaml
+      Cors:
+        AllowMethods: "'PUT, GET, DELETE, OPTIONS'"
+        AllowHeaders: "'Content-Type', 'Authorization', 'X-Forwarded-For', 'X-Api-Key', 'X-Amz-Date', 'X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+      Auth:
+        ApiKeyRequired: false
+        AddDefaultAuthorizerToCorsPreflight: false
+      MethodSettings:
+        - LoggingLevel: INFO
+          MetricsEnabled: true
+          ResourcePath: '/*'
+          HttpMethod: '*'
+      AccessLogSetting:
+        DestinationArn: !GetAtt AccessLogs.Arn
+        Format: '{ "requestId":"$context.requestId", "ip": "$context.identity.sourceIp", "requestTime":"$context.requestTime", "httpMethod":"$context.httpMethod","routeKey":"$context.routeKey", "status":"$context.status","protocol":"$context.protocol", "integrationStatus": $context.integrationStatus, "integrationLatency": $context.integrationLatency, "responseLength":"$context.responseLength" }'
+      Tags:
+        Name: !Sub "${AWS::StackName}-API"
+        Stack: !Sub "${AWS::StackName}"
+
+  ApiGatewayCloudWatchRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - apigateway.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+        - >-
+          arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+
+  Account:
+    Type: 'AWS::ApiGateway::Account'
+    Properties:
+      CloudWatchRoleArn: !GetAtt ApiGatewayCloudWatchRole.Arn
+
+  AccessLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub "/${AWS::StackName}/APIAccessLogs"
+
+  LocationsTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: locationID
+        Type: String
+      ProvisionedThroughput:
+        ReadCapacityUnits: 2
+        WriteCapacityUnits: 2
+      Tags:
+        Stack: !Sub "${AWS::StackName}"
+
+  ResourcesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: resourceID
+          AttributeType: S
+        - AttributeName: locationID
+          AttributeType: S
+      KeySchema:
+        - AttributeName: resourceID
+          KeyType: HASH
+      BillingMode: PROVISIONED
+      ProvisionedThroughput:
+        ReadCapacityUnits: 2
+        WriteCapacityUnits: 2
+      GlobalSecondaryIndexes:
+      - IndexName: locationIDGSI
+        KeySchema:
+        - AttributeName: locationID
+          KeyType: HASH
+        Projection:
+          ProjectionType: ALL
+        ProvisionedThroughput:
+          ReadCapacityUnits: 2
+          WriteCapacityUnits: 2
+      Tags:
+        - Key: "Stack" 
+          Value: !Sub "${AWS::StackName}"
+
+  BookingsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: bookingID
+          AttributeType: S
+        - AttributeName: userID
+          AttributeType: S
+        - AttributeName: resourceID
+          AttributeType: S
+        - AttributeName: starttimeepochtime
+          AttributeType: N
+      KeySchema:
+        - AttributeName: bookingID
+          KeyType: HASH
+      BillingMode: PROVISIONED
+      ProvisionedThroughput:
+        ReadCapacityUnits: 2
+        WriteCapacityUnits: 2
+      GlobalSecondaryIndexes:
+      - IndexName: userIDGSI
+        KeySchema:
+        - AttributeName: userID
+          KeyType: HASH
+        Projection:
+          ProjectionType: ALL
+        ProvisionedThroughput:
+          ReadCapacityUnits: 2
+          WriteCapacityUnits: 2
+      - IndexName: bookingsByUserByTimeGSI
+        KeySchema:
+        - AttributeName: userID
+          KeyType: HASH
+        - AttributeName: starttimeepochtime
+          KeyType: RANGE
+        Projection:
+          ProjectionType: ALL
+        ProvisionedThroughput:
+          ReadCapacityUnits: 2
+          WriteCapacityUnits: 2
+      - IndexName: bookingsByResourceByTimeGSI
+        KeySchema:
+        - AttributeName: resourceID
+          KeyType: HASH
+        - AttributeName: starttimeepochtime
+          KeyType: RANGE
+        Projection:
+          ProjectionType: ALL
+        ProvisionedThroughput:
+          ReadCapacityUnits: 2
+          WriteCapacityUnits: 2
+      Tags:
+        - Key: "Stack" 
+          Value: !Sub "${AWS::StackName}"
+
+  AlarmsKMSKey:
+    Type: AWS::KMS::Key
+    Properties: 
+      Description: CMK for SNS alarms topic
+      Enabled: true
+      EnableKeyRotation: True
+      KeyPolicy: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: 
+              Service: 
+                - "cloudwatch.amazonaws.com"
+                - "sns.amazonaws.com"
+            Action:
+              - "kms:GenerateDataKey*"
+              - "kms:Decrypt"
+            Resource: "*"
+          - Effect: Allow
+            Principal: 
+              AWS: 
+                - !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action:
+              - "kms:*"
+            Resource: "*"
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyUsage: ENCRYPT_DECRYPT
+      PendingWindowInDays: 30
+      Tags: 
+        - Key: "Stack" 
+          Value: !Sub "${AWS::StackName}"
+
+  AlarmsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId: !Ref AlarmsKMSKey
+      Tags:
+        - Key: "Stack" 
+          Value: !Sub "${AWS::StackName}"
+
+  RestAPIErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref AlarmsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: ApiName
+          Value: !Ref RestAPI
+      EvaluationPeriods: 1
+      MetricName: 5XXError
+      Namespace: AWS/ApiGateway
+      Period: 60
+      Statistic: Sum
+      Threshold: 1.0
+
+  AuthorizerFunctionErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref AlarmsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref AuthorizerFunction
+      EvaluationPeriods: 1
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: 1.0
+
+  LocationsServiceCPUUtilizationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref AlarmsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref Cluster
+        - Name: ServiceName
+          Value: !Ref LocationsService
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      Period: 60
+      Statistic: Average
+      Threshold: 2.0
+
+  ResourcesServiceCPUUtilizationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref AlarmsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref Cluster
+        - Name: ServiceName
+          Value: !Ref ResourcesService
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      Period: 60
+      Statistic: Average
+      Threshold: 2.0
+
+  BookingsServiceCPUUtilizationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref AlarmsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref Cluster
+        - Name: ServiceName
+          Value: !Ref BookingsService
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      Period: 60
+      Statistic: Average
+      Threshold: 2.0
+
+  AuthorizerFunctionThrottlingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref AlarmsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref AuthorizerFunction
+      EvaluationPeriods: 1
+      MetricName: Throttles
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: 1.0
+
+  LocationsDynamoDBThrottlingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref AlarmsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref LocationsTable
+      EvaluationPeriods: 1
+      MetricName: ThrottledRequests
+      Namespace: AWS/DynamoDB
+      Period: 60
+      Statistic: Sum
+      Threshold: 1.0
+
+  ResourcesDynamoDBThrottlingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref AlarmsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref ResourcesTable
+      EvaluationPeriods: 1
+      MetricName: ThrottledRequests
+      Namespace: AWS/DynamoDB
+      Period: 60
+      Statistic: Sum
+      Threshold: 1.0
+
+  BookingsDynamoDBThrottlingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref AlarmsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref BookingsTable
+      EvaluationPeriods: 1
+      MetricName: ThrottledRequests
+      Namespace: AWS/DynamoDB
+      Period: 60
+      Statistic: Sum
+      Threshold: 1.0
+
+  ApplicationDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub "${AWS::StackName}-dashboard"
+      DashboardBody: !Sub |
+          {
+            "widgets": [
+                {
+                    "height": 6,
+                    "width": 8,
+                    "y": 6,
+                    "x": 0,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "${AWS::StackName}", "ProcessedLocations", "ServiceName", "LocationsService", "LogGroup", "${LocationsServiceLogGroup}", "ServiceType", "AWS::ECS::Container", { "id": "p1", "visible": false } ],
+                            [ ".", "LocationsErrors", ".", ".", ".", ".", ".", ".", { "id": "p2", "visible": false } ],
+                            [ { "expression": "p2/p1*100", "label": "% of Errors", "id": "p3" }],
+                            [ "AWS/ECS", "CPUUtilization", "ServiceName", "${LocationsService.Name}", "ClusterName", "${Cluster}", { "label": "CPU Utilization" }],
+                            [ ".", "MemoryUtilization", ".", ".", ".", ".", { "label": "Memory Utilization" }]
+                        ],
+                        "view": "timeSeries",
+                        "region": "${AWS::Region}",
+                        "stacked": false,
+                        "title": "Locations Service",
+                        "period": 60,
+                        "stat": "Sum"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 8,
+                    "y": 6,
+                    "x": 8,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "${AWS::StackName}", "ProcessedResources", "ServiceName", "ResourcesService", "LogGroup", "${ResourcesServiceLogGroup}", "ServiceType", "AWS::ECS::Container", { "id": "p1", "visible": false } ],
+                            [ ".", "ResourcesErrors", ".", ".", ".", ".", ".", ".", { "id": "p2", "visible": false } ],
+                            [ { "expression": "p2/p1*100", "label": "% of Errors", "id": "p3" }],
+                            [ "AWS/ECS", "CPUUtilization", "ServiceName", "${ResourcesService.Name}", "ClusterName", "${Cluster}", { "label": "CPU Utilization" }],
+                            [ ".", "MemoryUtilization", ".", ".", ".", ".", { "label": "Memory Utilization" }]
+                        ],
+                        "view": "timeSeries",
+                        "region": "${AWS::Region}",
+                        "stacked": false,
+                        "title": "Resources Service",
+                        "period": 60,
+                        "stat": "Sum"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 8,
+                    "y": 6,
+                    "x": 16,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "${AWS::StackName}", "ProcessedBookings", "ServiceName", "BookingsService", "LogGroup", "${BookingsServiceLogGroup}", "ServiceType", "AWS::ECS::Container", { "id": "p1", "visible": false } ],
+                            [ ".", "BookingsErrors", ".", ".", ".", ".", ".", ".", { "id": "p2", "visible": false } ],
+                            [ { "expression": "p2/p1*100", "label": "% of Errors", "id": "p3" }],
+                            [ "AWS/ECS", "CPUUtilization", "ServiceName", "${BookingsService.Name}", "ClusterName", "${Cluster}", { "label": "CPU Utilization" }],
+                            [ ".", "MemoryUtilization", ".", ".", ".", ".", { "label": "Memory Utilization" }]
+                        ],
+                        "view": "timeSeries",
+                        "region": "${AWS::Region}",
+                        "stacked": false,
+                        "title": "Bookings Service",
+                        "period": 60,
+                        "stat": "Sum"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 0,
+                    "x": 18,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/Lambda", "Invocations", "FunctionName", "${AuthorizerFunction}" ],
+                            [ ".", "Errors", ".", "." ],
+                            [ ".", "Throttles", ".", "." ],
+                            [ ".", "Duration", ".", ".", { "stat": "Average" } ],
+                            [ ".", "ConcurrentExecutions", ".", ".", { "stat": "Maximum" } ]
+                        ],
+                        "view": "timeSeries",
+                        "region": "${AWS::Region}",
+                        "stacked": false,
+                        "title": "Authorizer Lambda",
+                        "period": 60,
+                        "stat": "Sum"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 8,
+                    "y": 12,
+                    "x": 0,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "${LocationsTable}", { "stat": "Maximum" } ],
+                            [ ".", "ConsumedWriteCapacityUnits", ".", ".", { "stat": "Maximum" } ],
+                            [ ".", "ProvisionedReadCapacityUnits", ".", ".", { "period": 300 } ],
+                            [ ".", "ProvisionedWriteCapacityUnits", ".", ".", { "period": 300 } ]
+                        ],
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "title": "DynamoDB - Locations",
+                        "period": 60,
+                        "stat": "Average"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 8,
+                    "y": 12,
+                    "x": 8,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "${ResourcesTable}", { "stat": "Maximum" } ],
+                            [ ".", "ConsumedWriteCapacityUnits", ".", ".", { "stat": "Maximum" } ],
+                            [ ".", "ProvisionedReadCapacityUnits", ".", ".", { "period": 300 } ],
+                            [ ".", "ProvisionedWriteCapacityUnits", ".", ".", { "period": 300 } ]
+                        ],
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "title": "DynamoDB - Resources",
+                        "period": 60,
+                        "stat": "Average"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 8,
+                    "y": 12,
+                    "x": 16,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "${BookingsTable}", { "period": 60, "stat": "Maximum" } ],
+                            [ ".", "ConsumedWriteCapacityUnits", ".", ".", { "period": 60, "stat": "Maximum" } ],
+                            [ ".", "ProvisionedReadCapacityUnits", ".", "." ],
+                            [ ".", "ProvisionedWriteCapacityUnits", ".", "." ]
+                        ],
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "title": "DynamoDB - Bookings",
+                        "period": 300,
+                        "stat": "Average"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 0,
+                    "x": 12,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/ApiGateway", "4xx", "ApiName", "${AWS::StackName}-API", { "yAxis": "right" } ],
+                            [ ".", "5xx", ".", ".", { "yAxis": "right" } ],
+                            [ ".", "DataProcessed", ".", ".", { "yAxis": "left" } ],
+                            [ ".", "Count", ".", ".", { "label": "Count", "yAxis": "right" } ],
+                            [ ".", "IntegrationLatency", ".", ".", { "stat": "Average" } ],
+                            [ ".", "Latency", ".", ".", { "stat": "Average" } ]
+                        ],
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "period": 60,
+                        "stat": "Sum",
+                        "title": "API Gateway"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 12,
+                    "y": 0,
+                    "x": 0,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "${AWS::StackName}", "ProcessedLocations", "ServiceName", "LocationsService", "LogGroup", "${LocationsServiceLogGroup}", "ServiceType", "AWS::ECS::Container", { "label": "Processed Locations"} ],
+                            [ ".", "ProcessedResources", ".", "ResourcesService", ".", "${ResourcesServiceLogGroup}", ".", ".", { "label": "Processed Resources"} ],
+                            [ ".", "ProcessedBookings", ".", "BookingsService", ".", "${BookingsServiceLogGroup}", ".", ".", { "label": "Processed Bookings"} ]
+                        ],
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "title": "Business Metrics",
+                        "region": "${AWS::Region}",
+                        "period": 60,
+                        "stat": "Sum"
+                    }
+                }
+            ]
+          }
+
+Outputs:
+  APIEndpoint:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${RestAPI}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+
+  DashboardURL:
+    Description: "Dashboard URL"
+    Value: !Sub "https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${ApplicationDashboard}"
+  
+  AlarmsTopic:
+    Description: "SNS Topic to be used for the alarms subscriptions"
+    Value: !Ref AlarmsTopic
+
+  AccessLogs:
+    Description: "CloudWatch Logs group for API Gateway access logs"
+    Value: !Ref AccessLogs
+
+  LocationsTable:
+    Description: "DynamoDB Locations table"
+    Value: !Ref LocationsTable
+    
+  ResourcesTable:
+    Description: "DynamoDB Resources table"
+    Value: !Ref ResourcesTable
+
+  BookingsTable:
+    Description: "DynamoDB Bookings table"
+    Value: !Ref BookingsTable

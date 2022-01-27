@@ -1,0 +1,12 @@
+{
+  "name": "fargate-rest-api-integration-tests",
+  "version": "0.0.1",
+  "description": "Integration tests that will make calls to the API Gateway endpoint",
+  "scripts": {
+    "test:integration": "jest"
+  },
+  "devDependencies": {
+    "jest": "^27.4.7",
+    "supertest": "^6.1.6"
+  }
+}
