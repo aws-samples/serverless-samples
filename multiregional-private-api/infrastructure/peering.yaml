@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description:  This template configures cross-region peering. Infrastructure with Transit Gateway must be in place already
+
+Parameters:
+
+  TransitGatewayPeeringAttachmentID:
+    Description: Transit Gateway Peering Attachment ID
+    Type: String
+
+  InrastructureStackName:
+    Description: Core infrastructure stack name
+    Type: String
+    Default: private-api-infrastructure
+
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: private-api-tgw-peering
+
+Mappings:
+    DeploymentRegionMap:
+      us-east-1:
+        TransitGatewayCrossRegionRouteCIDR: 10.2.0.0/16
+        CrossRegionID: us-west-2
+      us-west-2:
+        TransitGatewayCrossRegionRouteCIDR: 10.1.0.0/16
+        CrossRegionID: us-east-1
+
+Resources:
+
+  TransitGatewayPeeringRoute:
+    Type: AWS::EC2::TransitGatewayRoute
+    Properties: 
+      Blackhole: false
+      DestinationCidrBlock: !FindInMap [DeploymentRegionMap, !Ref "AWS::Region", TransitGatewayCrossRegionRouteCIDR]
+      TransitGatewayAttachmentId: !Ref TransitGatewayPeeringAttachmentID
+      TransitGatewayRouteTableId: !ImportValue 
+        'Fn::Sub': '${InrastructureStackName}:TransitGatewayRouteTable'
+
+  TransitGatewayPeeringRouteTableAssociation:
+    Type: AWS::EC2::TransitGatewayRouteTableAssociation
+    Properties: 
+      TransitGatewayAttachmentId: !Ref TransitGatewayPeeringAttachmentID
+      TransitGatewayRouteTableId:  !ImportValue 
+        'Fn::Sub': '${InrastructureStackName}:TransitGatewayRouteTable'

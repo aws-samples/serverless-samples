@@ -1,0 +1,134 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Multiregional private Amazon API Gateway, based on https://github.com/aws-samples/serverless-samples/tree/main/apigw-private-custom-domain-name
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  vpcEndpointId:
+    Description: ID of the VPC Endpoint for API Gateway service
+    Type: String
+    Default: <VPC Endpoint ID here>
+  vpcEndpointIps:
+    Description: 2 IP addresses of the Elastic Network Interfaces created by VPC Endpoint
+    Type: List<String>
+    Default: <comma delimited list of 2 IP addresses here>
+  vpcId:
+    Description: ID of the VPC used by private APIs
+    Type: String
+    Default: <VPC ID here>
+  subnetIds:
+    Description: IDs of the subnets in the VPC to be used by NLB
+    Type: List<String>
+    Default: <comma delimited list of 2 subnet IDs here>
+  certificateArn:
+    Description: ARN of the certificate in ACM to be used by NLB and API Gateway
+    Type: String
+    Default: <ARN of the certificate in ACM here>
+  domainName:
+    Description: Domain name for the private API
+    Type: String
+    Default: private.internal.example.com
+  apiStageName:
+    Description: API Gateway stage name
+    Type: String
+    Default: dev
+
+Resources:
+  RestApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref apiStageName
+      EndpointConfiguration:
+        Type: PRIVATE
+        VPCEndpointIds:
+          - !Ref vpcEndpointId
+      Auth:
+        ResourcePolicy:
+          SourceVpcWhitelist:
+            - !Ref vpcId
+  ApiDomain:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      DomainName: !Ref domainName
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      RegionalCertificateArn: !Ref certificateArn
+      SecurityPolicy: TLS_1_2
+  ApiMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Properties:
+      RestApiId: !Ref RestApi
+      BasePath: demo
+      DomainName: !Ref ApiDomain
+      Stage: !Ref apiStageName
+    DependsOn:
+      - RestApiStage
+
+  EchoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: nodejs14.x
+      Handler: index.handler
+      InlineCode: 'exports.handler = async (event) => {return {statusCode: 200, body: JSON.stringify(event)}}'
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /
+            Method: get
+
+  PrivateApiFacade:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      IpAddressType: ipv4
+      Scheme: internal
+      Subnets: !Ref subnetIds
+      Type: network
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Order: 1
+          TargetGroupArn: !Ref Targets
+          Type: forward
+      LoadBalancerArn: !Ref PrivateApiFacade
+      Port: 443
+      Certificates:
+        - CertificateArn: !Ref certificateArn
+      Protocol: TLS
+  Targets:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPort: 443
+      HealthCheckProtocol: TCP
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 3
+      Port: 443
+      Protocol: TLS
+      Targets:
+        - Id: !Select [ 0, !Ref vpcEndpointIps ]
+          Port: 443
+        - Id: !Select [ 1, !Ref vpcEndpointIps ]
+          Port: 443
+      TargetType: ip
+      VpcId: !Ref vpcId
+  HealthyTargets:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: !Sub "Private API alarm to be used by Route 53 health check in ${AWS::Region}"
+      ComparisonOperator: LessThanOrEqualToThreshold
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !GetAtt PrivateApiFacade.LoadBalancerFullName
+        - Name: TargetGroup
+          Value: !GetAtt Targets.TargetGroupFullName
+      EvaluationPeriods: 1
+      MetricName: HealthyHostCount
+      Namespace: AWS/NetworkELB
+      Period: 60
+      Statistic: Sum
+      Threshold: 1.0

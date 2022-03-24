@@ -18,6 +18,8 @@ This repository contains samples of Serverless application code.
 - ## fargate-rest-api
   These examples focus on creating REST APIs with Amazon API Gateway, Amazon ECS, and AWS Fargate. The examples include CI/CD pipelines, automated unit and integration tests, as well as workload observability. The examples include multiple implementations of the same application using a variety of development platform and infrastructure as a code approaches. The patterns here will benefit beginners as well as seasoned developers looking to improve their applications by automating routine tasks. [[README]](./fargate-rest-api)
   
+- ## multiregional-private-api
+  This is a multi-regional active/active implementation of a REST API that uses private Amazon API Gateway endpoints with custom domain names as described at [this sample](https://github.com/aws-samples/serverless-samples/tree/main/apigw-private-custom-domain-name). It uses Amazon Route 53 latency based routing and CloudWatch Alarms based health checks.
 ## Security
 
 See [CONTRIBUTING](./CONTRIBUTING.md#security-issue-notifications) for more information.
