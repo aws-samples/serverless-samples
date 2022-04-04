@@ -30,7 +30,11 @@ This project deploys the following resources in each region:
 
 ## Prerequistes
 
-What are they? AWS account, AWS cli, SAM, a valid domain under your management, access to administrative email registered to the domain, what else?  
+- AWS CLI. Please refer to [this documentation](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) to install or update to the latest version.
+
+- AWS Serverless Application Model (SAM). Please check the [documentation](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html), if you need to install it in your environment.
+
+- a valid internet domain with access to a registered administrative email address   
 
 ## Create certificates
 
@@ -51,9 +55,7 @@ Repeat this process in the us-west-2 region and note both certificate ARNs as yo
 
 ## Create and configure infrastructure
 
-API Gateway deployment assumes necessary infrastructure in place - VPCs, subnets, VPC Endpoints, and connectivity between resources in the two different regions. You may use existing infrastructure or follow steps in this section to deploy a new stack of resources in each of the regions.
-
-Note that this setup uses AWS Serverless Application Model (SAM). Please check the [documentation](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html), if you need to install it in your environment.
+API Gateway deployment assumes that the necessary infrastructure is in place - VPCs, subnets, VPC Endpoints, and connectivity between resources in the two different regions. You may use existing infrastructure or follow steps in this section to deploy a new stack of resources in each of the regions.
 
 This implementation uses two VPCs that each contain two private subnets. Each VPC is in a different region. The VPC in the us-west-2 region uses IPv4 CIDR 10.2.0.0/16 and two subnets with IPv4 CIDR 10.2.1.0/24 and 10.2.2.0/24. The VPC in the us-east-1 region uses IPv4 CIDR 10.1.0.0/16 and two subnets with IPv4 CIDR 10.1.1.0/24 and 10.1.2.0/24. See the [documentation article](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Networking.html) for more information on how to create VPCs and subnets.
 
