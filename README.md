@@ -28,7 +28,7 @@ This repository contains samples of Serverless application code.
 
 - ## multiregional-private-api
 
-AWS global footprint enables customers to support applications with near zero Recovery Time Objective (RTO) requirements. Customers can run workloads in multiple regions, in a multi-site active/active manner, and serve traffic from all regions. To do so, developers often need to implement private multi-regional APIs that are used by the applications.  This example shows how to implement such a solution using Amazon API Gateway and Amazon Route 53. [[README]](./multiregional-private-api)
+  AWS global footprint enables customers to support applications with near zero Recovery Time Objective (RTO) requirements. Customers can run workloads in multiple regions, in a multi-site active/active manner, and serve traffic from all regions. To do so, developers often need to implement private multi-regional APIs that are used by the applications.  This example shows how to implement such a solution using Amazon API Gateway and Amazon Route 53. [[README]](./multiregional-private-api)
 
 ## Security
 
