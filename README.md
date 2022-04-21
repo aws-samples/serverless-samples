@@ -28,6 +28,11 @@ This repository contains samples of Serverless application code.
 
   The AWS global footprint enables customers to support applications with near zero Recovery Time Objective (RTO) requirements. Customers can run workloads in multiple regions, in a multi-site active/active manner, and serve traffic from all regions. To do so, developers often need to implement private multi-regional APIs that are used by the applications.  This example shows how to implement such a solution using Amazon API Gateway and Amazon Route 53. [[README]](./multiregional-private-api)
 
+- ## lambda-function-url
+
+  This example uses AWS SAM to deploy AWS Lambda URL with IAM authentication. Lambda deployed has a unique https endpoint that can be called by other parts of the application using a HTTP request with signature V4. 
+  Solution also includes python script demostrating how to call the lambda endpoint [[README]](./lambda-function-url)
+
 ## Security
 
 See [CONTRIBUTING](./CONTRIBUTING.md#security-issue-notifications) for more information.
