@@ -4,10 +4,10 @@
 
 * Be sure to have your AWS credentials setup as environment variables
 
-To use the SAM CLI, you need the following tools.
+To use this solution you need the following tools.
 
 * SAM CLI - [Install the SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
-* Python - [Install Python 3.9](https://www.python.org/), 
+* Python - [Install Python 3.9+](https://www.python.org/), 
 
 To build and deploy your application for the first time, run the following in your shell:
 
