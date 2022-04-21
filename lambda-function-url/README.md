@@ -7,7 +7,7 @@
 To use the SAM CLI, you need the following tools.
 
 * SAM CLI - [Install the SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)
-* Node.js - [Install Python 3.9](https://www.python.org/), 
+* Python - [Install Python 3.9](https://www.python.org/), 
 
 To build and deploy your application for the first time, run the following in your shell:
 
@@ -26,13 +26,6 @@ The first command will build the source of your application. The second command 
 
 You can find your API Gateway Endpoint URL in the output values displayed after deployment.
 
-## Use the SAM CLI to build and test locally
-
-Build your application with the `sam build` command.
-
-```bash
-$ sam build
-```
 ## Python Client Application
 
 * After deploy the SAM application, we can test the lambda url using the client application located on the folder ./clinet
