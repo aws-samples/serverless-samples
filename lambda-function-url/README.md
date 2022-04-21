@@ -28,5 +28,5 @@ You can find your API Gateway Endpoint URL in the output values displayed after 
 
 ## Python Client Application
 
-* After deploy the SAM application, we can test the lambda url using the client application located on the folder ./clinet
+* After deploy the SAM application, we can test the lambda url using the client application located on the folder ./client
 * **> python call-lambda-url-v4-signing.py
