@@ -31,7 +31,7 @@ This repository contains samples of Serverless application code.
 - ## lambda-function-url
 
   This example uses AWS SAM to deploy AWS Lambda URL with IAM authentication. Lambda deployed has a unique https endpoint that can be called by other parts of the application using a HTTP request with signature V4. 
-  Solution also includes python script demostrating how to call the lambda endpoint [[README]](./lambda-function-url)
+  Solution also includes python script demonstrating how to call the lambda endpoint [[README]](./lambda-function-url)
 
 ## Security
 
