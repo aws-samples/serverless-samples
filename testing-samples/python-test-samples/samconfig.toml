@@ -1,0 +1,10 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "python-test-samples"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-j6t95cc6i640"
+s3_prefix = "python-test-samples"
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM"
+image_repositories = []
