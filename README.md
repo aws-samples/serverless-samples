@@ -18,7 +18,7 @@ This repository contains samples of Serverless application code.
 
 - ## apigw-private-custom-domain-name
 
-  Implements a workaround solution for custom domain names for Amazon API Gateway private endpoints as described in the [blog post](https://georgemao.medium.com/enabling-private-apis-with-custom-domain-names-aws-api-gateway-df1b62b0ba7c)
+  Implements a workaround solution for custom domain names for Amazon API Gateway private endpoints as described in the [blog post](https://georgemao.medium.com/enabling-private-apis-with-custom-domain-names-aws-api-gateway-df1b62b0ba7c). [README](https://github.com/aws-samples/serverless-samples/tree/main/apigw-private-custom-domain-name)
 
 - ## fargate-rest-api
 
