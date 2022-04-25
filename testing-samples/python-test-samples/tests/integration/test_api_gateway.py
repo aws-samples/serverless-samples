@@ -6,9 +6,11 @@ import boto3
 import requests
 
 """
-Make sure env variable AWS_SAM_STACK_NAME exists with the name of the stack we are going to test. 
-"""
+Set the environment variable AWS_SAM_STACK_NAME 
+to match the name of the stack you will test
 
+AWS_SAM_STACK_NAME=<stack-name> python -m pytest -s tests/integration -v
+"""
 
 class TestApiGateway(TestCase):
     api_endpoint: str
