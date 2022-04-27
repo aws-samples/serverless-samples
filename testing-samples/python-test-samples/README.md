@@ -55,7 +55,7 @@ python-test-samples$ sam deploy --guided
 
 After running this command you will receive a series of prompts:
 
-* **Stack Name**: The name of the stack to deploy to CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name.
+* **Stack Name**: The name of the stack to deploy to CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name. Use `python-test-samples` as the stack name for this project.
 * **AWS Region**: The AWS region you want to deploy your app to.
 * **Confirm changes before deploy**: If set to yes, any change sets will be shown to you before execution for manual review. If set to no, the AWS SAM CLI will automatically deploy application changes.
 * **Allow SAM CLI IAM role creation**: Many AWS SAM templates, including this example, create AWS IAM roles required for the AWS Lambda function(s) included to access AWS services. By default, these are scoped down to minimum required permissions. To deploy an AWS CloudFormation stack which creates or modifies IAM roles, the `CAPABILITY_IAM` value for `capabilities` must be provided. If permission isn't provided through this prompt, to deploy this example you must explicitly pass `--capabilities CAPABILITY_IAM` to the `sam deploy` command.
@@ -84,6 +84,7 @@ Local emulation has several limitations. Cloud services evolve rapidly, so local
 SAM provides local emulation features for [AWS Lambda](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-using-invoke.html) and [Amazon API Gateway](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-using-start-api.html). AWS provides [Amazon DynamoDB Local](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html) as well as [AWS Step Functions Local](https://docs.aws.amazon.com/step-functions/latest/dg/sfn-local.html). Third party vendors like [LocalStack](https://docs.localstack.cloud/overview/) may provide emulation for additional AWS services. 
 
 This project demonstrates local emulation of Lambda and API Gateway with SAM.
+
 [[top]](#python-test-samples)
 
 ## Use the SAM Lambda emulator 
@@ -185,6 +186,8 @@ You can find more information and examples about filtering Lambda function logs 
 [[top]](#python-test-samples)
 
 ## Use SAM Accerate to speed up feedback cycles
+AWS SAM Accelerate is a set of features that reduces deployment latency and enable developers to test their code quickly against production AWS services in the cloud.
+[Read the blog post](https://aws.amazon.com/blogs/compute/accelerating-serverless-development-with-aws-sam-accelerate/)
 
 ```bash
 # synchronize local code with the cloud
@@ -205,6 +208,7 @@ TODO
 You can use AWS X-Ray to track user requests as they travel through your entire application. With X-Ray, you can understand how your application and its underlying services are performing to identify and troubleshoot the root cause of performance issues and errors.
 
 TODO
+
 [[top]](#python-test-samples)
 
 ## Cleanup
