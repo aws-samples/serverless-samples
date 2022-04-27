@@ -1,3 +1,6 @@
+# THIS PROJECT IS A WORK IN PROGRESS
+# THESE MATERIALS ARE EXAMPLES ONLY AND NOT MEANT FOR USE IN PRODUCTION ENVIRONMENTS
+
 # Python Test Samples
 This project contains automated test sample code samples for serverless applications. The project uses the [AWS Serverless Application Model](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/what-is-sam.html) (SAM) CLI for configuration, testing and deployment. 
 
