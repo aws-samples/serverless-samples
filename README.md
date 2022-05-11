@@ -28,6 +28,10 @@ This repository contains samples of Serverless application code.
 
   The AWS global footprint enables customers to support applications with near zero Recovery Time Objective (RTO) requirements. Customers can run workloads in multiple regions, in a multi-site active/active manner, and serve traffic from all regions. To do so, developers often need to implement private multi-regional APIs that are used by the applications.  This example shows how to implement such a solution using Amazon API Gateway and Amazon Route 53. [[README]](./multiregional-private-api)
 
+- ## apigw-ws-integrations
+
+  Developers use WebSocket protocol for bidirectional communications in their applications. With Amazon API Gateway [WebSocket APIs](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api.html) you can build bidirectional communication applications without having to provision and manage any servers. Most of the WebSocket samples use AWS Lambda or HTTP(s) as the integration targets and for connect/disconnect route implementation. This example focuses on using AWS Service integration type to show how you can further simplify serverless architectures. It also shows you how to implement URL path support for WebSocket APIs in Amazon API Gateway using Amazon CloudFront and CloudFront Functions. [README](./apigw-ws-integrations)
+
 ## Security
 
 See [CONTRIBUTING](./CONTRIBUTING.md#security-issue-notifications) for more information.
