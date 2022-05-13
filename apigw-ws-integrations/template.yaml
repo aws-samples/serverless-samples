@@ -57,9 +57,6 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: src/default.lambda_handler
-      Environment:
-        Variables:
-          SESSIONS_TABLE: !Ref SessionsTable
 
   DefaultRouteFunctionPermission:
     Type: AWS::Lambda::Permission
@@ -235,7 +232,7 @@ Resources:
             Type: Wait
             Seconds: 5
             End: true
-      Role: !Sub "${SessionsTableAccessRole.Arn}" 
+      Role: !Sub "${SyncSFnRole.Arn}" 
       Tracing:
         Enabled: true
 
@@ -472,7 +469,6 @@ Resources:
             Principal:
               Service:
                 - apigateway.amazonaws.com
-                - states.amazonaws.com
       Path: /
       Policies:
         - PolicyName: DynamoDBAccess
