@@ -362,7 +362,7 @@ Resources:
                 - states.amazonaws.com
       Path: /
       Policies:
-        - PolicyName: DynamoDBAccess
+        - PolicyName: APIGWConnectionsAccess
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
