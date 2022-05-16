@@ -134,16 +134,13 @@ Resources:
                         "S": "$context.connectionId"
                         },
                 "path": {
-                        "S": "$input.params('uri')"
+                        "S": "$input.params('ws-uri')"
                         },
               "headers": {
                         "S": "$input.params().get('header')"
                         },
               "querystring": {
                         "S": "$input.params().get('querystring')"
-                        },
-              "payload": {
-                        "S": "$input.body"
                         },
               "ttl": {
                         "N": "$ttl"
@@ -507,6 +504,7 @@ Resources:
         HeadersConfig:
           HeaderBehavior: whitelist
           Headers:
+            - ws-uri
             - Sec-WebSocket-Key
             - Sec-WebSocket-Version
             - Sec-WebSocket-Protocol
