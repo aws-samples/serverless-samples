@@ -243,5 +243,6 @@ $RECYCLE.BIN/
 
 .aws-sam
 .python-version
+.vscode
 
 # End of https://www.gitignore.io/api/osx,linux,python,windows,pycharm,visualstudiocode

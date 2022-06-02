@@ -50,7 +50,7 @@ python-test-samples$ sam build --use-container
 ```
 The SAM CLI installs dependencies defined in `src/requirements.txt`, creates a deployment package, and saves it in the `.aws-sam/build` folder. [Read the documentation](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-building.html).
 
-Use the following commend to deploy your application package to AWS: 
+Use the following command to deploy your application package to AWS: 
 
 ``` bash
 # deploy your application to the AWS cloud 
@@ -202,9 +202,11 @@ python-test-samples$ sam sync --watch --stack-name python-test-samples
 ## Perform a load test
 Load tests should be executed in the cloud prior to any initial deployment to production environments. Load tests can be useful to discover performance bottlenecks and quota limits. Load tests should be scripted and repeatable. Load tests should simulate your application's expected peak load. 
 
-This project uses an open source performance testing tool called `Locust`.
+This project uses an open source performance testing tool called [`Locust`](https://docs.locust.io/en/stable/index.html). Follow the instructions below to perform a load test. For this test we use a Terraform module that provisions 1 leader and “n” worker nodes. 
 
-TODO
+- [Install terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli?in=terraform/aws-get-started#install-terraform-on-linux)
+
+- [Follow this README](./tests/load/README.md)
 
 [[top]](#python-test-samples)
 
