@@ -17,6 +17,7 @@ This project contains automated test sample code samples for serverless applicat
 - [Invoke a Lambda function in the cloud](#invoke-a-lambda-function-in-the-cloud)
 - [Fetch, tail, and filter Lambda function logs locally](#fetch-tail-and-filter-lambda-function-logs-locally)
 - [Use SAM Accerate to speed up feedback cycles](#use-sam-accerate-to-speed-up-feedback-cycles)
+- [Use CDK Watch to speed up feedback cycles](#use-cdk-watch-to-speed-up-feedback-cycles)
 - [Perform a load test](#perform-a-load-test)
 - [Implement application tracing](#implement-application-tracing)
 - [Cleanup](#cleanup)
@@ -199,14 +200,14 @@ python-test-samples$ sam sync --watch --stack-name python-test-samples
 ```
 [[top]](#python-test-samples)
 
+## Use CDK Watch to speed up feedback cycles
+
+[[top]](#python-test-samples)
+
 ## Perform a load test
 Load tests should be executed in the cloud prior to any initial deployment to production environments. Load tests can be useful to discover performance bottlenecks and quota limits. Load tests should be scripted and repeatable. Load tests should simulate your application's expected peak load. 
 
-This project uses an open source performance testing tool called [`Locust`](https://docs.locust.io/en/stable/index.html). Follow the instructions below to perform a load test. For this test we use a Terraform module that provisions 1 leader and “n” worker nodes. 
-
-- [Install terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli?in=terraform/aws-get-started#install-terraform-on-linux)
-
-- [Follow this README](./tests/load/README.md)
+TODO
 
 [[top]](#python-test-samples)
 
