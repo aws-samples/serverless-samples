@@ -217,7 +217,7 @@ To validate this implementation, you will need a bastion instance in each of the
 
 ```bash
 
-dig +short private.internal.com
+dig +short private.internal.example.com
 
  ```
 
