@@ -30,7 +30,7 @@ This repository contains samples of Serverless application code.
 
 - ## apigw-ws-integrations
 
-  Developers use WebSocket protocol for bidirectional communications in their applications. With Amazon API Gateway [WebSocket APIs](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api.html) you can build bidirectional communication applications without having to provision and manage any servers. Most of the WebSocket samples use AWS Lambda or HTTP(s) as the integration targets and for connect/disconnect route implementation. This example focuses on using AWS service integration type to show how you can further simplify serverless architectures. It also shows you how to implement URL path support for WebSocket APIs in Amazon API Gateway using Amazon CloudFront and CloudFront Functions. [README](./apigw-ws-integrations)
+  Developers use the WebSocket protocol for bidirectional communications in their applications. With Amazon API Gateway [WebSocket APIs](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api.html) you can build bidirectional communication applications without having to provision and manage servers. Many WebSocket samples use AWS Lambda or HTTP(s) as the integration targets and for connect/disconnect routes. This example uses the AWS service integration pattern to show how to simplify serverless architectures. It also shows you how to implement URL path support for WebSocket APIs in Amazon API Gateway using Amazon CloudFront and CloudFront Functions. [README](./apigw-ws-integrations)
 
 ## Security
 
