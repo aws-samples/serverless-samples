@@ -4,7 +4,7 @@
 AWSTemplateFormatVersion: 2010-09-09
 Transform: 'AWS::Serverless-2016-10-31'
 Description: >
-  Amazon API Gateway WebSocket Endpoint with AWS Service integrations  
+  Amazon API Gateway WebSocket Endpoint with AWS service integrations  
   and an Amazon CloudFront CloudFunction that overrides URI
 
 Globals:
