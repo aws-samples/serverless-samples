@@ -41,16 +41,16 @@ To create the CI/CD pipeline we will split out code for this set of examples fro
 First, navigate to the root directory of the repository. To verify it run command *basename "$PWD"* - it should return serverless-samples as an output. Then run the following commands:
 
 ```bash
-git subtree split -P fargate-rest-api/javascript-rest-nlb-ecs-sam -b fargate-rest-api
-mkdir ../fargate-rest-api-cicd && cd ../fargate-rest-api-cicd
+git subtree split -P fargate-private-api/javascript-private-nlb-ecs-sam -b fargate-private-api
+mkdir ../fargate-private-api-cicd && cd ../fargate-private-api-cicd
 git init -b main
-git pull ../serverless-samples fargate-rest-api
+git pull ../serverless-samples fargate-private-api
 ```
 
 First we need to create the VPC, so that the CodeBuild instance for the integration testing in the pipeline can use the VPC properties which is required to invoke the private API
 
 ```bash
-STACK_NAME=fargate-rest-api-pipeline
+STACK_NAME=fargate-private-api-pipeline
 aws cloudformation deploy --stack-name $STACK_NAME-VPC-Testing --template-file ./vpc.yaml
 ```
 To create the pipeline, you will deploy it with CloudFormation. Run the following command:
@@ -118,7 +118,6 @@ To manually make calls to the API Endpoint, copy the `IdToken` value from the pr
 
 First, let's save the API Gateway endpoint URL to a variable:
 ```bash
-STACK_NAME=fargate-rest-api-pipeline
 API_ENDPOINT=$(aws cloudformation describe-stacks --stack-name $STACK_NAME-Production | jq -r '.Stacks[0].Outputs[] | select(.OutputKey == "APIEndpoint") | .OutputValue')
 ```
 
@@ -190,7 +189,7 @@ aws ecr delete-repository --repository-name $bookingsRepositoryName --force
 aws ecr delete-repository --repository-name $locationsRepositoryName --force
 aws ecr delete-repository --repository-name $resourcesRepositoryName --force
 ```
-Before you delete the pipeline stack, save the name of the CloudFomration execution IAM role, to be deleted at end. Run the following command, and save the last part of OutputValue after "/":
+Before you delete the pipeline stack, save the name of the CloudFormation execution IAM role, to be deleted at end. Run the following command, and save the last part of OutputValue after "/":
 
 ```bash
 aws cloudformation describe-stacks --stack-name $STACK_NAME | jq -r '.Stacks[0].Outputs[] | select(.OutputKey == "CloudformationIAMRole")'
@@ -213,4 +212,4 @@ aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME-VPC-Testi
 aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME-VPC-Production
 ```
 
-Now we need to delete the CloudFormation execution role. Go to the IAM console, select Roles under "Access management". Paste the <CloudFormation execution role from previous step> in the search bar. Then delete the IAM role. 
+Now we need to delete the CloudFormation execution role. Go to the IAM console, select Roles under "Access management". Paste the CloudFormation execution role from the previous step in the search bar. Then delete the IAM role. 
