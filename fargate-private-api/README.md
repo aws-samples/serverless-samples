@@ -1,6 +1,6 @@
 # fargat-private-api
 
-These REST API examples, using private Amazon API Gateway endpoints,demonstrate end-to-end implementations of a simple application using a serverless approach that includes CI/CD pipelines, automated unit and integration testing, and workload observability. The examples include multiple implementations of the same application using a variety of development platform and infrastructure as a code approaches. The patterns here will benefit beginners as well as seasoned developers looking to improve their applications by automating routine tasks.
+These private API examples, using Amazon API Gateway REST APIs, demonstrate end-to-end implementations of a simple application using a serverless approach that includes CI/CD pipelines, automated unit and integration testing, and workload observability. The patterns here will benefit beginners as well as seasoned developers looking to improve their applications by automating routine tasks.
 
 There are various blog posts and code examples for serverless APIs available, however, most of them do not go beyond the first steps of implementing business logic and access controls. These example dive deeper including: 
 
@@ -10,14 +10,12 @@ There are various blog posts and code examples for serverless APIs available, ho
  - API access logging as part of SAM templates
  - business specific metrics
 
-Examples are based on the [fargate-rest-api](https://github.com/aws-samples/serverless-samples/tree/main/fargate-rest-api). The services used by this application include Amazon API Gateway, Amazon Cognito, AWS Lambda, Amazon ECS, AWS Fargate, and Amazon DynamoDB. The CI/CD pipelines use AWS CodePipeline, AWS CodeCommit, and AWS CodeBuild. 
+Examples are based on the [fargate-rest-api](https://github.com/aws-samples/serverless-samples/tree/main/fargate-rest-api). For private APIs the following additional considerations are implemented, compare to their regional counterparts:
 
-For Private APIs the following additional considerations are implemented, compare to their Regional counterparts:
-
- - VPC interface endpoints in the application VPC to invoke Private API
- - AWS CodeBuild for unit and integration testing needs to be associated with VPC and security group 
- - Resource policy for the Private API 
- - Resource policy behavior when used with Lambda authorier [Policy Evaluation Outcome] (https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-authorization-flow.html#apigateway-resource-policies-iam-policies-interaction)
+ - VPC interface endpoints are required in the application VPC to invoke the private API
+ - AWS CodeBuild for unit and integration testing needs to be associated with the VPC and security group to invoke the private API 
+ - Resource policy is needed for the private API 
+ - Resource policy behavior when used with Lambda authorizer [Policy Evaluation Outcome](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-authorization-flow.html#apigateway-resource-policies-iam-policies-interaction)
 
 
 
@@ -25,9 +23,11 @@ For Private APIs the following additional considerations are implemented, compar
 
 ![Architecture diagram](./assets/Architecture.png)
 
-Private API endpoint can only be accessed from your VPC by using an interface VPC endpoint. When the API is configured as private, the public networks are not made available to route your API. Instead, your API can only be accessed using the interface endpoints that you have configured.
+Private API endpoint can only be accessed from your VPC by using an interface VPC endpoint. When the API is configured as private, the public networks are not made available to route to your API. Instead, your API can only be accessed using the interface endpoints that you have configured.
 
-The API uses Amazon API Gateway as a front door. Every new client is first required to use their credentials to authenticate with Amazon Cognito and retrieve an identity token. They must then pass this as a bearer token in the Authorization header with each subsequent request. The Lambda Authorizer inspects this token and generates an IAM policy that is returned back to API Gateway. 
+The API uses Amazon API Gateway as a front door. Every new client is first required to use their credentials to authenticate with Amazon Cognito and retrieve an identity token. They must then pass this as a bearer token in the Authorization header with each subsequent request. The Lambda Authorizer inspects this token and generates an IAM policy that is returned back to API Gateway. It's important to keep in mind, when Lambda Authorizer and resource policy are used together, they are evaluated together. If the Lambda Authorizer generated IAM policy neither allows nor denies, along with API Gateway resource policy allow, the call will be allowed. For non-private, regional APIs, without resource policy, same call will be denied. That is why API Gateway resource policy has explicit deny for this example. 
+
+![Architecture diagram](./assets/policyevaluation.png)
 
 The content of the IAM policy generated by the Lambda Authorizer depends on the user role and identity. All users have read access to the Locations and Resources associated with Locations. They also have read/write access their own Bookings. Administrative users have read/write access to all Locations, Resources, and Bookings. User status (regular vs. administrative) is defined by their membership in the API administrators group in Amazon Cognito User Pool. 
 
@@ -66,5 +66,5 @@ Each example includes unit and integration tests that are run automatically by t
  
  ## Examples
  Check these implementations of the example API for more details and resources to explore.
- - [javascript-private-nlb-ecs-sam](./javascript-private-nlb-ecs-sam) - this REST API implementation uses Node.js on Amazon ECS, AWS Fargate, Amazon API Gateway, Network Load Balancer, AWS SAM, AWS CloudFormation
+ - [javascript-private-nlb-ecs-sam](./javascript-private-nlb-ecs-sam) - this private REST API implementation uses Node.js on Amazon ECS, AWS Fargate, Amazon API Gateway, Network Load Balancer, AWS SAM, AWS CloudFormation
 
