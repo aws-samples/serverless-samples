@@ -50,7 +50,7 @@ git pull ../serverless-samples fargate-private-api
 First we need to create the VPC, so that the CodeBuild instance for the integration testing in the pipeline can use the VPC properties which is required to invoke the private API
 
 ```bash
-STACK_NAME=fargate-private-api-pipeline
+STACK_NAME=fargate-private-api-cicd
 aws cloudformation deploy --stack-name $STACK_NAME-VPC-Testing --template-file ./vpc.yaml
 ```
 To create the pipeline, you will deploy it with CloudFormation. Run the following command:
