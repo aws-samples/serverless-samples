@@ -480,7 +480,7 @@ Resources:
                       "VPCCIDR": "#{VPCProductionOutputs.VPCCIDR}",
                       "PrivateSubnet1": "#{VPCProductionOutputs.PrivateSubnet1}",
                       "PrivateSubnet2": "#{VPCProductionOutputs.PrivateSubnet2}",
-                      "VPCInterfaceEndpoint": "#{VPCTestingOutputs.VPCInterfaceEndpoint}",
+                      "VPCInterfaceEndpoint": "#{VPCProductionOutputs.VPCInterfaceEndpoint}",
                       "UserPool": "#{CognitoProductionOutputs.UserPool}",
                       "UserPoolAdminGroupName": "#{CognitoProductionOutputs.UserPoolAdminGroupName}",
                       "LocationsServiceImageUri": "${LocationsServiceRepository.RepositoryUri}:#{LocationsServiceVariables.IMAGE_TAG}", 
