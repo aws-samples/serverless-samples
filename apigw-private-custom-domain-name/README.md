@@ -1,5 +1,5 @@
 # Custom Domain Names for Private API Gateway Endpoints
-This repository implements a workaround solution as described in the [blog post](https://georgemao.medium.com/enabling-private-apis-with-custom-domain-names-aws-api-gateway-df1b62b0ba7c) titled "Enabling Private APIs with Custom Domain Names (AWS API Gateway)" by George Mao.
+This repository implements a workaround solution as described in the [blog post](https://georgemao.medium.com/enabling-private-apis-with-custom-domain-names-aws-api-gateway-df1b62b0ba7c) titled "Enabling Private APIs with Custom Domain Names (AWS API Gateway)" by George Mao. Multiregional implementation of this solution is available [here](https://github.com/aws-samples/serverless-samples/tree/main/multiregional-private-api/README.md).
 
 ## Services Used
 * [AWS Certificate Manager](https://aws.amazon.com/certificate-manager/)
