@@ -1,6 +1,10 @@
 from asyncio.log import logger
 import boto3
+from aws_xray_sdk.core import xray_recorder
+from aws_xray_sdk.core import patch_all
         
+patch_all()
+
 def lambda_handler(event, context):
 
     s3_client = boto3.client('s3')

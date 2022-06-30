@@ -198,23 +198,24 @@ AWS SAM Accelerate is a set of features that reduces deployment latency and enab
 # synchronize local code with the cloud
 python-test-samples$ sam sync --watch --stack-name python-test-samples
 ```
-[[top]](#python-test-samples)
 
-## Use CDK Watch to speed up feedback cycles
-
-[[top]](#python-test-samples)
-
-## Perform a load test
-Load tests should be executed in the cloud prior to any initial deployment to production environments. Load tests can be useful to discover performance bottlenecks and quota limits. Load tests should be scripted and repeatable. Load tests should simulate your application's expected peak load. 
-
-TODO
+AWS Cloud Development Kit (CDK) has a similar synchronization feature, `cdk watch`. To learn more about `cdk watch` read this [blog post](https://aws.amazon.com/blogs/developer/increasing-development-speed-with-cdk-watch/). 
 
 [[top]](#python-test-samples)
 
 ## Implement application tracing
 You can use AWS X-Ray to track user requests as they travel through your entire application. With X-Ray, you can understand how your application and its underlying services are performing to identify and troubleshoot the root cause of performance issues and errors.
 
-TODO
+This [Lambda function](./src/app.py) handler has been instrumented using AWS X-Ray. Find to your Lambda function in the console. Then navigate to `Monitor` -> `Traces` and you should see a graph that looks similar to the one below. 
+
+![X-Ray image](./img/xray.png)
+
+[[top]](#python-test-samples)
+
+## Perform a load test
+Load tests should be executed in the cloud prior to any initial deployment to production environments. Load tests can be useful to discover performance bottlenecks and quota limits. Load tests should be scripted and repeatable. Load tests should simulate your application's expected peak load + 10% or more.
+
+[Locust](https://locust.io/) is a Python-based open source load testing tool. To learn more about how to use Locust to load test your application see this [sample project](https://github.com/aws-samples/cdk-deployment-of-locust).
 
 [[top]](#python-test-samples)
 

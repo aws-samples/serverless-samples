@@ -1,1 +1,2 @@
 requests
+aws-xray-sdk

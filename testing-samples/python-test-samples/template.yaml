@@ -12,7 +12,9 @@ Resources:
   PythonTestDemo:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
+      Tracing: Active
       Policies:
+        - AWSXrayWriteOnlyAccess
         - Version: '2012-10-17' # Policy Document
           Statement:
             - Effect: Allow
