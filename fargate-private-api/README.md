@@ -1,14 +1,6 @@
 # fargat-private-api
 
-These private API examples, using Amazon API Gateway REST APIs, demonstrate end-to-end implementations of a simple application using a serverless approach that includes CI/CD pipelines, automated unit and integration testing, and workload observability. The patterns here will benefit beginners as well as seasoned developers looking to improve their applications by automating routine tasks.
-
-There are various blog posts and code examples for serverless APIs available, however, most of them do not go beyond the first steps of implementing business logic and access controls. These example dive deeper including: 
-
- - CI/CD pipelines containing automated unit and integration testing
- - manual approval steps before updates go live
- - automated alerts and dashboards for workload observability. 
- - API access logging as part of SAM templates
- - business specific metrics
+These private API examples, using Amazon API Gateway REST APIs, utilizes private API, and private integration. These examples, using Amazon API Gateway REST APIs, demonstrate end-to-end implementations of a simple application using a serverless approach that includes CI/CD pipelines, automated unit and integration testing, and workload observability. The patterns here will benefit beginners as well as seasoned developers looking to improve their applications by automating routine tasks.
 
 Examples are based on the [fargate-rest-api](https://github.com/aws-samples/serverless-samples/tree/main/fargate-rest-api). For private APIs the following additional considerations are implemented, compare to their regional counterparts:
 
@@ -18,24 +10,31 @@ Examples are based on the [fargate-rest-api](https://github.com/aws-samples/serv
  - Resource policy behavior when used with Lambda authorizer [Policy Evaluation Outcome](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-authorization-flow.html#apigateway-resource-policies-iam-policies-interaction)
 
 
+There are various blog posts and code examples for serverless APIs available, however, most of them do not go beyond the first steps of implementing business logic and access controls. These example dive deeper including: 
+
+ - CI/CD pipelines containing automated unit and integration testing
+ - manual approval steps before updates go live
+ - automated alerts and dashboards for workload observability. 
+ - API access logging as part of SAM templates
+ - business specific metrics
 
 ## Architecture
 
 ![Architecture diagram](./assets/Architecture.png)
 
-Private API endpoint can only be accessed from your VPC by using an interface VPC endpoint. When the API is configured as private, the public networks are not made available to route to your API. Instead, your API can only be accessed using the interface endpoints that you have configured.
+1. Every new client is first required to use their credentials to authenticate with Amazon Cognito and retrieve an identity token.
 
-The API uses Amazon API Gateway as a front door. Every new client is first required to use their credentials to authenticate with Amazon Cognito and retrieve an identity token. They must then pass this as a bearer token in the Authorization header with each subsequent request. The Lambda Authorizer inspects this token and generates an IAM policy that is returned back to API Gateway. It's important to keep in mind, when Lambda Authorizer and resource policy are used together, they are evaluated together. If the Lambda Authorizer generated IAM policy neither allows nor denies, along with API Gateway resource policy allow, the call will be allowed. For non-private, regional APIs, without resource policy, same call will be denied. That is why API Gateway resource policy uses explicit deny for this sample. 
+2. The API uses Amazon API Gateway as a front door. Client must then pass the identity token as a bearer token in the Authorization header with each subsequent request. Private API endpoint can only be accessed from your VPC by using an interface VPC endpoint. When the API is configured as private, the public networks are not made available to route to your API. Instead, your API can only be accessed using the interface endpoints that you have configured. In addition, you must have a resource policy attached to your private API for it to be accessed.
+
+3. The Lambda Authorizer inspects this token and generates an IAM policy that is returned back to API Gateway. It's important to keep in mind, when Lambda Authorizer and resource policy are used together, they are evaluated together. If the Lambda Authorizer generated IAM policy neither allows nor denies, along with API Gateway resource policy allow, the call will be allowed. For non-private, regional APIs, without any resource policy, same call will be denied. That is why API Gateway resource policy uses explicit deny for this sample.
 
 ![Architecture diagram](./assets/policyevaluation.png)
 
 The content of the IAM policy generated by the Lambda Authorizer depends on the user role and identity. All users have read access to the Locations and Resources associated with Locations. They also have read/write access their own Bookings. Administrative users have read/write access to all Locations, Resources, and Bookings. User status (regular vs. administrative) is defined by their membership in the API administrators group in Amazon Cognito User Pool. 
 
-After authentication and authorization is complete, API Gateway forwards requests to Network Load Balancers (through a VPC Link) which distribute the requests to the ECS tasks, where the business logic resides. Data is persisted in DynamoDB tables, one table per API resource. 
-
-
 ![API](./assets/API.png)
 
+4. This API utilizes private integration for the backend, using AWS PrivateLink. AWS PrivateLink allows access to AWS services and services hosted by other AWS customers, while maintaining network traffic within the AWS network. After authentication and authorization is complete, API Gateway forwards requests to Network Load Balancers (through the Private Link) which distribute the requests to the ECS tasks, where the business logic resides. Data is persisted in DynamoDB tables, one table per API resource. 
 
 ## Components created
 
