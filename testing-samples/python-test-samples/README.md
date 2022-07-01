@@ -206,7 +206,9 @@ AWS Cloud Development Kit (CDK) has a similar synchronization feature, `cdk watc
 ## Implement application tracing
 You can use AWS X-Ray to track user requests as they travel through your entire application. With X-Ray, you can understand how your application and its underlying services are performing to identify and troubleshoot the root cause of performance issues and errors.
 
-This [Lambda function](./src/app.py) handler has been instrumented using AWS X-Ray. Find to your Lambda function in the console. Then navigate to `Monitor` -> `Traces` and you should see a graph that looks similar to the one below. 
+This [Lambda function](./src/app.py) handler has been instrumented using AWS X-Ray. Find to your Lambda function in the console. Then navigate to `Monitor` -> `Traces` and you should see a graph of your X-Ray trace.
+
+You may also navigate to the [X-Ray service](https://console.aws.amazon.com/xray/home) in the console to examine your traces in greater detail. In the console you should be able to find a service map that looks similar to the one below. 
 
 ![X-Ray image](./img/xray.png)
 
