@@ -1,4 +1,4 @@
-# fargat-private-api
+# fargate-private-api
 
 These private API examples, using Amazon API Gateway REST APIs, utilizes private API, and private integration. These samples demonstrate end-to-end implementations of a simple application using a serverless approach that includes CI/CD pipelines, automated unit and integration testing, and workload observability. The patterns here will benefit beginners as well as seasoned developers looking to improve their applications by automating routine tasks.
 

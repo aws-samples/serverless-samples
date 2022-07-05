@@ -125,7 +125,7 @@ Now, let's add some data by creating a location:
 ```bash
 curl -H "Authorization: Bearer <ID_TOKEN>" \
      -H "Content-Type: application/json" \
-     -d '{"imageUrl": "https://api.example.com/venetian.jpg", "description": "Headquorters in New Yorks", "name": "HQ"}' \
+     -d '{"imageUrl": "https://api.example.com/venetian.jpg", "description": "Headquarters in New York", "name": "HQ"}' \
      -X PUT \
     $API_ENDPOINT/locations | jq
 ```
