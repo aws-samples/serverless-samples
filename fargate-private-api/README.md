@@ -14,7 +14,7 @@ There are various blog posts and code examples for serverless APIs available, ho
 
  - CI/CD pipelines containing automated unit and integration testing
  - Manual approval steps before updates go live
- - Automated alerts and dashboards for workload observability. 
+ - Automated alerts and dashboards for workload observability 
  - API access logging as part of SAM templates
  - Business specific metrics
 
