@@ -26,7 +26,7 @@ This repository contains samples of Serverless application code.
 
 - ## fargate-private-api
 
-  These private API examples, using Amazon API Gateway REST APIs, utilizes private API, and private integration, along with Amazon Cognito as the identity provier. The patterns here will benefit high security compliance organizations, such as Public Sector customers, to implement end to end private serverless APIs. The examples include CI/CD pipelines, automated unit and integration tests, as well as workload observability. [[README]](./fargate-private-api)
+  These private API examples, using Amazon API Gateway REST APIs, utilizes private API, and private integration, along with Amazon Cognito as the identity provider. The patterns here will benefit high security compliance organizations, such as Public Sector customers, to implement end to end private serverless APIs. The examples include CI/CD pipelines, automated unit and integration tests, as well as workload observability. [[README]](./fargate-private-api)
 
 - ## multiregional-private-api
 
