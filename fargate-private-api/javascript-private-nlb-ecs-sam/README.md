@@ -87,7 +87,9 @@ Amazon Cognito is automatically deployed with the application as part of the CI/
 
 As part of the integration tests within the CI/CD pipeline, user accounts are created (and deleted) automatically. If you'd like to call the API Endpoint manually (i.e. curl, Postman), then use the following steps to create a user and retrieve an ID Token:
 
-- Navigate to URL specified in the shared stack template outputs as CognitoLoginURL and click link "Sign Up". After filling in new user registration form you should receive email with verification code, use it to confirm your account. 
+- You can use either AWS Console or run CLI commands, provided below, to signup and confirm an user in Amazon Cognito.
+
+- Navigate to the URL specified in the production stack template outputs as CognitoLoginURL and click link "Sign Up". After filling in new user registration form you should receive email with verification code, use it to confirm your account. 
 
 - After this first step step your new user account will be able to access public data and create new bookings. To add locations and resources you will need to navigate to AWS Console, pick Amazon Cognito service, select User Pool instance that was created during this deployment, navigate to "Users and Groups", and add your user to administrative users group. 
 
@@ -112,7 +114,7 @@ aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id $USER_P
 
 ## Calling the endpoint
 
-To call the Private API endpoint, you will need a bastion instance in the VPC and connect to them using SSH or AWS Systems Manager Session Manager.
+To call the Private API endpoint, you will need a bastion instance in the production VPC and connect to them using SSH or AWS Systems Manager Session Manager (see [this article](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/session-manager.html) for details). 
 
 To manually make calls to the API Endpoint, copy the `IdToken` value from the previous step and use it in place of <ID_TOKEN> for the following commands.
 
