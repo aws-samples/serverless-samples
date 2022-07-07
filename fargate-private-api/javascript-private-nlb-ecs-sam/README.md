@@ -114,12 +114,17 @@ aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id $USER_P
 
 ## Calling the endpoint
 
-To call the Private API endpoint, you will need a bastion instance in the production VPC and connect to them using SSH or AWS Systems Manager Session Manager (see [this article](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/session-manager.html) for details). 
+To call the Private API endpoint, you will need a bastion instance in the production VPC and connect to them using SSH or AWS Systems Manager Session Manager (see [this article](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/session-manager.html) for details). Alternatively, you may also provision a Cloud9 environment in the production VPC.
+
+- You need to install [jq](https://stedolan.github.io/jq/) in the bastion or the Cloud9 instance.
+
+- If you are using a bastion host, you need to set up AWS CLI. Please refer to [this article](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html).   
 
 To manually make calls to the API Endpoint, copy the `IdToken` value from the previous step and use it in place of <ID_TOKEN> for the following commands.
 
 First, let's save the API Gateway endpoint URL to a variable:
 ```bash
+STACK_NAME=fargate-private-api-cicd
 API_ENDPOINT=$(aws cloudformation describe-stacks --stack-name $STACK_NAME-Production | jq -r '.Stacks[0].Outputs[] | select(.OutputKey == "APIEndpoint") | .OutputValue')
 ```
 
@@ -155,6 +160,8 @@ npm run test:unit
 ```
 
 ## Cleanup
+
+If you have created a bastion or a Cloud9 environment to invoke the API endpoint, please delete it first using AWS console.
 
 To delete the sample application that you created, use the AWS CLI:
 
