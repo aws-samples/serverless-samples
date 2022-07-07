@@ -89,7 +89,7 @@ As part of the integration tests within the CI/CD pipeline, user accounts are cr
 
 - You can use either AWS Console or run CLI commands, provided below, to signup and confirm an user in Amazon Cognito.
 
-- Navigate to the URL specified in the production stack template outputs as CognitoLoginURL and click link "Sign Up". After filling in new user registration form you should receive email with verification code, use it to confirm your account. 
+- Navigate to the URL specified in the production stack template (ending with Cognito-Production) outputs as CognitoLoginURL and click link "Sign Up". After filling in new user registration form you should receive email with verification code, use it to confirm your account. 
 
 - After this first step step your new user account will be able to access public data and create new bookings. To add locations and resources you will need to navigate to AWS Console, pick Amazon Cognito service, select User Pool instance that was created during this deployment, navigate to "Users and Groups", and add your user to administrative users group. 
 
