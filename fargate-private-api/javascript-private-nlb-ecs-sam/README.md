@@ -40,6 +40,8 @@ To create the CI/CD pipeline we will split out code for this set of examples fro
 
 First, navigate to the root directory of the repository. To verify it run command *basename "$PWD"* - it should return serverless-samples as an output. Then run the following commands:
 
+***NOTE:** If you are using Cloud9 terminal, install git-subtree before running the below commands*
+
 ```bash
 git subtree split -P fargate-private-api/javascript-private-nlb-ecs-sam -b fargate-private-api
 mkdir ../fargate-private-api-cicd && cd ../fargate-private-api-cicd
