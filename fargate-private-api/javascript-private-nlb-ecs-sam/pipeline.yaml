@@ -639,13 +639,21 @@ Resources:
                 Action:
                   - "ec2:CreateNetworkInterface"  
                   - 'ec2:DescribeNetworkInterfaces'
-                  - 'ec2:DeleteNetworkInterface'
                   - 'ec2:DescribeSubnets'
                   - 'ec2:DescribeSecurityGroups'
                   - 'ec2:DescribeDhcpOptions'
                   - 'ec2:DescribeVpcs'
                   - 'ec2:CreateNetworkInterfacePermission'
                 Resource: "*"
+        - PolicyName: DeleteENIAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ec2:DeleteNetworkInterface'
+                Resource: 
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:*"
 
   CloudFormationExecutionRole:
     Type: AWS::IAM::Role
