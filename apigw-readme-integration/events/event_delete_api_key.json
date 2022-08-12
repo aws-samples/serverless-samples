@@ -1,0 +1,43 @@
+{
+    "eventVersion": "1.08",
+    "userIdentity": {
+        "type": "AssumedRole",
+        "principalId": "ABCDEFGH1234567890:admin",
+        "arn": "arn:aws:sts::1234567890:assumed-role/Administrator/admin",
+        "accountId": "1234567890",
+        "accessKeyId": "ABCDEFGH1234567890",
+        "sessionContext": {
+            "sessionIssuer": {
+                "type": "Role",
+                "principalId": "ABCDEFGH1234567890",
+                "arn": "arn:aws:iam::1234567890:role/Administrator",
+                "accountId": "1234567890",
+                "userName": "Administrator"
+            },
+            "webIdFederationData": {},
+            "attributes": {
+                "creationDate": "2022-07-25T15:23:27Z",
+                "mfaAuthenticated": "false"
+            }
+        }
+    },
+    "eventTime": "2022-07-25T16:47:40Z",
+    "eventSource": "apigateway.amazonaws.com",
+    "eventName": "DeleteApiKey",
+    "awsRegion": "us-east-1",
+    "sourceIPAddress": "127.0.0.1",
+    "userAgent": "Browser",
+    "requestParameters": {
+        "apiKey": "1uvvv35td6",
+        "template": false
+    },    
+    "responseElements": null,
+    "requestID": "7a6310cc-8a7b-4afd-8272-2725d918aa26",
+    "eventID": "f13be4f0-6acb-4e71-a55a-ec16e8d668c3",
+    "readOnly": false,
+    "eventType": "AwsApiCall",
+    "managementEvent": true,
+    "recipientAccountId": "1234567890",
+    "eventCategory": "Management",
+    "sessionCredentialFromConsole": "true"
+}

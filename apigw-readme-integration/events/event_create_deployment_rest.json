@@ -1,0 +1,72 @@
+{
+    "eventVersion": "1.08",
+    "userIdentity": {
+        "type": "AssumedRole",
+        "principalId": "ABCDEFGH1234567890:admin",
+        "arn": "arn:aws:sts::1234567890:assumed-role/Administrator/admin",
+        "accountId": "1234567890",
+        "accessKeyId": "ABCDEFGH1234567890",
+        "sessionContext": {
+            "sessionIssuer": {
+                "type": "Role",
+                "principalId": "ABCDEFGH1234567890",
+                "arn": "arn:aws:iam::1234567890:role/Administrator",
+                "accountId": "1234567890",
+                "userName": "Administrator"
+            },
+            "webIdFederationData": {},
+            "attributes": {
+                "creationDate": "2022-07-19T15:49:30Z",
+                "mfaAuthenticated": "false"
+            }
+        }
+    },
+    "eventTime": "2022-07-19T22:58:03Z",
+    "eventSource": "apigateway.amazonaws.com",
+    "eventName": "CreateDeployment",
+    "awsRegion": "us-east-1",
+    "sourceIPAddress": "127.0.0.1",
+    "userAgent": "Browser",
+    "requestParameters": {
+        "restApiId": "v18j6lahak",
+        "createDeploymentInput": {
+            "stageName": "prod"
+        },
+        "template": false
+    },
+    "responseElements": {
+        "id": "s4w6xs",
+        "createdDate": "Jul 19, 2022 10:58:03 PM",
+        "deploymentUpdate": {
+            "restApiId": "v18j6lahak",
+            "deploymentId": "s4w6xs",
+            "template": false
+        },
+        "deploymentStages": {
+            "deploymentId": "s4w6xs",
+            "restApiId": "v18j6lahak",
+            "template": false,
+            "templateSkipList": [
+                "position"
+            ]
+        },
+        "deploymentDelete": {
+            "deploymentId": "s4w6xs",
+            "restApiId": "v18j6lahak",
+            "template": false
+        },
+        "self": {
+            "deploymentId": "s4w6xs",
+            "restApiId": "v18j6lahak",
+            "template": false
+        }
+    },
+    "requestID": "41d27480-7538-4e93-8fae-81be004a4fa0",
+    "eventID": "ec961da1-6cc0-4a7f-a859-8fed456e09a5",
+    "readOnly": false,
+    "eventType": "AwsApiCall",
+    "managementEvent": true,
+    "recipientAccountId": "1234567890",
+    "eventCategory": "Management",
+    "sessionCredentialFromConsole": "true"
+}

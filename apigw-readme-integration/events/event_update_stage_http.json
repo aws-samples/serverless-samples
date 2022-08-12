@@ -1,0 +1,56 @@
+{
+    "eventVersion": "1.08",
+    "userIdentity": {
+        "type": "AssumedRole",
+        "principalId": "ABCDEFGH1234567890:admin",
+        "arn": "arn:aws:sts::1234567890:assumed-role/Administrator/admin",
+        "accountId": "1234567890",
+        "accessKeyId": "ABCDEFGH1234567890",
+        "sessionContext": {
+            "sessionIssuer": {
+                "type": "Role",
+                "principalId": "ABCDEFGH1234567890",
+                "arn": "arn:aws:iam::1234567890:role/Administrator",
+                "accountId": "1234567890",
+                "userName": "Administrator"
+            },
+            "webIdFederationData": {},
+            "attributes": {
+                "creationDate": "2022-07-21T13:41:34Z",
+                "mfaAuthenticated": "false"
+            }
+        }
+    },
+    "eventTime": "2022-07-21T20:44:15Z",
+    "eventSource": "apigateway.amazonaws.com",
+    "eventName": "UpdateStage",
+    "awsRegion": "us-east-1",
+    "sourceIPAddress": "127.0.0.1",
+    "userAgent": "Browser",
+    "requestParameters": {
+        "stageName": "%24default",
+        "autoDeploy": true,
+        "stageVariables": "***",
+        "apiId": "l06kue9361"
+    },
+    "responseElements": {
+        "lastUpdatedDate": "2022-07-21T20:44:15Z",
+        "stageName": "$default",
+        "createdDate": "2022-07-21T20:43:38Z",
+        "routeSettings": {},
+        "autoDeploy": true,
+        "deploymentId": "gafvo4",
+        "defaultRouteSettings": {
+            "detailedMetricsEnabled": false
+        },
+        "stageVariables": "***",
+        "tags": {}
+    },
+    "requestID": "9b6e57a1-969e-4f03-8c74-16dd6677591a",
+    "eventID": "20759422-dbdd-47c8-b671-d0dab5921b55",
+    "readOnly": false,
+    "eventType": "AwsApiCall",
+    "managementEvent": true,
+    "recipientAccountId": "1234567890",
+    "eventCategory": "Management"
+}

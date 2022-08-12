@@ -1,0 +1,41 @@
+{
+    "eventVersion": "1.08",
+    "userIdentity": {
+        "type": "AssumedRole",
+        "principalId": "ABCDEFGH1234567890:admin",
+        "arn": "arn:aws:sts::1234567890:assumed-role/Administrator/admin",
+        "accountId": "1234567890",
+        "accessKeyId": "ABCDEFGH1234567890",
+        "sessionContext": {
+            "sessionIssuer": {
+                "type": "Role",
+                "principalId": "ABCDEFGH1234567890",
+                "arn": "arn:aws:iam::1234567890:role/Administrator",
+                "accountId": "1234567890",
+                "userName": "Administrator"
+            },
+            "webIdFederationData": {},
+            "attributes": {
+                "creationDate": "2022-07-25T15:23:27Z",
+                "mfaAuthenticated": "false"
+            }
+        }
+    },
+    "eventTime": "2022-07-25T17:05:39Z",
+    "eventSource": "apigateway.amazonaws.com",
+    "eventName": "DeleteApi",
+    "awsRegion": "us-east-1",
+    "sourceIPAddress": "127.0.0.1",
+    "userAgent": "Browser",
+    "requestParameters": {
+        "apiId": "l06kue9361"
+    },
+    "responseElements": null,
+    "requestID": "96e5926e-43d0-4053-8374-bd0e04410e57",
+    "eventID": "c8b38cf4-4df1-44ce-9fc5-426ccb6f91f4",
+    "readOnly": false,
+    "eventType": "AwsApiCall",
+    "managementEvent": true,
+    "recipientAccountId": "1234567890",
+    "eventCategory": "Management"
+}
