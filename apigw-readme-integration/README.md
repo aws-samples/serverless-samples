@@ -8,7 +8,7 @@ This example shows how to integrate one of the partner solutions, [ReadMe.com](R
 ## Solution Overview
 This example implementation reacts to the changes to the API Gateway made manually or through a CI/CD pipeline. It will synchronize changes from the API Gateway to the developer portal in ReadMe. It does this by exporting the API Gateway OpenAPI definition and  uploading changes to ReadMe. Optionally, it will delete the existing definition when you delete an API Gateway endpoint. Implementation uses the following resources:
 
-![Architecture diagram](/assets/architecture.png)
+![Architecture diagram](./assets/architecture.png)
 
  - [Amazon API Gateway](https://aws.amazon.com/api-gateway/) that gets changed manually or by an automated process
  - [Amazon EventBridge](https://aws.amazon.com/eventbridge/) that receives events whenever you deploy API Gateway stage
@@ -41,7 +41,7 @@ sam deploy –guided --stack-name apigw-readme-sync –region us-east-1
 4.	You will receive Amazon SNS subscription confirmation email to the address provided while configuring deployment, click subscription confirmation link in it to receive error alerts.
 5.	Once the synchronization stack deployment completes, deploy the API Gateway stage specified as a source, wait for a few minutes, and verify that the application created new or changed existing API definition in the ReadMe project:
 
-![ReadMe screenshot](/assets/ReadMeAPIDefinition.png)
+![ReadMe screenshot](./assets/ReadMeAPIDefinition.png)
 
 ## Implementation
 Following are steps the application stack executes every time the API Gateway stage gets changed:
