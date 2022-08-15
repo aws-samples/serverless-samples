@@ -34,7 +34,7 @@ To deploy the synchronization application AWS CloudFormation stack:
 2.	Run following commands to deploy the synchronization stack to the us-east-1 Region:
 ```bash
 sam build 
-sam deploy –guided --stack-name apigw-readme-sync –region us-east-1
+sam deploy --guided --stack-name apigw-readme-sync
 ```
 3.	Specify stack name, synchronization source and destination parameters (API gateway ID, stage name, type, ReadMe project version, existing API definition ID if known or “None”, API key, notification email) and accept default values for others:
  
@@ -81,6 +81,5 @@ This way, single Lambda function will react to multiple APIs being changed inste
 ## Cleaning Up
 To avoid incurring further charges when you do not need this synchronization process anymore, run the following command:
 ```bash
-sam delete --stack-name apigw-readme-sync \
---region us-east-1
+sam delete --stack-name apigw-readme-sync
 ```
