@@ -1,0 +1,43 @@
+{
+    "eventVersion": "1.08",
+    "userIdentity": {
+        "type": "AssumedRole",
+        "principalId": "ABCDEFGH1234567890:admin",
+        "arn": "arn:aws:sts::1234567890:assumed-role/Administrator/admin",
+        "accountId": "1234567890",
+        "accessKeyId": "ABCDEFGH1234567890",
+        "sessionContext": {
+            "sessionIssuer": {
+                "type": "Role",
+                "principalId": "ABCDEFGH1234567890",
+                "arn": "arn:aws:iam::1234567890:role/Administrator",
+                "accountId": "1234567890",
+                "userName": "Administrator"
+            },
+            "webIdFederationData": {},
+            "attributes": {
+                "creationDate": "2022-07-25T15:23:27Z",
+                "mfaAuthenticated": "false"
+            }
+        }
+    },
+    "eventTime": "2022-07-25T17:22:26Z",
+    "eventSource": "apigateway.amazonaws.com",
+    "eventName": "DeleteRestApi",
+    "awsRegion": "us-east-1",
+    "sourceIPAddress": "127.0.0.1",
+    "userAgent": "Browser",
+    "requestParameters": {
+        "restApiId": "13zprofqic",
+        "template": false
+    },
+    "responseElements": null,
+    "requestID": "6264512f-6459-4107-b209-dbe87f91d05b",
+    "eventID": "e4460169-11cc-4ea0-8919-865e27ac3e29",
+    "readOnly": false,
+    "eventType": "AwsApiCall",
+    "managementEvent": true,
+    "recipientAccountId": "1234567890",
+    "eventCategory": "Management",
+    "sessionCredentialFromConsole": "true"
+}
