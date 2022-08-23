@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from unittest.mock import patch
 import boto3
 import pytest
-from moto import mock_dynamodb2
+from moto import mock_dynamodb
 
 BOOKINGS_MOCK_TABLE_NAME = 'Locations'
 UUID_MOCK_VALUE = '13245678-1234-5678-1234-123456789012'
@@ -19,7 +19,7 @@ def mock_uuid():
 
 @contextmanager
 def setup_test_environment():
-    with mock_dynamodb2():
+    with mock_dynamodb():
         set_up_dynamodb()
         put_data_dynamodb()
         yield

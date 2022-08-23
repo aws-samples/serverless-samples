@@ -7,7 +7,7 @@ import boto3
 import uuid
 import pytest
 import pytest_freezegun
-from moto import mock_dynamodb2
+from moto import mock_
 from contextlib import contextmanager
 from unittest.mock import patch
 
@@ -21,7 +21,7 @@ def mock_uuid():
 
 @contextmanager
 def setup_test_environment():
-    with mock_dynamodb2():
+    with mock_dynamodb():
         set_up_dynamodb()
         put_data_dynamodb()
         yield
