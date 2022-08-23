@@ -36,7 +36,7 @@ This repository contains samples of Serverless application code.
 
   Developers use the WebSocket protocol for bidirectional communications in their applications. With Amazon API Gateway [WebSocket APIs](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api.html) you can build bidirectional communication applications without having to provision and manage servers. Many WebSocket samples use AWS Lambda or HTTP(s) as the integration targets and for connect/disconnect routes. This example uses the AWS service integration pattern to show how to simplify serverless architectures. It also shows you how to implement URL path support for WebSocket APIs in Amazon API Gateway using Amazon CloudFront and CloudFront Functions. [README](./apigw-ws-integrations)
 
-- ## apigw-ws-integrations
+- ## apigw-readme-integration
   Amazon API Gateway publishes a regularly updated [Serverless Developer Portal application](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-developer-portal.html) in the [AWS Serverless Application Repository](https://aws.amazon.com/serverless/serverlessrepo/) and on [GitHub](https://github.com/awslabs/aws-api-gateway-developer-portal). However, there may be cases when this application is not enough. In such cases, we recommend looking at our partner solutions that may fit your needs. This example shows how to integrate one of the partner solutions, [ReadMe.com](ReadMe.com), with Amazon API Gateway to make sure that your documentation is up to date and gets changed every time you change the API. [README](./apigw-readme-integration)
   
 ## Security
