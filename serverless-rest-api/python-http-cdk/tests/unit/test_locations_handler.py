@@ -7,7 +7,7 @@ import boto3
 import uuid
 import pytest
 import pytest_freezegun
-from moto import mock_
+from moto import mock_dynamodb
 from contextlib import contextmanager
 from unittest.mock import patch
 
