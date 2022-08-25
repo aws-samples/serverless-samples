@@ -1,12 +1,12 @@
 # Amazon API Gateway -> ReadMe synchronizer
 
-The modern API lifecycle does not end once your CI/CD pipeline pushes a deployment to production, and the API becomes available to your clients. They still have to access documentation, try out different parts of the API, get notifications about changes, etc. API developer portals have become standard for any business that's offering APIs to their end users. They help your clients to consume your APIs the way you designed them and get all necessary information, guidance and initial support, and help with the troubleshooting tasks.
+The modern API lifecycle does not end once your CI/CD pipeline pushes a deployment to production, and the API becomes available to your clients. They still have to access documentation, try out different parts of the API, get notifications about changes, etc. API developer portals have become standard for any business that's offering APIs to their partners and the end users. They help your clients to consume your APIs the way you designed them and get all the necessary information, guidance and initial support, and help with the troubleshooting tasks.
 
-Amazon API Gateway publishes a regularly updated [Serverless Developer Portal application](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-developer-portal.html) in the [AWS Serverless Application Repository](https://aws.amazon.com/serverless/serverlessrepo/) and on [GitHub](https://github.com/awslabs/aws-api-gateway-developer-portal). However, there may be cases when this application is not enough. For example, when you need to integrate APIs across multiple vendor solutions or deployment targets, or when you need more complex API grouping into various products. In such cases, we recommend looking at our partner solutions that may fit your needs.
+Amazon API Gateway publishes a regularly updated [Serverless Developer Portal application](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-developer-portal.html) in the [AWS Serverless Application Repository](https://serverlessrepo.aws.amazon.com/applications/arn:aws:serverlessrepo:us-east-1:563878140293:applications~api-gateway-dev-portal) and on [GitHub](https://github.com/awslabs/aws-api-gateway-developer-portal). However, there may be cases when this application is not enough. For example, when you need to integrate APIs across multiple vendor solutions or deployment targets, or when you need more complex API grouping into various products. In such cases, we recommend looking at our partner solutions that may fit your needs.
 This example shows how to integrate one of the partner solutions, [ReadMe.com](ReadMe.com), with Amazon API Gateway to make sure that your documentation is up to date and gets changed every time you change the API.
 
 ## Solution Overview
-This example implementation reacts to the changes to the API Gateway made manually or through a CI/CD pipeline. It will synchronize changes from the API Gateway to the developer portal in ReadMe. It does this by exporting the API Gateway OpenAPI definition and  uploading changes to ReadMe. Optionally, it will delete the existing definition when you delete an API Gateway endpoint. Implementation uses the following resources:
+This example implementation reacts to the changes to the API Gateway made manually or through a CI/CD pipeline. It will synchronize changes from the API Gateway to the developer portal in ReadMe. It does this by exporting the API Gateway OpenAPI definition and uploading changes to ReadMe. Optionally, it will delete the existing definition when you delete an API Gateway endpoint. Implementation uses the following resources:
 
 ![Architecture diagram](./assets/architecture.png)
 
@@ -22,17 +22,18 @@ This example implementation reacts to the changes to the API Gateway made manual
 ## Prerequisites
 You will need an existing ReadMe project which you will use as a synchronization target. If you do not have one yet, follow instructions at ReadMe documentation. Note your project version and get an API key for authentication. If you plan to synchronize an API definition that already exists in your project, note that API definition ID as well.
 
-You will also need to have the synchronization source ready and have the API Gateway stage deployed. Note its ID, stage name and API Gateway type (REST or HTTP).
+You will also need to have the API Gateway stage deployed. Note its ID, stage name and API Gateway type (REST or HTTP).
 
 CloudWatch metric alerts for Lambda errors will send notifications to an email address you provided at the deployment time. I would recommend using an email alias. This way, you and your team will not miss notifications and leave issues unresolved.
 
 ## Deployment
-This example uses the [AWS Serverless Application Model (AWS SAM)](https://aws.amazon.com/serverless/sam/) to deploy private APIs with custom domain names. Visit the [documentation](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html) to install it in your environment.
+This example uses Python 3 and the [AWS Serverless Application Model (AWS SAM)](https://aws.amazon.com/serverless/sam/) to deploy private APIs with custom domain names. Visit the [documentation](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html) to install it in your environment.
 
 To deploy the synchronization application AWS CloudFormation stack:
 1.	Clone this sample repository and navigate to the apigw-readme-integration directory. 
 2.	Run following commands to deploy the synchronization stack to the us-east-1 Region:
 ```bash
+python3 -m pip install -r requirements.txt
 sam build 
 sam deploy --guided --stack-name apigw-readme-sync
 ```
