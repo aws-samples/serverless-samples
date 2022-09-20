@@ -6,7 +6,7 @@ Transform:
   - AWS::Serverless-2016-10-31
 
 Description: >
-  Backend API with Lambda and DynamoDB, Lambda Authorizer
+  Amazon API Gateway definition synchronization with ReadMe
 
 Globals:
   Function:
