@@ -1,0 +1,11 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "eventbridge-event-fraud-detection"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-1avm45auuqgwh"
+s3_prefix = "eventbridge-event-fraud-detection"
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "FraudDetectorID=\"transaction_fraud_detector\""
+image_repositories = []

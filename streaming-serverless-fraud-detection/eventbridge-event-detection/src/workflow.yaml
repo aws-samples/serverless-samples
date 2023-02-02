@@ -1,0 +1,52 @@
+Comment: EventBridge event transaction data fraud detection workflow
+StartAt: Get transaction prediction
+States:
+  Get transaction prediction:
+    Type: Task
+    Parameters:
+      DetectorId: "${FraudDetectorID}"
+      Entities:
+        - EntityId: unknown
+          EntityType: customer
+      EventId.$: $.transaction_id
+      EventTimestamp.$: $.transaction_timestamp
+      EventTypeName: transaction_event
+      EventVariables:
+        customer_email.$: $.customer_email
+        order_price.$: $.order_price
+        product_category.$: $.product_category
+        ip_address.$: $.ip_address
+        card_bin.$: $.card_bin
+    Resource: arn:aws:states:::aws-sdk:frauddetector:getEventPrediction
+    ResultPath: $.detail.FraudDetectorOutput
+    Next: Is transaction suspicious?
+    InputPath: $.detail
+  Is transaction suspicious?:
+    Type: Choice
+    Choices:
+      - Not:
+          Variable: $.detail.FraudDetectorOutput.RuleResults[0].Outcomes[0]
+          StringMatches: approve
+        Next: Publish suspicious transaction for review
+    Default: Put enriched transaction to destination bus
+  Publish suspicious transaction for review:
+    Type: Task
+    Resource: arn:aws:states:::sns:publish
+    Parameters:
+      TopicArn: "${FraudAlertsTopicArn}"
+      Message:
+        transaction_id.$: $.detail.transaction_id
+        fraud_detection_outcome.$: $.detail.FraudDetectorOutput.RuleResults[0].Outcomes[0]
+        fraud_detection_score.$: >-
+          $.detail.FraudDetectorOutput.ModelScores[0].Scores.transaction_model_insightscore
+    Next: Put enriched transaction to destination bus
+  Put enriched transaction to destination bus:
+    Type: Task
+    Resource: arn:aws:states:::aws-sdk:eventbridge:putEvents
+    Parameters:
+      Entries:
+        - Detail.$: $.detail
+          DetailType.$: $.detail-type
+          Source.$: $.source
+          EventBusName: "${EnrichedDataEventBusName}"
+    End: true

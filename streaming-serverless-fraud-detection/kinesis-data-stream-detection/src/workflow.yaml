@@ -1,0 +1,76 @@
+Comment: Streaming transaction data fraud detection workflow
+StartAt: Process batch of transactions
+States:
+  Process batch of transactions:
+    Type: Map
+    Iterator:
+      StartAt: Store transaction
+      States:
+        Store transaction:
+          Type: Task
+          Resource: arn:aws:states:::dynamodb:putItem
+          Parameters:
+            TableName: "${TransactionsTableName}"
+            Item:
+              transactionid:
+                S.$: $.transaction_id
+              transaction_request:
+                S.$: States.JsonToString($)
+          Next: Get transaction prediction
+          ResultPath: null
+        Get transaction prediction:
+          Type: Task
+          Parameters:
+            DetectorId: "${FraudDetectorID}"
+            Entities:
+              - EntityId: unknown
+                EntityType: customer
+            EventId.$: $.transaction_id
+            EventTimestamp.$: $.transaction_timestamp
+            EventTypeName: transaction_event
+            EventVariables:
+              customer_email.$: $.customer_email
+              order_price.$: $.order_price
+              product_category.$: $.product_category
+              ip_address.$: $.ip_address
+              card_bin.$: $.card_bin
+          Resource: arn:aws:states:::aws-sdk:frauddetector:getEventPrediction
+          ResultPath: $.FraudDetectorOutput
+          Next: Update transaction with prediction
+        Update transaction with prediction:
+          Type: Task
+          Resource: arn:aws:states:::dynamodb:updateItem
+          Parameters:
+            TableName: "${TransactionsTableName}"
+            Key:
+              transactionid:
+                S.$: $.transaction_id
+            UpdateExpression: SET transaction_fraud_prediction = :prediction
+            ExpressionAttributeValues:
+              ':prediction':
+                S.$: States.JsonToString($.FraudDetectorOutput)
+          Next: Is transaction suspicious?
+          ResultPath: null
+        Is transaction suspicious?:
+          Type: Choice
+          Choices:
+            - Not:
+                Variable: $.FraudDetectorOutput.RuleResults[0].Outcomes[0]
+                StringMatches: approve
+              Next: Publish suspicious transaction for review
+          Default: Process transaction
+        Publish suspicious transaction for review:
+          Type: Task
+          Resource: arn:aws:states:::sns:publish
+          Parameters:
+            TopicArn: "${FraudAlertsTopicArn}"
+            Message:
+              transaction_id.$: $.transaction_id
+              fraud_detection_outcome.$: $.FraudDetectorOutput.RuleResults[0].Outcomes[0]
+              fraud_detection_score.$: >-
+                $.FraudDetectorOutput.ModelScores[0].Scores.transaction_model_insightscore
+          End: true
+        Process transaction:
+          Type: Pass
+          End: true
+    End: true
