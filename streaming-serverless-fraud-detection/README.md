@@ -12,7 +12,7 @@ This sample implements three architectures:
 ### Overview
 This architecture uses AWS Lambda and AWS Step Functions to enable real-time Amazon Kinesis Data Stream data inspection and fraud detection/prevention using Amazon Fraud Detector. The same architecture would apply in case you use Amazon MSK as a data streaming service. This pattern can be useful for real-time fraud detection, notification and potential prevention. Example use cases for this could be payment-processing or high volume account creation.
 
-![Architecture](/assets/architecture_stream_consumer.png)
+![Architecture](./assets/architecture_stream_consumer.png)
 
 The flow of the events is as follows. 
 
@@ -81,7 +81,7 @@ sam delete --stack-name kinesis-data-stream-fraud-detection
 ### Overview
 This architecture uses AWS Lambda to enable real-time Amazon Kinesis Data Firehose data enrichment using Amazon Fraud Detector and [Amazon Kinesis Data Firehose Data Transformation](https://docs.aws.amazon.com/firehose/latest/dev/data-transformation.html). This sample does not implement fraud detection/prevention steps. We deliver enriched data to the Amazon S3 bucket, downstream services that consume the data can use fraud detection results in their business logics, and act accordingly.
 
-![Architecture](/assets/architecture_stream_enrichment.png)
+![Architecture](./assets/architecture_stream_enrichment.png)
 
 Note, that you could use [Amazon EventBridge Pipes](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-pipes.html#pipes-enrichment) with an Enrichment step that uses Amazon Lambda to implement a similar approach.
 
@@ -154,7 +154,7 @@ processing of the potentially fraudulent transaction, rather flagging it for an 
 This way, consumers of the data can be sure that all events include fraud detection results as metadata. The consumers can then inspect the metadata and apply their own rules based on the metadata. For example, in an event driven e-commerce application, a consumer can choose to not process the order if this transaction is predicted to be fraudulent. 
 This architecture pattern can also be useful for detecting and preventing fraud in new account creation or during account profile changes ( like changing you address or phone number or credit card on file in your account profile).
 
-![Architecture](/assets/architecture_event_enrichment.png)
+![Architecture](./assets/architecture_event_enrichment.png)
 
 Note, that you could use [Amazon EventBridge Pipes](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-pipes.html) with an [Enrichment step](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-pipes.html#pipes-enrichment) that uses Amazon Lambda to implement approach similar to the streaming data enrichment scenario above.
 
