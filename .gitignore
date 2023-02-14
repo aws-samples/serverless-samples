@@ -1,4 +1,4 @@
 .DS_Store
 *.aws-sam*
 .gitignore
-apigw-readme-integration/samconfig.toml
+*/samconfig.toml

@@ -4,7 +4,7 @@ This example demonstrates a serverless approach to detecting online transaction 
 
 This sample implements three architectures:
  - [Streaming data inspection and fraud detection/prevention](#streaming-data-inspection-and-fraud-detectionprevention) - using Amazon Kinesis Data Stream, AWS Lambda, AWS Step Functions, and Amazon Fraud Detector
- - [Streaming data enrichment for fraud detection/prevention](#streaming-data-enrichment) - using Kinesis Data Firehose, Lambda, and Fraud Detector
+ - [Streaming data enrichment for fraud detection/prevention](#streaming-data-enrichment) - using Kinesis Data Firehose, Lambda, and Amazon Fraud Detector
  - [Event data inspection and fraud detection/prevention](#event-data-inspection) - using Amazon EventBridge, Step Functions, and Amazon Fraud Detector
 
 ## Streaming data inspection and fraud detection/prevention

@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
 Comment: Streaming transaction data fraud detection workflow
 StartAt: Process batch of transactions
 States:
