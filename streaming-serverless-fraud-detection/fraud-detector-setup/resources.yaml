@@ -1,0 +1,314 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Amazon Fraud Detector template for streaming data samples."
+Resources:
+  # Outcomes
+  ApproveOutcome:
+    Type: AWS::FraudDetector::Outcome
+    Properties:
+      Name: 'approve'
+  BlockOutcome:
+    Type: AWS::FraudDetector::Outcome
+    Properties:
+      Name: 'block'
+  InvestigateOutcome:
+    Type: AWS::FraudDetector::Outcome
+    Properties:
+      Name: 'investigate'
+  # Variables
+  BillingCityVariable:
+    Type: AWS::FraudDetector::Variable
+    Properties:
+      Name: 'billing_city'
+      DataSource: 'EVENT'
+      DataType: 'STRING'
+      DefaultValue: ''
+      VariableType: 'BILLING_CITY'
+  BillingLatitudeVariable:
+    Type: AWS::FraudDetector::Variable
+    Properties:
+      Name: 'billing_latitude'
+      DataSource: 'EVENT'
+      DataType: 'FLOAT'
+      DefaultValue: '0.0'
+      VariableType: 'NUMERIC'
+  BillingLongitudeVariable:
+    Type: AWS::FraudDetector::Variable
+    Properties:
+      Name: 'billing_longitude'
+      DataSource: 'EVENT'
+      DataType: 'FLOAT'
+      DefaultValue: '0.0'
+      VariableType: 'NUMERIC'
+  BillingStateVariable:
+    Type: AWS::FraudDetector::Variable
+    Properties:
+      Name: 'billing_state'
+      DataSource: 'EVENT'
+      DataType: 'STRING'
+      DefaultValue: ''
+      VariableType: 'BILLING_STATE'
+  BillingStreetVariable:
+    Type: AWS::FraudDetector::Variable
+    Properties:
+      Name: 'billing_street'
+      DataSource: 'EVENT'
+      DataType: 'STRING'
+      DefaultValue: ''
+      VariableType: 'BILLING_ADDRESS_L1'
+  BillingZipVariable:
+    Type: AWS::FraudDetector::Variable
+    Properties:
+      Name: 'billing_zip'
+      DataSource: 'EVENT'
+      DataType: 'STRING'
+      DefaultValue: ''
+      VariableType: 'BILLING_ZIP'
+  CardBinVariable:
+    Type: AWS::FraudDetector::Variable
+    Properties:
+      Name: 'card_bin'
+      DataSource: 'EVENT'
+      DataType: 'STRING'
+      DefaultValue: ''
+      VariableType: 'CARD_BIN'
+  CustomerEmailVariable:
+    Type: AWS::FraudDetector::Variable
+    Properties:
+      Name: 'customer_job'
+      DataSource: 'EVENT'
+      DataType: 'STRING'
+      DefaultValue: ''
+      VariableType: 'EMAIL_ADDRESS'
+  CustomerJobVariable:
+    Type: AWS::FraudDetector::Variable
+    Properties:
+      Name: 'customer_email'
+      DataSource: 'EVENT'
+      DataType: 'STRING'
+      DefaultValue: ''
+      VariableType: 'CATEGORICAL'
+  CustomerNameVariable:
+    Type: AWS::FraudDetector::Variable
+    Properties:
+      Name: 'customer_name'
+      DataSource: 'EVENT'
+      DataType: 'STRING'
+      DefaultValue: ''
+      VariableType: 'BILLING_NAME'
+  IPAddressVariable:
+    Type: AWS::FraudDetector::Variable
+    Properties:
+      Name: 'ip_address'
+      DataSource: 'EVENT'
+      DataType: 'STRING'
+      DefaultValue: ''
+      VariableType: 'IP_ADDRESS'
+  MerchantVariable:
+    Type: AWS::FraudDetector::Variable
+    Properties:
+      Name: 'merchant'
+      DataSource: 'EVENT'
+      DataType: 'STRING'
+      DefaultValue: ''
+      VariableType: 'CATEGORICAL'
+  OrderPriceVariable:
+    Type: AWS::FraudDetector::Variable
+    Properties:
+      Name: 'order_price'
+      DataSource: 'EVENT'
+      DataType: 'FLOAT'
+      DefaultValue: '0.0'
+      VariableType: 'PRICE'
+  PaymentCurrencyVariable:
+    Type: AWS::FraudDetector::Variable
+    Properties:
+      Name: 'payment_currency'
+      DataSource: 'EVENT'
+      DataType: 'STRING'
+      DefaultValue: ''
+      VariableType: 'CURRENCY_CODE'
+  PhoneVariable:
+    Type: AWS::FraudDetector::Variable
+    Properties:
+      Name: 'phone'
+      DataSource: 'EVENT'
+      DataType: 'STRING'
+      DefaultValue: ''
+      VariableType: 'PHONE_NUMBER'
+  ProductCategoryVariable:
+    Type: AWS::FraudDetector::Variable
+    Properties:
+      Name: 'product_category'
+      DataSource: 'EVENT'
+      DataType: 'STRING'
+      DefaultValue: ''
+      VariableType: 'PRODUCT_CATEGORY'
+  UserAgentVariable:
+    Type: AWS::FraudDetector::Variable
+    Properties:
+      Name: 'user_agent'
+      DataSource: 'EVENT'
+      DataType: 'STRING'
+      DefaultValue: ''
+      VariableType: 'USERAGENT'
+  # Labels
+  Label1:
+    Type: AWS::FraudDetector::Label
+    Properties:
+      Name: '1'
+  Label0:
+    Type: AWS::FraudDetector::Label
+    Properties:
+      Name: '0'
+  # Entity Type
+  CustomerEntityType:
+    Type: AWS::FraudDetector::EntityType
+    Properties:
+      Name: 'customer'
+  # EventType
+  TransactionEventType:
+    DependsOn:
+      - BillingCityVariable
+      - BillingLatitudeVariable
+      - BillingLongitudeVariable
+      - BillingStateVariable
+      - BillingStreetVariable
+      - BillingZipVariable
+      - CardBinVariable
+      - CustomerEmailVariable
+      - CustomerJobVariable
+      - CustomerNameVariable
+      - IPAddressVariable
+      - MerchantVariable
+      - OrderPriceVariable
+      - PaymentCurrencyVariable
+      - PhoneVariable
+      - ProductCategoryVariable
+      - UserAgentVariable
+      - CustomerEntityType
+    Type: AWS::FraudDetector::EventType
+    Properties:
+      Name: 'transaction_event'
+      EventVariables:
+        - Inline: false
+          Name: 'billing_city'
+          Arn: !Ref BillingCityVariable
+        - Inline: false
+          Name: 'billing_latitude'
+          Arn: !Ref BillingLatitudeVariable
+        - Inline: false
+          Name: 'billing_longitude'
+          Arn: !Ref BillingLongitudeVariable
+        - Inline: false
+          Name: 'billing_state'
+          Arn: !Ref BillingStateVariable
+        - Inline: false
+          Name: 'billing_street'
+          Arn: !Ref BillingStreetVariable
+        - Inline: false
+          Name: 'billing_zip'
+          Arn: !Ref BillingZipVariable
+        - Inline: false
+          Name: 'card_bin'
+          Arn: !Ref CardBinVariable
+        - Inline: false
+          Name: 'customer_email'
+          Arn: !Ref CustomerEmailVariable
+        - Inline: false
+          Name: 'customer_job'
+          Arn: !Ref CustomerJobVariable
+        - Inline: false
+          Name: 'customer_name'
+          Arn: !Ref CustomerNameVariable
+        - Inline: false
+          Name: 'ip_address'
+          Arn: !Ref IPAddressVariable
+        - Inline: false
+          Name: 'merchant'
+          Arn: !Ref MerchantVariable
+        - Inline: false
+          Name: 'order_price'
+          Arn: !Ref OrderPriceVariable
+        - Inline: false
+          Name: 'payment_currency'
+          Arn: !Ref PaymentCurrencyVariable
+        - Inline: false
+          Name: 'phone'
+          Arn: !Ref PhoneVariable
+        - Inline: false
+          Name: 'product_category'
+          Arn: !Ref ProductCategoryVariable
+        - Inline: false
+          Name: 'user_agent'
+          Arn: !Ref UserAgentVariable
+      Labels:
+        - Inline: false
+          Name: '1'
+          Arn: !Ref Label1
+        - Inline: false
+          Name: '0'
+          Arn: !Ref Label0
+      EntityTypes:
+        - Inline: false
+          Name: 'customer'
+          Arn: !Ref CustomerEntityType
+
+  FraudDetectorDataAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - "sts:AssumeRole"
+            Effect: Allow
+            Principal:
+              Service:
+                - frauddetector.amazonaws.com
+      Path: /
+      Policies:
+        - PolicyName: S3DataBucketAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "s3:*"
+                Resource:
+                  - !Sub "arn:aws:s3:::${SampleDataS3Bucket}"
+                  - !Sub "arn:aws:s3:::${SampleDataS3Bucket}/*"
+
+  SampleDataS3Bucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Sub ${AWS::AccountId}-${AWS::StackName}-sample-data
+
+Outputs:
+  ApproveOutcomeArn:
+    Value: !Ref ApproveOutcome
+    Export:
+      Name: !Sub ${AWS::StackName}-ApproveOutcomeArn
+  BlockOutcomeArn:
+    Value: !Ref BlockOutcome
+    Export:
+      Name: !Sub ${AWS::StackName}-BlockOutcomeArn
+  InvestigateOutcomeArn:
+    Value: !Ref InvestigateOutcome
+    Export:
+      Name: !Sub ${AWS::StackName}-InvestigateOutcomeArn
+  TransactionEventType:
+    Value: !Ref TransactionEventType
+    Export:
+      Name: !Sub ${AWS::StackName}-TransactionEventTypeArn
+  FraudDetectorDataAccessRole:
+    Value: !Ref FraudDetectorDataAccessRole
+    Export:
+      Name: !Sub ${AWS::StackName}-FraudDetectorDataAccessRoleArn
+  SampleDataS3Bucket:
+    Value: !Ref SampleDataS3Bucket
+    Export:
+      Name: !Sub ${AWS::StackName}-SampleDataS3BucketArn
+
