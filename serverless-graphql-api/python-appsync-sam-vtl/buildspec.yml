@@ -1,0 +1,34 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+    commands:
+      # Install all dependencies (including dependencies for running tests)
+      - cd ./python-appsync-sam
+      - pip install -r ./tests/requirements.txt 
+  pre_build:
+    commands:
+      # Discover and run unit tests in the 'tests/unit' directory
+      # - python -m pytest tests/unit -v
+      # Remove all tests to reduce the size of the package that will be ultimately uploaded to Lambda
+      - rm -rf ./tests
+      - rm -rf .pytest_cache
+      # Remove everything that is not needed for the Lambda deployment package 
+      - rm buildspec.yml
+      - rm pipeline.yaml
+      - rm README.md
+      - rm requirements.txt
+  build:
+    commands:
+      # Use AWS SAM to package the application by using AWS CloudFormation
+      - sam package --template template.yaml --s3-bucket $BUILD_OUTPUT_BUCKET --output-template-file application.yaml
+artifacts:
+  discard-paths: yes
+  files:
+    - ./python-appsync-sam/*
+    - ./python-appsync-sam/application.yaml
+    - ./shared/cognito.yaml
