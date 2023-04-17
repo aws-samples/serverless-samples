@@ -376,6 +376,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - "appsync:EvaluateMappingTemplate"
+                  - "appsync:EvaluateCode"
                 Resource:
                   - !Sub "arn:aws:appsync:${AWS::Region}:${AWS::AccountId}:*"
         - PolicyName: DynamoDBAccess

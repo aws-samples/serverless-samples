@@ -20,17 +20,17 @@ To create the CI/CD pipeline, we will split out code for this set of examples fr
 First, navigate to the root directory of the repository. To verify it run command *basename "$PWD"* - it should return serverless-samples as an output. Then run the following commands:
 
 ```bash
-git subtree split -P serverless-graphql-api -b serverless-graphql-api
-mkdir ../serverless-graphql-api-cicd && cd ../serverless-graphql-api-cicd
-git init -b main
-git pull ../serverless-samples serverless-graphql-api
-cd python-appsync-sam-vtl
+~/.../serverless-samples$ git subtree split -P serverless-graphql-api -b serverless-graphql-api
+~/.../serverless-samples$ mkdir ../serverless-graphql-api-cicd && cd ../serverless-graphql-api-cicd
+~/.../serverless-graphql-api-cicd$ git init -b main
+~/.../serverless-graphql-api-cicd$ git pull ../serverless-samples serverless-graphql-api
+~/.../serverless-graphql-api-cicd$ cd python-appsync-sam-vtl
 ```
 
 To create the pipeline, you will need to run the following command:
 
 ```bash
-aws cloudformation create-stack --stack-name serverless-api-pipeline --template-body file://pipeline.yaml --capabilities CAPABILITY_IAM
+~/.../python-appsync-sam-vtl$ aws cloudformation create-stack --stack-name serverless-api-pipeline --template-body file://pipeline.yaml --capabilities CAPABILITY_IAM
 ```
 The pipeline will attempt to run and will fail at the SourceCodeRepo stage as there is no code in the AWS CodeCommit yet.
 
@@ -41,8 +41,8 @@ The pipeline will attempt to run and will fail at the SourceCodeRepo stage as th
 Once you have access to the code repository, navigate to python-appsync-sam-vtl folder, and, if you changed stack name, make sure that Parameters section of template.yaml is updated with the output values from the shared Amazon Cognito stack, and push code base to CodeCommit to start automated deployments:
 
 ```bash
-git remote add origin <URL to AWS CodeCommit repository>
-git push origin main
+~/.../python-appsync-sam-vtl$ git remote add origin <URL to AWS CodeCommit repository>
+~/.../python-appsync-sam-vtl$ git push origin main
 ```
 
 Navigate to the AWS CodePipeline in AWS Management Console and release this change if needed by clicking "Release change" button.
@@ -64,8 +64,8 @@ After the stack is created manually you will need to create user account for aut
 
 - As an alternative to the AWS Console, you can use AWS CLI to create and confirm user signup:
 ```bash
-    aws cognito-idp sign-up --client-id <cognito user pool application client id> --username <username> --password <password> --user-attributes Name="name",Value="<username>"
-    aws cognito-idp admin-confirm-sign-up --user-pool-id <cognito user pool id> --username <username> 
+~/.../python-appsync-sam-vtl$ aws cognito-idp sign-up --client-id <cognito user pool application client id> --username <username> --password <password> --user-attributes Name="name",Value="<username>"
+~/.../python-appsync-sam-vtl$ aws cognito-idp admin-confirm-sign-up --user-pool-id <cognito user pool id> --username <username> 
 ```
 
 While using command line or third-party tools such as Postman to test APIs, you will need to provide Access Token in the request "Authorization" header. You can authenticate with Amazon Cognito User Pool using AWS CLI (this command is also available in AWS SAM template outputs) and use IdToken value present in the output of the command:
@@ -91,15 +91,15 @@ $ source .venv/bin/activate
 Once the virtualenv is activated, you can install the required dependencies for CDK and API implementation.
 
 ```
-$ pip install -r requirements.txt
-$ pip install -r ./tests/requirements.txt
+~/.../python-appsync-sam-vtl$  pip install -r requirements.txt
+~/.../python-appsync-sam-vtl$  pip install -r ./tests/requirements.txt
 ```
 
 To build and deploy your application for the first time, run the following in your shell:
 
 ```bash
-sam build
-sam deploy --guided --stack-name python-appsync-sam-vtl
+~/.../python-appsync-sam-vtl$ sam build
+~/.../python-appsync-sam-vtl$ sam deploy --guided --stack-name python-appsync-sam-vtl
 ```
 
 The first command will build the source of your application. The second command will package and deploy your application to AWS, with a series of prompts:
@@ -116,13 +116,13 @@ The AppSync endpoint API will be displayed in the outputs when the deployment is
 ### 3. Testing
 Unit tests are defined in the `tests\unit` folder in this project. Integration tests are defined in the `tests\integration` folder.
 
-Use `pip` to install the ./tests/requirements.txt and run unit tests:
+Run unit and integration tests:
 
 ```bash
-pip install -r ./tests/requirements.txt
-python -m pytest tests/unit -v
-python -m pytest tests/integration -v
+~/.../python-appsync-sam-vtl$ python -m pytest tests/unit -v
+~/.../python-appsync-sam-vtl$ python -m pytest tests/integration -v
 ```
+
 Unit tests use AWS SDK to evaluate AWS AppSync resolver code. They use mock data, not the integrations with the backend services. Integration tests send GraphQL queries to the AWS AppSync endpoint and verify responses received. In addition, integration tests use WebSocket connection to the AWS AppSync for GraphQL subscriptions.
 
 
@@ -132,7 +132,7 @@ Unit tests use AWS SDK to evaluate AWS AppSync resolver code. They use mock data
 To delete the sample application that you created, use the AWS CLI:
 
 ```bash
-aws cloudformation delete-stack --stack-name serverless-api
+~/.../python-appsync-sam-vtl$ sam delete --stack-name python-appsync-sam-vtl
 ```
 
 _Note: If you created shared Cognito stack manually, follow shared stack cleanup instructions in the [README.md](../shared/README.md) in shared resources directory._
@@ -143,7 +143,7 @@ If you created CI/CD pipeline, you will need to delete it, including all testing
 CI/CD pipeline stack deletion may fail if build artifact Amazon S3 bucket is not empty. In such case get bucket name using following command and looking for BuildArtifactsBucket resource's PhysicalResourceId:
 
 ```bash
-aws cloudformation list-stack-resources --stack-name serverless-api-pipeline
+~/.../python-appsync-sam-vtl$ aws cloudformation list-stack-resources --stack-name serverless-api-pipeline
 ```
 
 Then open AWS Management Console, navigate to S3 bucket with build artifacts and empty it.
@@ -151,9 +151,9 @@ Then open AWS Management Console, navigate to S3 bucket with build artifacts and
 After that, delete all stacks created by the CI/CD pipeline and pipeline itself:
 
 ```bash
-aws cloudformation delete-stack --stack-name serverless-api-pipeline-Testing
-aws cloudformation delete-stack --stack-name serverless-api-pipeline-Cognito-Testing
-aws cloudformation delete-stack --stack-name serverless-api-pipeline-Deployment
-aws cloudformation delete-stack --stack-name serverless-api-pipeline-Cognito-Deployment
-aws cloudformation delete-stack --stack-name serverless-api-pipeline
+~/.../python-appsync-sam-vtl$ aws cloudformation delete-stack --stack-name serverless-api-pipeline-Testing
+~/.../python-appsync-sam-vtl$ aws cloudformation delete-stack --stack-name serverless-api-pipeline-Cognito-Testing
+~/.../python-appsync-sam-vtl$ aws cloudformation delete-stack --stack-name serverless-api-pipeline-Deployment
+~/.../python-appsync-sam-vtl$ aws cloudformation delete-stack --stack-name serverless-api-pipeline-Cognito-Deployment
+~/.../python-appsync-sam-vtl$ aws cloudformation delete-stack --stack-name serverless-api-pipeline
 ```
