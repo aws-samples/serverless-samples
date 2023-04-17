@@ -4,7 +4,7 @@
 #!/bin/bash
 
 # Get application outputs necessary
-applicationStackOutputs=$(aws cloudformation describe-stacks --stack-name ${TEST_APPLICATION_STACK_NAME:-'javascript-appsync-sam'} | jq -r '.Stacks[0].Outputs')
+applicationStackOutputs=$(aws cloudformation describe-stacks --stack-name ${TEST_APPLICATION_STACK_NAME:-'javascript-appsync-sam-vtl'} | jq -r '.Stacks[0].Outputs')
 locationsTable=$(echo "$applicationStackOutputs" | jq -r '.[] | select(.OutputKey == "LocationsTable") | .OutputValue')
 resourcesTable=$(echo "$applicationStackOutputs" | jq -r '.[] | select(.OutputKey == "ResourcesTable") | .OutputValue')
 bookingsTable=$(echo "$applicationStackOutputs" | jq -r '.[] | select(.OutputKey == "BookingsTable") | .OutputValue')

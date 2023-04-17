@@ -8,7 +8,7 @@ phases:
       nodejs: 16
     commands:
       # Install all dependencies (including dependencies for running tests)
-      - cd ./javascript-appsync-sam
+      - cd ./javascript-appsync-sam-js
       - npm install
       - chmod +x ./__tests__/integration/test_init.sh
       - chmod +x ./__tests__/integration/test_cleanup.sh

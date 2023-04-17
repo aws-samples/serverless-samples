@@ -11,6 +11,7 @@ aws cloudformation create-stack --stack-name serverless-api-cognito --template-b
 ```
 
 After stack is created you may need to create user account for authentication/authorization. 
+_Note the Cognito user pool and application client ID in the stack outputs, you will use it in the commands below._
 
 Use AWS CLI to create and confirm a user:
 
@@ -26,24 +27,15 @@ While using command line or third party tools such as Postman to test APIs, you 
 ```bash
 aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id <cognito user pool application client id> --auth-parameters USERNAME=<username>,PASSWORD=<password>
 ```
+
+## Cleanup
+
 To delete this stack use the following command ():
 
 ```bash
 aws cloudformation delete-stack --stack-name serverless-api-cognito
 ```
 
-__Customizations necessary before using__
-Edit policy to tighten permissions as needed.
 
-__Inputs__
-  - UserPoolAdminGroupName - (optional) Name of User Pool group for administrative users
 
-__Outputs__
- - UserPool - Cognito User Pool ID
- - UserPoolClient - Cognito User Pool Application Client ID
- - IdentityPool - Cognito Identity Pool ID
- - UserPoolAdminGroupName - User Pool group name for API administrators
- - CognitoIdentityPoolAuthorizedUserRole - IAM role for Cognito Identity Pool authorized users
- - CognitoLoginURL - Cognito User Pool Application Client Hosted Login UI URL
- - CognitoAuthCommand - AWS CLI command for Amazon Cognito User Pool authentication
  

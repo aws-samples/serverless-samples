@@ -5,7 +5,7 @@ import boto3
 import os
 import pytest
 
-APPLICATION_STACK_NAME = os.getenv('TEST_APPLICATION_STACK_NAME', 'python-appsync-sam')
+APPLICATION_STACK_NAME = os.getenv('TEST_APPLICATION_STACK_NAME', 'python-appsync-sam-vtl')
 COGNITO_STACK_NAME = os.getenv('TEST_COGNITO_STACK_NAME', 'serverless-api-cognito')
 globalConfig = {}
 

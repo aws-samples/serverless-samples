@@ -8,7 +8,7 @@ phases:
       nodejs: 16
     commands:
       # Install all dependencies (including dependencies for running tests)
-      - cd ./javascript-appsync-sam
+      - cd ./javascript-appsync-sam-vtl
       - npm install
   pre_build:
     commands:
@@ -25,6 +25,6 @@ phases:
 artifacts:
   discard-paths: yes
   files:
-    - ./javascript-appsync-sam/*
-    - ./javascript-appsync-sam/application.yaml
+    - ./javascript-appsync-sam-vtl/*
+    - ./javascript-appsync-sam-vtl/application.yaml
     - ./shared/cognito.yaml

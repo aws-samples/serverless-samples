@@ -1,4 +1,6 @@
 .DS_Store
 *.aws-sam*
+*node_modules*
 .gitignore
-*/samconfig.toml
+*samconfig.toml*
+*.venv*

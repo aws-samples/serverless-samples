@@ -8,7 +8,7 @@ phases:
       python: 3.9
     commands:
       # Install all dependencies (including dependencies for running tests)
-      - cd ./python-appsync-sam
+      - cd ./python-appsync-sam-vtl
       - pip install -r requirements.txt 
       - pip install -r ./tests/requirements.txt 
   pre_build:

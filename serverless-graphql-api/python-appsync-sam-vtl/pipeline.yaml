@@ -53,7 +53,7 @@ Resources:
       ServiceRole: !GetAtt ApplicationCodeBuildServiceRole.Arn
       Source:
         Type: CODEPIPELINE
-        BuildSpec: ./python-appsync-sam/buildspec.yml
+        BuildSpec: ./python-appsync-sam-vtl/buildspec.yml
       Tags:
         - Key: "Stack"
           Value: !Ref AWS::StackName
@@ -78,7 +78,7 @@ Resources:
       ServiceRole: !GetAtt IntegrationTestCodeBuildServiceRole.Arn
       Source:
         Type: CODEPIPELINE
-        BuildSpec: ./python-appsync-sam/tests/testspec.yml
+        BuildSpec: ./python-appsync-sam-vtl/tests/testspec.yml
       Tags:
         - Key: "Stack"
           Value: !Ref AWS::StackName

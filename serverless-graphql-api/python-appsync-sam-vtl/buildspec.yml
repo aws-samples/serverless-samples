@@ -8,7 +8,7 @@ phases:
       python: 3.9
     commands:
       # Install all dependencies (including dependencies for running tests)
-      - cd ./python-appsync-sam
+      - cd ./python-appsync-sam-vtl
       - pip install -r ./tests/requirements.txt 
   pre_build:
     commands:
@@ -29,6 +29,6 @@ phases:
 artifacts:
   discard-paths: yes
   files:
-    - ./python-appsync-sam/*
-    - ./python-appsync-sam/application.yaml
+    - ./python-appsync-sam-vtl/*
+    - ./python-appsync-sam-vtl/application.yaml
     - ./shared/cognito.yaml

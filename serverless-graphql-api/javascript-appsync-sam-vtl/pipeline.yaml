@@ -53,7 +53,7 @@ Resources:
       ServiceRole: !GetAtt ApplicationCodeBuildServiceRole.Arn
       Source:
         Type: CODEPIPELINE
-        BuildSpec: ./javascript-appsync-sam/buildspec.yml
+        BuildSpec: ./javascript-appsync-sam-vtl/buildspec.yml
       Tags:
         - Key: "Stack"
           Value: !Ref AWS::StackName
@@ -78,7 +78,7 @@ Resources:
       ServiceRole: !GetAtt IntegrationTestCodeBuildServiceRole.Arn
       Source:
         Type: CODEPIPELINE
-        BuildSpec: ./javascript-appsync-sam/__tests__/testspec.yml
+        BuildSpec: ./javascript-appsync-sam-vtl/__tests__/testspec.yml
       Tags:
         - Key: "Stack"
           Value: !Ref AWS::StackName

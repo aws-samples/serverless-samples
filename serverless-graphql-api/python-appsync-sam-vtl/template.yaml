@@ -37,6 +37,9 @@ Resources:
         ExcludeVerboseContent: false
         FieldLogLevel: "ALL"
         CloudWatchLogsRoleArn: !GetAtt PushToCloudWatchLogsRole.Arn
+      Tags:
+        - Key: "Stack" 
+          Value: !Sub "${AWS::StackName}"
 
   AppSyncLogsKMSKey:
     Type: AWS::KMS::Key
@@ -70,6 +73,9 @@ Resources:
                 kms:EncryptionContext:aws:logs:arn: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/appsync/apis/${GraphQLApi.ApiId}"
       KeySpec: SYMMETRIC_DEFAULT
       KeyUsage: ENCRYPT_DECRYPT
+      Tags:
+        - Key: "Stack" 
+          Value: !Sub "${AWS::StackName}"
 
   GraphQLApiLogGroup:
     Type: AWS::Logs::LogGroup
@@ -77,6 +83,9 @@ Resources:
       LogGroupName: !Sub "/aws/appsync/apis/${GraphQLApi.ApiId}"
       RetentionInDays: 7
       KmsKeyId: !GetAtt AppSyncLogsKMSKey.Arn
+      Tags:
+        - Key: "Stack" 
+          Value: !Sub "${AWS::StackName}"
 
   PushToCloudWatchLogsRole:
     Type: AWS::IAM::Role
@@ -340,6 +349,9 @@ Resources:
             Action:
               - "sts:AssumeRole"
       Path: "/"
+      Tags:
+        - Key: "Stack" 
+          Value: !Sub "${AWS::StackName}"
 
   LocationsDataSource:
     Type: "AWS::AppSync::DataSource"

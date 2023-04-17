@@ -5,7 +5,7 @@
 # Starting testing environment initialization.
 
 # Getting output values from CloudFormation stacks ...
-applicationStackOutputs=$(aws cloudformation describe-stacks --stack-name ${TEST_APPLICATION_STACK_NAME:-'javascript-appsync-sam'} | jq -r '.Stacks[0].Outputs')
+applicationStackOutputs=$(aws cloudformation describe-stacks --stack-name ${TEST_APPLICATION_STACK_NAME:-'javascript-appsync-sam-vtl'} | jq -r '.Stacks[0].Outputs')
 apiEndpoint=$(echo "$applicationStackOutputs" | jq -r '.[] | select(.OutputKey == "APIEndpoint") | .OutputValue')
 locationsTable=$(echo "$applicationStackOutputs" | jq -r '.[] | select(.OutputKey == "LocationsTable") | .OutputValue')
 resourcesTable=$(echo "$applicationStackOutputs" | jq -r '.[] | select(.OutputKey == "ResourcesTable") | .OutputValue')
