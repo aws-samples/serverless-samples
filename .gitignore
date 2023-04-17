@@ -4,3 +4,4 @@
 .gitignore
 *samconfig.toml*
 *.venv*
+*__pycache__*

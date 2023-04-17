@@ -71,7 +71,7 @@ After the stack is created manually you will need to create user account for aut
 While using command line or third-party tools such as Postman to test APIs, you will need to provide Access Token in the request "Authorization" header. You can authenticate with Amazon Cognito User Pool using AWS CLI (this command is also available in AWS SAM template outputs) and use IdToken value present in the output of the command:
 
 ```bash
-aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id <cognito user pool application client id> --auth-parameters USERNAME=<username>,PASSWORD=<password>
+~/.../python-appsync-sam-vtl$ aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id <cognito user pool application client id> --auth-parameters USERNAME=<username>,PASSWORD=<password>
 ```
 
 ### 2. Application deployment
@@ -79,20 +79,20 @@ This project is set up like a standard Python project.
 You may need to manually create a virtualenv:
 
 ```
-$ python3 -m venv .venv
+~/.../python-appsync-sam-vtl$ python3 -m venv .venv
 ```
 
 After the init process completes and the virtualenv is created, you can use the following step to activate your virtualenv:
 
 ```
-$ source .venv/bin/activate
+~/.../python-appsync-sam-vtl$ source .venv/bin/activate
 ```
 
 Once the virtualenv is activated, you can install the required dependencies for CDK and API implementation.
 
 ```
-~/.../python-appsync-sam-vtl$  pip install -r requirements.txt
-~/.../python-appsync-sam-vtl$  pip install -r ./tests/requirements.txt
+~/.../python-appsync-sam-vtl$ pip install -r requirements.txt
+~/.../python-appsync-sam-vtl$ pip install -r ./tests/requirements.txt
 ```
 
 To build and deploy your application for the first time, run the following in your shell:
