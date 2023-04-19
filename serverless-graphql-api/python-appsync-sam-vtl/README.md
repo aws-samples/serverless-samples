@@ -19,18 +19,18 @@ To create the CI/CD pipeline, we will split out code for this set of examples fr
 
 First, navigate to the root directory of the repository. To verify it run command *basename "$PWD"* - it should return serverless-samples as an output. Then run the following commands:
 
-```bash
-~/.../serverless-samples$ git subtree split -P serverless-graphql-api -b serverless-graphql-api
-~/.../serverless-samples$ mkdir ../serverless-graphql-api-cicd && cd ../serverless-graphql-api-cicd
-~/.../serverless-graphql-api-cicd$ git init -b main
-~/.../serverless-graphql-api-cicd$ git pull ../serverless-samples serverless-graphql-api
-~/.../serverless-graphql-api-cicd$ cd python-appsync-sam-vtl
+```console
+serverless-samples:~$ git subtree split -P serverless-graphql-api -b serverless-graphql-api
+serverless-samples:~$ mkdir ../serverless-graphql-api-cicd && cd ../serverless-graphql-api-cicd
+serverless-graphql-api-cicd:~$ git init -b main
+serverless-graphql-api-cicd:~$ git pull ../serverless-samples serverless-graphql-api
+serverless-graphql-api-cicd:~$ cd python-appsync-sam-vtl
 ```
 
 To create the pipeline, you will need to run the following command:
 
-```bash
-~/.../python-appsync-sam-vtl$ aws cloudformation create-stack --stack-name serverless-api-pipeline --template-body file://pipeline.yaml --capabilities CAPABILITY_IAM
+```console
+python-appsync-sam-vtl:~$ aws cloudformation create-stack --stack-name serverless-api-pipeline --template-body file://pipeline.yaml --capabilities CAPABILITY_IAM
 ```
 The pipeline will attempt to run and will fail at the SourceCodeRepo stage as there is no code in the AWS CodeCommit yet.
 
@@ -40,9 +40,9 @@ The pipeline will attempt to run and will fail at the SourceCodeRepo stage as th
 
 Once you have access to the code repository, navigate to python-appsync-sam-vtl folder, and, if you changed stack name, make sure that Parameters section of template.yaml is updated with the output values from the shared Amazon Cognito stack, and push code base to CodeCommit to start automated deployments:
 
-```bash
-~/.../python-appsync-sam-vtl$ git remote add origin <URL to AWS CodeCommit repository>
-~/.../python-appsync-sam-vtl$ git push origin main
+```console
+python-appsync-sam-vtl:~$ git remote add origin <URL to AWS CodeCommit repository>
+python-appsync-sam-vtl:~$ git push origin main
 ```
 
 Navigate to the AWS CodePipeline in AWS Management Console and release this change if needed by clicking "Release change" button.
@@ -63,43 +63,43 @@ After the stack is created manually you will need to create user account for aut
 - After this first step, your new user account will be able to access public data and create new bookings. To add locations and resources you will need to navigate to AWS Console, pick Amazon Cognito service, select User Pool instance that was created during this deployment, navigate to "Users and Groups", and add your user to the administrative users’ group. 
 
 - As an alternative to the AWS Console, you can use AWS CLI to create and confirm user signup:
-```bash
-~/.../python-appsync-sam-vtl$ aws cognito-idp sign-up --client-id <cognito user pool application client id> --username <username> --password <password> --user-attributes Name="name",Value="<username>"
-~/.../python-appsync-sam-vtl$ aws cognito-idp admin-confirm-sign-up --user-pool-id <cognito user pool id> --username <username> 
+```console
+python-appsync-sam-vtl:~$ aws cognito-idp sign-up --client-id <cognito user pool application client id> --username <username> --password <password> --user-attributes Name="name",Value="<username>"
+python-appsync-sam-vtl:~$ aws cognito-idp admin-confirm-sign-up --user-pool-id <cognito user pool id> --username <username> 
 ```
 
 While using command line or third-party tools such as Postman to test APIs, you will need to provide Access Token in the request "Authorization" header. You can authenticate with Amazon Cognito User Pool using AWS CLI (this command is also available in AWS SAM template outputs) and use IdToken value present in the output of the command:
 
-```bash
-~/.../python-appsync-sam-vtl$ aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id <cognito user pool application client id> --auth-parameters USERNAME=<username>,PASSWORD=<password>
+```console
+python-appsync-sam-vtl:~$ aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id <cognito user pool application client id> --auth-parameters USERNAME=<username>,PASSWORD=<password>
 ```
 
 ### 2. Application deployment
 This project is set up like a standard Python project.  
 You may need to manually create a virtualenv:
 
-```
-~/.../python-appsync-sam-vtl$ python3 -m venv .venv
+```console
+python-appsync-sam-vtl:~$ python3 -m venv .venv
 ```
 
 After the init process completes and the virtualenv is created, you can use the following step to activate your virtualenv:
 
-```
-~/.../python-appsync-sam-vtl$ source .venv/bin/activate
+```console
+python-appsync-sam-vtl:~$ source .venv/bin/activate
 ```
 
 Once the virtualenv is activated, you can install the required dependencies for CDK and API implementation.
 
-```
-~/.../python-appsync-sam-vtl$ pip install -r requirements.txt
-~/.../python-appsync-sam-vtl$ pip install -r ./tests/requirements.txt
+```console
+python-appsync-sam-vtl:~$ pip install -r requirements.txt
+python-appsync-sam-vtl:~$ pip install -r ./tests/requirements.txt
 ```
 
 To build and deploy your application for the first time, run the following in your shell:
 
-```bash
-~/.../python-appsync-sam-vtl$ sam build
-~/.../python-appsync-sam-vtl$ sam deploy --guided --stack-name python-appsync-sam-vtl
+```console
+python-appsync-sam-vtl:~$ sam build
+python-appsync-sam-vtl:~$ sam deploy --guided --stack-name python-appsync-sam-vtl
 ```
 
 The first command will build the source of your application. The second command will package and deploy your application to AWS, with a series of prompts:
@@ -118,9 +118,9 @@ Unit tests are defined in the `tests\unit` folder in this project. Integration t
 
 Run unit and integration tests:
 
-```bash
-~/.../python-appsync-sam-vtl$ python -m pytest tests/unit -v
-~/.../python-appsync-sam-vtl$ python -m pytest tests/integration -v
+```console
+python-appsync-sam-vtl:~$ python -m pytest tests/unit -v
+python-appsync-sam-vtl:~$ python -m pytest tests/integration -v
 ```
 
 Unit tests use AWS SDK to evaluate AWS AppSync resolver code. They use mock data, not the integrations with the backend services. Integration tests send GraphQL queries to the AWS AppSync endpoint and verify responses received. In addition, integration tests use WebSocket connection to the AWS AppSync for GraphQL subscriptions.
@@ -131,8 +131,8 @@ Unit tests use AWS SDK to evaluate AWS AppSync resolver code. They use mock data
 
 To delete the sample application that you created, use the AWS CLI:
 
-```bash
-~/.../python-appsync-sam-vtl$ sam delete --stack-name python-appsync-sam-vtl
+```console
+python-appsync-sam-vtl:~$ sam delete --stack-name python-appsync-sam-vtl
 ```
 
 _Note: If you created shared Cognito stack manually, follow shared stack cleanup instructions in the [README.md](../shared/README.md) in shared resources directory._
@@ -142,18 +142,18 @@ If you created CI/CD pipeline, you will need to delete it, including all testing
 
 CI/CD pipeline stack deletion may fail if build artifact Amazon S3 bucket is not empty. In such case get bucket name using following command and looking for BuildArtifactsBucket resource's PhysicalResourceId:
 
-```bash
-~/.../python-appsync-sam-vtl$ aws cloudformation list-stack-resources --stack-name serverless-api-pipeline
+```console
+python-appsync-sam-vtl:~$ aws cloudformation list-stack-resources --stack-name serverless-api-pipeline
 ```
 
 Then open AWS Management Console, navigate to S3 bucket with build artifacts and empty it.
 
 After that, delete all stacks created by the CI/CD pipeline and pipeline itself:
 
-```bash
-~/.../python-appsync-sam-vtl$ aws cloudformation delete-stack --stack-name serverless-api-pipeline-Testing
-~/.../python-appsync-sam-vtl$ aws cloudformation delete-stack --stack-name serverless-api-pipeline-Cognito-Testing
-~/.../python-appsync-sam-vtl$ aws cloudformation delete-stack --stack-name serverless-api-pipeline-Deployment
-~/.../python-appsync-sam-vtl$ aws cloudformation delete-stack --stack-name serverless-api-pipeline-Cognito-Deployment
-~/.../python-appsync-sam-vtl$ aws cloudformation delete-stack --stack-name serverless-api-pipeline
+```console
+python-appsync-sam-vtl:~$ aws cloudformation delete-stack --stack-name serverless-api-pipeline-Testing
+python-appsync-sam-vtl:~$ aws cloudformation delete-stack --stack-name serverless-api-pipeline-Cognito-Testing
+python-appsync-sam-vtl:~$ aws cloudformation delete-stack --stack-name serverless-api-pipeline-Deployment
+python-appsync-sam-vtl:~$ aws cloudformation delete-stack --stack-name serverless-api-pipeline-Cognito-Deployment
+python-appsync-sam-vtl:~$ aws cloudformation delete-stack --stack-name serverless-api-pipeline
 ```
