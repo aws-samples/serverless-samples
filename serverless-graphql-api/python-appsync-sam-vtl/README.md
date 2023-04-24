@@ -47,12 +47,36 @@ python-appsync-sam-vtl:~$ git push origin main
 
 Navigate to the AWS CodePipeline in AWS Management Console and release this change if needed by clicking "Release change" button.
 
-![CodePipeline](./assets/CodePipeline.png)
+![CodePipeline](../assets/CodePipeline.png)
 
-Note that the same Amazon Cognito stack is used in both testing and production deployment stages, the same user credentials can be used for testing and API access.
+Congratulations! 
 
-## Manually deploy the sample application
-You may choose to manually deploy shared resources and application instead of using a CI/CD pipeline. To do this, follow instructions below.
+You have created a CI/CD pipeline with code repository and two environments - testing and production deployment. Each of the environments has all the resources, including their own shared Cognito stacks. The build stage automatically performs all the unit tests. Testing environment runs integration tests before stopping for a manual production deployment approval step. This is a typical behavior of the Continuous Delivery pipelines - a final human approval step is part of the deployment workflow. 
+
+For a Continuous Deployment pipeline, you would remove the manual approval step. This way, each change in the code repository would be deployed to the production environment immediately after passing integration testing steps in the testing environment.
+
+You can inspect CloudFormation stacks deployed as part of CI/CD environment in the [AWS Management Console](https://console.aws.amazon.com/cloudformation/home):
+
+![CloudFormation Stacks](../assets/CloudFormationStacks.png)
+
+Check out testing and deployment stack outputs in the console:
+
+![Stack Outputs](../assets/StackOutputs.png)
+
+Click on the CloudWatch dashboard link in the stack outputs to see the metrics emitted during the integration testing:
+
+![Stack Outputs](../assets/TestingDashboard.png)
+
+To use APIs in the testing and production deployment environments, you can use an HTTP (or GraphQL) client and the API endpoint URL provided in the CloudFormation stack outputs. Keep in mind that you will need to create user and authenticate using Cognito to get the access token that API uses for authentication/authorization. See the [Cognito deployment instructions](../shared/README.md) for more details on how to do it. You would use the access token as an Authorization header value while sending HTTP request to the API endpoint. 
+For an example on how to create a GraphQL client, also see this [documentation article](https://docs.aws.amazon.com/appsync/latest/devguide/building-a-client-app.html).
+
+---
+
+## Alternative to the CI/CD - a manual deployment
+As an alternative to automated deployment using CI/CD pipeline, you may choose to deploy shared resources and application manually. Typically, you would use this approach for a quick "proof of concept" deployment, or in your individual development environment, when you want to run unit and integration tests before pushing your changes to the code repository.
+
+To deploy the application manually, follow instructions below.
+
 ### 1. Amazon Cognito setup
 This example uses a shared stack that deploys Amazon Cognito resources. See [README.md](../shared/README.md) in shared resources directory for the stack manual deployment instructions. After manual deployment is finished make sure to update your SAM template file `template.yaml` parameter CognitoStackName with the shared Amazon Cognito stack name. 
 
@@ -125,7 +149,7 @@ python-appsync-sam-vtl:~$ python -m pytest tests/integration -v
 
 Unit tests use AWS SDK to evaluate AWS AppSync resolver code. They use mock data, not the integrations with the backend services. Integration tests send GraphQL queries to the AWS AppSync endpoint and verify responses received. In addition, integration tests use WebSocket connection to the AWS AppSync for GraphQL subscriptions.
 
-
+---
 
 ## Cleanup
 
