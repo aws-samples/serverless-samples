@@ -73,6 +73,9 @@ For an example on how to create a GraphQL client, also see this [documentation a
 ---
 
 ## Alternative to the CI/CD - a manual deployment
+
+***Note: This step is an alternative to the CI/CD pipeline deployment. Skip to the cleanup instructions if you deployed the pipeline already.***
+
 As an alternative to automated deployment using CI/CD pipeline, you may choose to deploy shared resources and application manually. Typically, you would use this approach for a quick "proof of concept" deployment, or in your individual development environment, when you want to run unit and integration tests before pushing your changes to the code repository.
 
 To deploy the application manually, follow instructions below.
