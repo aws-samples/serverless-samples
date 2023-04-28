@@ -42,7 +42,7 @@ This repository contains samples of Serverless application code.
  - ## streaming-serverless-fraud-detection 
    Online fraud has a widespread impact on businesses and requires an effective end-end strategy to detect and prevent new account fraud, account takeover and stop suspicious payment transactions. Detecting fraud closer to the time of fraud occurrence is key to the success of a fraud detection and prevention system. This example demonstrates a serverless approach to detect online transaction fraud in near real-time. It shows how detection can be plugged into various data streaming and event- driven architectures, depending on the outcome to be achieved and actions to be taken to prevent fraud - alert the customer/user about the fraud, flag the transaction for additional review, etc. [README](./streaming-serverless-fraud-detection)
 
--## serverless-graphql-api
+- ## serverless-graphql-api
    These GraphQL API examples show end-to-end implementations of a simple application using a serverless approach that includes CI/CD pipelines, automated testing, and workload observability. [README](https://github.com/aws-samples/serverless-samples/tree/main/serverless-graphql-api) 
 
 ## Security
