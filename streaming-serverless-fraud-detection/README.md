@@ -31,7 +31,7 @@ The flow of events for this application is:
 This approach allows you to react to potentially fraudulent transactions in real-time while persisting the data in storage for further processing. In an actual implementation, you may replace the notification step for additional review with an action that is specific to your business process. For example, you may inspect the transaction using a fraud detection model, or perform a manual review.
 
 ### Deployment
-1. Your Amazon Fraud Detector model and detector should be pre-built based on past data. Follow [this blog post](https://aws.amazon.com/blogs/machine-learning/detect-online-transaction-fraud-with-new-amazon-fraud-detector-features/) for more detailed instructions. The post links to a sample dataset to help you get started.
+1. Your Amazon Fraud Detector model and detector should be pre-built based on past data. Follow [this blog post](https://aws.amazon.com/blogs/machine-learning/detect-online-transaction-fraud-with-new-amazon-fraud-detector-features/) for more detailed instructions. The post links to a sample dataset to help you get started. You may also check semi-automated deployment and training of the detector described in the blog post - see instructions [here](./fraud-detector-setup/README.md).
 2. Clone this repo, navigate to the directory streaming-serverless-fraud-detection
 3. Run the following commands:
 ```bash
@@ -99,7 +99,7 @@ The event flow for this application is:
 As a result, we have data in the Amazon S3 bucket that includes not only original data but also the Amazon Fraud Detector response as a metadata for each of the transactions. You can use this metadata in your data analytics solutions, machine learning model training tasks, or visualizations/dashboards that consume transaction data.
 
 ### Deployment
-1. Your Amazon Fraud Detector model and detector should be pre-built based on past data. Follow [this blog post](https://aws.amazon.com/blogs/machine-learning/detect-online-transaction-fraud-with-new-amazon-fraud-detector-features/) for more detailed instructions. The post links to a sample dataset to help you get started.
+1. Your Amazon Fraud Detector model and detector should be pre-built based on past data. Follow [this blog post](https://aws.amazon.com/blogs/machine-learning/detect-online-transaction-fraud-with-new-amazon-fraud-detector-features/) for more detailed instructions. The post links to a sample dataset to help you get started. You may also check semi-automated deployment and training of the detector described in the blog post - see instructions [here](./fraud-detector-setup/README.md).
 2. Clone this repo, navigate to the directory streaming-serverless-fraud-detection
 3. Run the following commands:
 ```bash
@@ -173,7 +173,7 @@ The event flow for this application is:
 Similar to the Kinesis Data Firehose data enrichment, this architecture does not prevent fraudulent data from reaching the next step. Instead, it adds fraud detection metadata to the original event and sends notifications about potentially fraudulent transactions. Consumers of the enriched data can decide whether to use the fraud detection metadata in their decisions. You may also decide to change the Step Functions workflow so it does not publish suspicious transactions to the destination bus but instead route them to a separate event bus to be consumed by a separate “suspicious transactions” processing application.
 
 ### Deployment
-1. Your Amazon Fraud Detector model and detector should be pre-built based on past data. Follow [this blog post](https://aws.amazon.com/blogs/machine-learning/detect-online-transaction-fraud-with-new-amazon-fraud-detector-features/) for more detailed instructions. The post links to a sample dataset to help you get started.
+1. Your Amazon Fraud Detector model and detector should be pre-built based on past data. Follow [this blog post](https://aws.amazon.com/blogs/machine-learning/detect-online-transaction-fraud-with-new-amazon-fraud-detector-features/) for more detailed instructions. The post links to a sample dataset to help you get started. You may also check semi-automated deployment and training of the detector described in the blog post - see instructions [here](./fraud-detector-setup/README.md).
 2. Clone this repo, navigate to the `streaming-serverless-fraud-detection` directory.
 3. Run the following commands:
 ```bash
