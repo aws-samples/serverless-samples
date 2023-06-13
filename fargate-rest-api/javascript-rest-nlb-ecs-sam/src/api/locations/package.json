@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Locations Service REST API",
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.43.0",
+    "@aws-sdk/client-dynamodb": "^3.351.0",
     "@aws-sdk/lib-dynamodb": "^3.43.0",
     "@aws-sdk/util-dynamodb": "^3.43.0",
     "aws-embedded-metrics": "^2.0.4",
