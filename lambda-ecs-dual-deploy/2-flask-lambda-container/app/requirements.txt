@@ -2,5 +2,5 @@
 # SPDX-License-Identifier: MIT-0
 
 # place dependencies here
-Flask==1.0.2
+Flask==2.2.5
 requests==2.31.0
