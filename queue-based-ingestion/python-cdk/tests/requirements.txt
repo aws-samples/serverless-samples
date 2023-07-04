@@ -1,0 +1,9 @@
+datetime
+boto3
+python-jose
+aws-xray-sdk
+aws-embedded-metrics
+moto
+mock
+pytest
+pytest-freezegun
