@@ -1,12 +1,12 @@
-# python-sam
+# python-AWS Serverless Application Model (AWS SAM)
 
-This is implementation of the Queue-based ingestion with Amazon API Gateway using Python and AWS SAM.
+This is implementation of the Queue-based ingestion with Amazon API Gateway using Python and AWS Serverless Application Model (AWS SAM).
 
-## Project structure
+## Project Structure
 
 This project contains source code and supporting files for a serverless application that you can deploy with the AWS Serverless Application Model (AWS SAM) command line interface (CLI). It includes the following files and folders:
 
-- `src\api` - Code for the application's Lambda functions and Lambda Authorizer.
+- `src\api` - Code for the application's AWS Lambda functions and AWS Lambda Authorizer.
 - `events` - Invocation events that you can use to invoke the function.
 - `tests/unit` - Unit tests for the application code.
 - `tests/integration` - Integration tests for the API.
@@ -18,9 +18,9 @@ This project contains source code and supporting files for a serverless applicat
 
 The application uses shared Amazon Cognito stack for authentication/authorization. You will need to create this stack and update `template.yaml` parameters section with the stack name. See next section for details
 
-## Amazon Cognito setup
+## Amazon Cognito Setup
 
-This example uses shared stack that deploys Amazon Cognito resources. The shared stack will be deployed automatically if you use CI/CD pipeline. See [README.md](../shared/README.md) in shared resources directory for the stack manual deployment instructions. After manual deployment is finished make sure to update your SAM template file `template.yaml` parameter CognitoStackName with the shared Cognito stack name.
+This example uses shared stack that deploys Amazon Cognito resources. The shared stack will be deployed automatically if you use CI/CD pipeline. See [README.md](../shared/README.md) in shared resources directory for the stack manual deployment instructions. After manual deployment is finished make sure to update your AWS SAM template file `template.yaml` parameter CognitoStackName with the shared Cognito stack name.
 
 After stack is created manually you will need to create user account for authentication/authorization. Deployment by CI/CD pipeline will perform following steps for you automatically.
 
@@ -35,13 +35,13 @@ After stack is created manually you will need to create user account for authent
 
 ```
 
-While using command line or third party tools such as Postman to test APIs, you will need to provide Identity Token in the request "Authorization" header. You can authenticate with Amazon Cognito User Pool using AWS CLI (this command is also available in SAM template outputs) and use IdToken value present in the output of the command:
+While using command line or third party tools such as Postman to test APIs, you will need to provide Identity Token in the request "Authorization" header. You can authenticate with Amazon Cognito User Pool using AWS CLI (this command is also available in AWS SAM template outputs) and use IdToken value present in the output of the command:
 
 ```bash
 aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id <cognito user pool application client id> --auth-parameters USERNAME=<username>,PASSWORD=<password>
 ```
 
-## Manually deploy the sample application
+## Manually Deploy The Sample Application
 
 **Note:** Before deploying application manually first time you will need to deploy shared Amazon Cognito stack, see previous section for details.
 
@@ -58,19 +58,19 @@ sam deploy --guided
 The first command will build the source of your application. The second command will package and deploy your application to AWS, with a series of prompts:
 
 - **Stack Name**: The name of the stack to deploy to AWS CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name. We will use `queue-based-ingestion`.
-**\*Note:** This stack name is used to define S3 Bucket name, so if you observe duplicate S3 Bucket name error then provide unique `Stack Name` during `sam deploy` command.
+**\*Note:** This stack name is used to define Amazon Simple Storage Service (Amazon S3) Bucket name, so if you observe duplicate Amazon S3 Bucket name error then provide unique `Stack Name` during `sam deploy` command.
 
 - **AWS Region**: The AWS region you want to deploy your app to.
 - **Parameter CognitoStackName**: The shared Amazon Cognito stack name
 - **Confirm changes before deploy**: If set to yes, any change sets will be shown to you before execution for manual review. If set to no, the AWS SAM CLI will automatically deploy application changes.
-- **Allow SAM CLI IAM role creation**: Many AWS SAM templates, including this example, create AWS IAM roles required for the AWS Lambda function(s) included to access AWS services. By default, these are scoped down to minimum required permissions. To deploy an AWS CloudFormation stack which creates or modifies IAM roles, the `CAPABILITY_IAM` value for `capabilities` must be provided. If permission isn't provided through this prompt, to deploy this example you must explicitly pass `--capabilities CAPABILITY_IAM` to the `sam deploy` command.
+- **Allow SAM CLI IAM role creation**: Many AWS SAM templates, including this example, create AWS Identity and Access Management (IAM) roles required for the AWS Lambda function(s) included to access AWS services. By default, these are scoped down to minimum required permissions. To deploy an AWS CloudFormation stack which creates or modifies AWS IAM roles, the `CAPABILITY_IAM` value for `capabilities` must be provided. If permission isn't provided through this prompt, to deploy this example you must explicitly pass `--capabilities CAPABILITY_IAM` to the `sam deploy` command.
 - **Save arguments to samconfig.toml**: If set to yes, your choices will be saved to a configuration file inside the project, so that in the future you can just re-run `sam deploy` without parameters to deploy changes to your application.
 
 The Amazon API Gateway endpoint API will be displayed in the outputs when the deployment is complete.
 
 At this point you can test the application.
 
-## Unit tests
+## Unit Tests
 
 Unit tests are defined in the `tests\unit` folder in this project. Use `pip` to install the `./tests/requirements.txt` and run unit tests.
 
@@ -90,7 +90,7 @@ To test end to end flow of application, use below steps
     aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id <cognito user pool application client id> --auth-parameters USERNAME=<username>,PASSWORD=<password>
 ```
 
-2. Submit a new Job Request via API call using /submit-job-request endpoint. This API call sends message to Amazon SQS queue and triggers job process. For the API call, you need to use the IdToken generated in the previous step.<br>
+2. Submit a new Job Request via API call using /submit-job-request endpoint. This API call sends message to Amazon Simple Queue Service (Amazon SQS) queue and triggers job process. For the API call, you need to use the IdToken generated in the previous step.<br>
    Below is a sample CURL command, in HTTP Body provide a payload specific to job process, this payload will be published to Amazon SQS queue.
 
    ```bash
@@ -195,8 +195,8 @@ aws cloudformation delete-stack --stack-name queue-based-ingestion
 
 If you created CI/CD pipeline you will need to delete it as well, including all testing and deployment stacks created by the pipeline. Please note that actual stack names may differ n your case, depending on the pipeline stack name you used.
 
-CI/CD pipeline stack deletion may fail if build artifact S3 bucket is not empty. In such case get bucket name using following command and looking for BuildArtifactsBucket resource's PhysicalResourceId:
-Then open AWS Management Console, navigate to S3 bucket with build artifacts and empty it.
+CI/CD pipeline stack deletion may fail if build artifact Amazon S3 bucket is not empty. In such case get bucket name using following command and looking for BuildArtifactsBucket resource's PhysicalResourceId:
+Then open AWS Management Console, navigate to Amazon S3 bucket with build artifacts and empty it.
 
 ```bash
 aws cloudformation list-stack-resources --stack-name queue-based-ingestion-cicd-testing

@@ -46,7 +46,7 @@ This repository contains samples of Serverless application code.
    These GraphQL API examples show end-to-end implementations of a simple application using a serverless approach that includes CI/CD pipelines, automated testing, and workload observability. [README](https://github.com/aws-samples/serverless-samples/tree/main/serverless-graphql-api) 
 
 - ## queue-based-ingestion
-  This example demonstrates API Gateway and Amazon SQS integration capabilities. However rather than just focusing on technical aspects, we have used a common use case of triggering long-running batch processes with very minimal input. A reference application is created to showcase the implementation of this use case using a serverless approach that includes CI/CD pipelines, automated unit and integration testing, and workload observability. [README](./queue-based-ingestion)
+  This example demonstrates Amazon API Gateway and Amazon Simple Queue Service (Amazon SQS) integration capabilities. However rather than just focusing on technical aspects, we have used a common use case of triggering long-running batch processes with very minimal input. A reference application is created to showcase the implementation of this use case using a serverless approach that includes CI/CD pipelines, automated unit and integration testing, and workload observability. [README](./queue-based-ingestion)
 
 
 ## Security

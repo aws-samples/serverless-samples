@@ -1,16 +1,16 @@
-# python-cdk
+# python-AWS Cloud Development Kit(AWS CDK)
 
-This is implementation of the Queue-based ingestion with API Gateway using Python and AWS CDK.
+This is implementation of the Queue-based ingestion with Amazon API Gateway using Python and AWS Cloud Development Kit(CDK).
 
 ## Prerequisites
 
-Make sure you have AWS CDK installed and bootstrapped before proceeding with the following steps. For more information on setting up CDK see [documentation](https://docs.aws.amazon.com/cdk/latest/guide/getting_started.html)
+Make sure you have AWS CDK installed and bootstrapped before proceeding with the following steps. For more information on setting up AWS CDK see [documentation](https://docs.aws.amazon.com/cdk/latest/guide/getting_started.html)
 
 **Install Docker** You can refer to this [installation guide](https://docs.docker.com/get-docker/)
 
-**CDK Bootstrap**
-If the AWS CDK and its prerequisites have been installed in a Python environment, the next step is to bootstrap each AWS region and account where any CDK stack will be deployed. This is a process that only needs to occur once per region per account, which means that every additional region requires bootstrapping of both accounts using `cdk bootstrap` command.
-Use the cdk bootstrap command to bootstrap one or more AWS environments. In its basic form, this command bootstraps one or more specified AWS environments
+**AWS CDK Bootstrap**
+If the AWS CDK and its prerequisites have been installed in a Python environment, the next step is to bootstrap each AWS region and account where any AWS CDK stack will be deployed. This is a process that only needs to occur once per region per account, which means that every additional region requires bootstrapping of both accounts using `cdk bootstrap` command.
+Use the cdk bootstrap command to bootstrap one or more AWS environments. In its basic form, this command bootstraps one or more specified AWS environments.
 
 ```bash
 cdk bootstrap aws://ACCOUNT-NUMBER-1/REGION-1
@@ -22,17 +22,17 @@ You can follow these reference for more information and guidance: [CDK bootstrap
 
 This project contains source code and supporting files for a serverless application that you can deploy with the AWS CDK command line interface (CLI). It includes the following files and folders:
 
-- `src\api` - Code for the application's Lambda functions and Lambda Authorizer.
+- `src\api` - Code for the application's AWS Lambda functions and AWS Lambda Authorizer.
 - `events` - Invocation events that you can use to invoke the function.
 - `tests/unit` - Unit tests for the application code.
 - `tests/integration` - Integration tests for the API.
-- `lib` - CDK application modules directory
-- `app.py` - CDK application 'main' (entry point)
-- `cdk.json` - configuration file for CDK
+- `lib` - AWS CDK application modules directory
+- `app.py` - AWS CDK application 'main' (entry point)
+- `cdk.json` - configuration file for AWS CDK
 - `setup.py` - defines the Python package
-- `requirements.txt` - Python requirements file for the CDK application
+- `requirements.txt` - Python requirements file for the AWS CDK application
 
-## CDK Python project setup
+## AWS CDK Python Project Setup
 
 If virtualenv is needed, please create as and activate, you can find instructions in [Setup and Deployment](./../README.md#setup-and-deployment) section. Once virtualenv is activated, you can install the required dependencies for AWS CDK and API implementation.
 **\*Note:** Please verify that current directory is <repository path>/serverless-samples/queue-based-ingestion/python-cdk
@@ -43,15 +43,15 @@ pip install -r ./src/api/requirements.txt
 ```
 
 **Note**: Please ensure that Docker application is running.
-At this point you can now synthesize the CloudFormation template for this code.
+At this point you can now synthesize the AWS CloudFormation template for this code.
 
 ```
 cdk synth
 ```
 
-The cdk synth command executes your app, which causes the resources defined in it to be translated into an AWS CloudFormation template. The displayed output of cdk synth is a YAML-format template. Following, you can see the beginning of our app's output. The template is also saved in the cdk.out directory in JSON format.
+The AWS cdk synth command executes your app, which causes the resources defined in it to be translated into an AWS CloudFormation template. The displayed output of cdk synth is a YAML-format template. Following, you can see the beginning of our app's output. The template is also saved in the cdk.out directory in JSON format.
 
-## Amazon Cognito setup
+## Amazon Cognito Setup
 
 This example uses AWS CDK stack that deploys Amazon Cognito resources. The stack will be deployed automatically if you use CI/CD pipeline. To deploy it manually you can use following command:
 
@@ -66,7 +66,7 @@ After stack is created manually you will need to create user account for authent
 - You need to create and coonfirm user signups, you can use AWS Console to complete this process.
 
 - As an alternative to the AWS Console you can use AWS CLI to create and confirm user signup:
-  Note down UserPoolClient Id from output of CDK deploy command and use that value in below commands.
+  Note down UserPoolClient Id from output of AWS CDK deploy command and use that value in below commands.
 
 ```bash
     aws cognito-idp sign-up --client-id <cognito user pool application client id> --username <username> --password <password> --user-attributes Name="name",Value="<username>"
@@ -81,9 +81,9 @@ While using command line or third party tools such as Postman to test APIs, you 
 aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id <cognito user pool application client id> --auth-parameters USERNAME=<username>,PASSWORD=<password>
 ```
 
-## Manually deploy the sample application
+## Manually Deploy The Sample Application
 
-**\*Note:**: Before deploying application manually first time you will need to deploy shared Cognito stack, see previous section for details.
+**\*Note:**: Before deploying application manually first time you will need to deploy shared Amazon Cognito stack, see previous section for details.
 
 To build and deploy your application for the first time, run the following in your shell:
 
@@ -95,10 +95,10 @@ This command will package and deploy your application to AWS
 
 The Amazon API Gateway endpoint API will be displayed in the outputs when the deployment is complete.
 
-**\*Note:**:API_STACK_NAME inside app.py is used to create S3 Bucket with same name,  so if error duplicate bucket name error observed during cdk deploy then please update API_STACK_NAME  variable with unique name and run cdk synth and cdk deploy commands again.
+**\*Note:**:API_STACK_NAME inside app.py is used to create Amazon Simple Storage Service (Amazon S3)  Bucket with same name,  so if error duplicate bucket name error observed during cdk deploy then please update API_STACK_NAME  variable with unique name and run cdk synth and cdk deploy commands again.
 
 
-## Unit tests
+## Unit Tests
 
 Unit tests are defined in the `tests\unit` folder in this project. Use `pip` to install the `./tests/requirements.txt` and run unit tests.
 
@@ -117,7 +117,7 @@ To test end to end flow of application, use below steps
     aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id <cognito user pool application client id> --auth-parameters USERNAME=<username>,PASSWORD=<password>
 ```
 
-2. Submit a new Job Request via API call using /submit-job-request endpoint. This API call sends message to Amazon SQS queue and triggers job process. For the API call, you need to use the IdToken generated in the previous step.<br>
+2. Submit a new Job Request via API call using /submit-job-request endpoint. This API call sends message to Amazon Simple Queue Service (Amazon SQS) queue and triggers job process. For the API call, you need to use the IdToken generated in the previous step.<br>
    Below is a sample CURL command, in HTTP Body provide a payload specific to job process, this payload will be published to Amazon SQS queue.
    ```bash
     curl --location --request POST 'https://<API Gateway Sender API Endpoint>/submit-job-request'  -H 'Content-Type: application/json' --data-raw '< Batch process JSON Payload>' -H 'Authorization:<IdToken>'
