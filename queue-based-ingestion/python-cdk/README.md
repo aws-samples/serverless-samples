@@ -51,7 +51,7 @@ At this point, you can now synthesize the AWS CloudFormation template for this c
 After updating the value, commit the changes to the local git repo using the below commands. This step is only needed if you are planning to deploy the CICD pipeline for this example.
 
 ```bash
-git add .
+git add app.py
 
 git commit -m "update stack name"
 ```
