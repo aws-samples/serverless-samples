@@ -14,7 +14,7 @@ from lib.pipeline_stack import ApiPipelineStack
 #NOTE: API_STACK_NAME inside app.py is used to create S3 Bucket with same name,  so if error duplicate bucket name error observed during cdk deploy
      # then please update API_STACK_NAME variable with unique name and run cdk synth and cdk deploy commands again.
      # Keep Stack Name less than 15 characters.
-API_STACK_NAME = "apigw-queue-cdk-66"
+API_STACK_NAME = "apigw-queue-66"
 COGNITO_STACK_NAME = API_STACK_NAME+"-cognito"
 PIPELINE_STACK_NAME = API_STACK_NAME+"-cicd"
 
