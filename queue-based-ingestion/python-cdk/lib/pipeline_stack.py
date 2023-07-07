@@ -68,7 +68,7 @@ class ApiPipelineStack(Stack):
                         )        
 
         # Add testing stage to the pipeline and testing activity with permissions necessary to run integration tests
-        integration_stage = AppStage(self, self.stack_name+'pipeline-int-test', cognito_stack_name='Cognito')
+        integration_stage = AppStage(self, self.stack_name+'-int-test', cognito_stack_name='Cognito')
         integration_testing = pipelines.CodeBuildStep(
             'IntegrationTest',
             input=source_repo,
@@ -111,7 +111,7 @@ class ApiPipelineStack(Stack):
         )
 
         # Create production deployment stage to the pipeline with manual approval action
-        deployment_stage = AppStage(self, self.stack_name+'pipeline-deploy', cognito_stack_name='Cognito')
+        deployment_stage = AppStage(self, self.stack_name+'-deploy', cognito_stack_name='Cognito')
         
         manual_approval_step= pipelines.ManualApprovalStep('ApproveProductionDeployment')
 
