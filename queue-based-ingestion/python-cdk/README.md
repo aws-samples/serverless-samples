@@ -1,26 +1,26 @@
-# python-AWS Cloud Development Kit(AWS CDK)
+# python-AWS Cloud Development Kit (AWS CDK)
 
-This is implementation of the Queue-based ingestion with Amazon API Gateway using Python and AWS Cloud Development Kit(CDK).
+This is implementation of the Queue-based ingestion with Amazon API Gateway using Python and AWS Cloud Development Kit (CDK).
 
 ## Prerequisites
 
-Make sure you have AWS CDK installed and bootstrapped before proceeding with the following steps. For more information on setting up AWS CDK see [documentation](https://docs.aws.amazon.com/cdk/latest/guide/getting_started.html)
+Make sure you have AWS CDK installed and bootstrapped before proceeding with the following steps. For more information on setting up AWS CDK, see [documentation](https://docs.aws.amazon.com/cdk/latest/guide/getting_started.html)
 
 **Install Docker** You can refer to this [installation guide](https://docs.docker.com/get-docker/)
 
 **AWS CDK Bootstrap**
-If the AWS CDK and its prerequisites have been installed in a Python environment, the next step is to bootstrap each AWS region and account where any AWS CDK stack will be deployed. This is a process that only needs to occur once per region per account, which means that every additional region requires bootstrapping of both accounts using `cdk bootstrap` command.
+If the AWS CDK and its prerequisites have been installed in a Python environment, the next step is to bootstrap each AWS region and account where any AWS CDK stack will be deployed. This is a process that only needs to occur once per region per account, so every additional region requires bootstrapping of both accounts using `cdk bootstrap` command.
 Use the cdk bootstrap command to bootstrap one or more AWS environments. In its basic form, this command bootstraps one or more specified AWS environments.
 
 ```bash
 cdk bootstrap aws://ACCOUNT-NUMBER-1/REGION-1
 ```
 
-You can follow these reference for more information and guidance: [CDK bootstrap](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html)
+You can follow this reference for more information and guidance: [CDK bootstrap](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html)
 
 ## Project structure
 
-This project contains source code and supporting files for a serverless application that you can deploy with the AWS CDK command line interface (CLI). It includes the following files and folders:
+This project contains source code and supporting files for a serverless application that you can deploy with the AWS CDK command-line interface (CLI). It includes the following files and folders:
 
 - `src\api` - Code for the application's AWS Lambda functions and AWS Lambda Authorizer.
 - `events` - Invocation events that you can use to invoke the function.
@@ -42,8 +42,8 @@ pip install -r requirements.txt
 pip install -r ./src/api/requirements.txt
 ```
 
-**Note**: Please ensure that Docker application is running.
-At this point you can now synthesize the AWS CloudFormation template for this code.
+**Note**: Please ensure that the Docker application is running.
+At this point, you can now synthesize the AWS CloudFormation template for this code.
 
 ```
 cdk synth
@@ -53,7 +53,7 @@ The AWS cdk synth command executes your app, which causes the resources defined 
 
 ## Amazon Cognito Setup
 
-This example uses AWS CDK stack that deploys Amazon Cognito resources. The stack will be deployed automatically if you use CI/CD pipeline. To deploy it manually you can use following command:
+This example uses AWS CDK stack that deploys Amazon Cognito resources. The stack will be deployed automatically if you use a CI/CD pipeline. To deploy it manually, you can use the following command:
 
 **\*Note:** Please verify that current directory is <repository path>/serverless-samples/queue-based-ingestion/python-cdk
 
@@ -61,11 +61,11 @@ This example uses AWS CDK stack that deploys Amazon Cognito resources. The stack
 cdk deploy apigw-queue-ingestion-cdk-cognito
 ```
 
-After stack is created manually you will need to create user account for authentication/authorization. Deployment by CI/CD pipeline will perform these steps for you automatically.
+After the stack is created manually, you will need to create a user account for authentication/authorization. Deployment by a CI/CD pipeline will perform these steps for you automatically.
 
-- You need to create and coonfirm user signups, you can use AWS Console to complete this process.
+- You need to create and coonfirm user signups. You can use AWS Console to complete this process.
 
-- As an alternative to the AWS Console you can use AWS CLI to create and confirm user signup:
+- As an alternative to the AWS Management Console, you can use AWS CLI to create and confirm user signup:
   Note down UserPoolClient Id from output of AWS CDK deploy command and use that value in below commands.
 
 ```bash
@@ -75,7 +75,7 @@ After stack is created manually you will need to create user account for authent
 
 ```
 
-While using command line or third party tools such as Postman to test APIs, you will need to provide Identity Token in the request "Authorization" header. You can authenticate with Amazon Cognito User Pool using AWS CLI and use IdToken value present in the output of the command:
+While using command line or third-party tools such as Postman to test APIs, you will need to provide Identity Token in the request "Authorization" header. You can authenticate with Amazon Cognito User Pool using AWS CLI and use IdToken value present in the command's output:
 
 ```bash
 aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id <cognito user pool application client id> --auth-parameters USERNAME=<username>,PASSWORD=<password>
@@ -83,7 +83,7 @@ aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id <cognit
 
 ## Manually Deploy The Sample Application
 
-**\*Note:**: Before deploying application manually first time you will need to deploy shared Amazon Cognito stack, see previous section for details.
+**\*Note:**: Before deploying application manually, first time you will need to deploy shared Amazon Cognito stack, see the previous section for details.
 
 To build and deploy your application for the first time, run the following in your shell:
 
@@ -91,11 +91,11 @@ To build and deploy your application for the first time, run the following in yo
 cdk deploy apigw-queue-ingestion-cdk
 ```
 
-This command will package and deploy your application to AWS
+This command will package and deploy your application to the AWS
 
 The Amazon API Gateway endpoint API will be displayed in the outputs when the deployment is complete.
 
-**\*Note:**:API_STACK_NAME inside app.py is used to create Amazon Simple Storage Service (Amazon S3)  Bucket with same name,  so if error duplicate bucket name error observed during cdk deploy then please update API_STACK_NAME  variable with unique name and run cdk synth and cdk deploy commands again.
+**\*Note:**:API_STACK_NAME inside app.py is used to create Amazon Simple Storage Service (Amazon S3) Bucket with same name, so if error duplicate bucket name error observed during cdk deploy then please update API_STACK_NAME variable with unique name and run cdk synth and cdk deploy commands again.
 
 
 ## Unit Tests
@@ -109,20 +109,20 @@ python -m pytest tests/unit -v
 
 ## Testing
 
-To test end to end flow of application, use below steps
+To test the end-to-end flow of application, use the following steps:
 
-1. To test any of the APIs created via command line or third-party tools such as Postman , you will need to provide an Token (IdToken) in the "Authorization" header. You can authenticate with Amazon Cognito User Pool using AWS CLI and use IdToken value present in the output of the command (it is available in the stack outputs as well):
+1. To test any of the APIs created via command line or third-party tools such as Postman, you will need to provide a Token (IdToken) in the "Authorization" header. You can authenticate with Amazon Cognito User Pool using AWS CLI and use IdToken value present in the command's output (it is available in the stack outputs as well):
 
 ```bash
     aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id <cognito user pool application client id> --auth-parameters USERNAME=<username>,PASSWORD=<password>
 ```
 
-2. Submit a new Job Request via API call using /submit-job-request endpoint. This API call sends message to Amazon Simple Queue Service (Amazon SQS) queue and triggers job process. For the API call, you need to use the IdToken generated in the previous step.<br>
-   Below is a sample CURL command, in HTTP Body provide a payload specific to job process, this payload will be published to Amazon SQS queue.
+2. Submit a new Job Request via API call using /submit-job-request endpoint. This API call sends a message to the Amazon Simple Queue Service (Amazon SQS) queue and triggers a job process. For the API call, you need to use the IdToken generated in the previous step.<br>
+   Below is a sample CURL command. In HTTP request provide a payload specific to job process, this payload will be published to Amazon SQS queue.
    ```bash
     curl --location --request POST 'https://<API Gateway Sender API Endpoint>/submit-job-request'  -H 'Content-Type: application/json' --data-raw '< Batch process JSON Payload>' -H 'Authorization:<IdToken>'
    ```
-3. Once the message is published to Amazon SQS via Amazon API Gateway endpoint, SendMessageResponse payload will be provided as part of HTTP response. Note down the MessageId attribute from response.<br>
+3. Once the message is published to Amazon SQS via Amazon API Gateway endpoint, SendMessageResponse payload will be provided as part of the HTTP response. Note down the MessageId attribute from response.<br>
    Sample SendMessageResponse payload
 
 ```bash
@@ -138,7 +138,7 @@ To test end to end flow of application, use below steps
 </SendMessageResponse>
 ```
 
-4. Use the /job-status endpoint to check the status of a Job Request. Provide MessageId captured from above step as a url path parameter, and provide a cognito IdToken for authorization purpose.
+4. Use the /job-status endpoint to check the status of a Job Request. Provide MessageId captured from above step as an URL path parameter and provide a cognito IdToken for authorization purpose.
 
 ```bash
 curl --location 'https://<API Gateway Sender API Endpoint>/job-status/<messageId>' -H 'Content-Type: application/json' -H 'Authorization:<IdToken>'
@@ -161,7 +161,7 @@ curl '<presigned URL>' -o batch-payload-output.txt
 
 ## Deploy CI/CD pipeline for the application
 
-To create the pipeline you will need to run the following command:
+To create the pipeline, you will need to run the following command:
 
 ```bash
 cdk deploy apigw-queue-ingestion-cdk-pipeline
@@ -171,7 +171,7 @@ The pipeline will attempt to run and will fail at the SourceCodeRepo stage as th
 
 **\*Note:** Please verify that current directory is <repository path>/serverless-samples/queue-based-ingestion/python-cdk
 
-To verify it run command basename "pwd" - it should return python-cdk as an end of directory path.
+To verify it, run the command basename "pwd" - it should return python-cdk as an end of the directory path.
 
 **\*Note:** You may need to set up AWS CodeCommit repository access for HTTPS users [using Git credentials](https://docs.aws.amazon.com/codecommit/latest/userguide/setting-up-gc.html?icmpid=docs_acc_console_connect_np) and [set up the AWS CLI Credential Helper](https://docs.aws.amazon.com/console/codecommit/connect-tc-alert-np).
 
@@ -186,7 +186,7 @@ Navigate to the AWS CodePipeline in AWS Management Console and release this chan
 
 ![CodePipeline](../assets/CDK-cicd-pipeline.png)
 
-Note that same Amazon Cognito stack is used in both testing and production deployment stages, same user credentials can be used for testing and API access.
+Note that the same Amazon Cognito stack is used in both testing and production deployment stages, the same user credentials can be used for testing and API access.
 
 ## Cleanup
 
@@ -198,7 +198,7 @@ cdk destroy apigw-queue-ingestion-cdk-cognito
 
 ```
 
-If you created CI/CD pipeline you will need to delete it as well, including all testing and deployment stacks created by the pipeline. Please note that actual stack names may differ in your case, depending on the pipeline stack name you used.
+If you created CI/CD pipeline, you will need to delete it as well, including all testing and deployment stacks created by the pipeline. Please note that actual stack names may differ in your case, depending on the pipeline stack name you used.
 
 ```bash
 cdk destroy apigw-queue-ingestion-cdk-pipeline/cdk-pipeline-deployment/app
