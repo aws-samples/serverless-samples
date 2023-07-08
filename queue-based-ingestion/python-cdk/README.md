@@ -81,7 +81,7 @@ After the stack is created manually, you will need to create a user account for 
   Note down UserPoolClient Id from output of AWS CDK deploy command and use that value in below commands.
 
 ```bash
-    aws cognito-idp sign-up --client-id <cognito user pool application client id> --username <username> --password <password> --user-attributes Name="name",Value="<username>"
+   aws cognito-idp sign-up --client-id <cognito user pool application client id> --username <username> --password <password> --user-attributes Name="name",Value="<username>"
 
    aws cognito-idp admin-confirm-sign-up --user-pool-id <user pool id> --username <username>
 
@@ -175,7 +175,7 @@ curl '<presigned URL>' -o batch-payload-output.txt
 To create the pipeline, you will need to run the following command:
 
 ```bash
-cdk deploy <your stack-name>-pipeline
+cdk deploy <your stack-name>-cicd
 ```
 
 The pipeline will attempt to run and will fail at the SourceCodeRepo stage as there is no code in the AWS CodeCommit yet.
@@ -206,8 +206,15 @@ To delete the sample application that you created, use the AWS CLI:
 
 **\*Note:** : For all below commands, use the stack name you have provided in the variable `API_STACK_NAME` inside the `app.py` file.
 
-Before deleting the stack, ensure that the Amazon S3 bucket created to store the output of the job process is empty. You can get the bucket name from the AWS CloudFormation stack output or resources section, then open the AWS Management Console, navigate to the Amazon S3 bucket, and empty it.
+Before deleting the stack, ensure that the Amazon S3 bucket created to store the output of the job process is empty. You can get the bucket name from the AWS CloudFormation stack output or resources section. 
 
+Below is a command that will list all resources for the stack, look for `job-payload-output-bucket*` in the resource's `PhysicalResourceId` section.
+
+```bash
+aws cloudformation list-stack-resources --stack-name <your stack-name>-cicd
+```
+
+Then open the AWS Management Console, navigate to the Amazon S3 bucket, and empty it.
 
 ```bash
 cdk destroy <your stack-name>
@@ -220,11 +227,19 @@ If you created a CI/CD pipeline, you will need to delete it as well, including a
 CI/CD pipeline stack deletion may fail if the build artifact Amazon S3 bucket is not empty. In such a case, get the bucket name from the AWS CloudFormation CI/CD pipeline stack output or resources section.
 Then open the AWS Management Console, navigate to the Amazon S3 bucket with build artifacts, and empty it.
 
+Below is a command that will list all resources for the stack, look for `pipelineartifactsbucket*` in the resource's `PhysicalResourceId` section.
+
 ```bash
-cdk destroy <your stack-name>-pipeline/cdk-pipeline-deployment/app
-cdk destroy <your stack-name>-pipeline/cdk-pipeline-deployment/Cognito
-cdk destroy <your stack-name>-pipeline/cdk-pipeline-int-test/app
-cdk destroy <your stack-name>-pipeline/cdk-pipeline-int-test/Cognito
-cdk destroy <your stack-name>-pipeline
+aws cloudformation list-stack-resources --stack-name <your stack-name>
+```
+In the above output of the list-stack-resources' command, look for `job-payload-output-bucket*-cicd-int-test-app`, which is an Amazon S3 bucket created to store the output of the job process during integration testing.
+Then open the AWS Management Console, navigate to the Amazon S3 bucket with the above naming convention, and empty it.
+
+```bash
+cdk destroy <your stack-name>-cicd/<your stack-name>-cicd-deploy/app
+cdk destroy <your stack-name>-cicd/<your stack-name>-cicd-deploy/Cognito
+cdk destroy <your stack-name>-cicd/<your stack-name>-cicd-int-test/app
+cdk destroy <your stack-name>-cicd/<your stack-name>-cicd-int-test/Cognito
+cdk destroy <your stack-name>-cicd
 
 ```
