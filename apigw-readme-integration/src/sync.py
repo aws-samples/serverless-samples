@@ -80,7 +80,8 @@ def update_readme_api_definition():
     auth=base64.b64encode(rm_api_key.encode("utf-8"))
     headers={
         "Accept": "application/json",
-        "Authorization": "Basic "+auth.decode("utf-8")
+        "Authorization": "Basic "+auth.decode("utf-8"),
+        "User-Agent": "readme-apigw/1.0.0"
     }
     # Check if API definition ID is specified and create new one if it is empty
     if rm_definition_id.upper() == "NONE":
