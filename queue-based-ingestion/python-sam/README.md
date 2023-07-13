@@ -57,7 +57,7 @@ sam deploy --guided
 
 The first command will build the source of your application. The second command will package and deploy your application to AWS, with a series of prompts:
 
-- **Stack Name**: The name of the stack to deploy to AWS CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name. We will use `queue-based-ingestion`.
+- **Stack Name**: The name of the stack to deploy to AWS CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name. We will use `queue-based-ingestion`. <br>
 **\*Note:** This stack name is used to define Amazon Simple Storage Service (Amazon S3) Bucket name, so please use unqiue stack name. If you observe duplicate Amazon S3 Bucket name error then provide unique `Stack Name` during `sam deploy` command.
 
 - **AWS Region**: The AWS region you want to deploy your app to.
