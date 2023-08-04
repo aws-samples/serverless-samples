@@ -34,7 +34,7 @@ This project contains source code and supporting files for a serverless applicat
 
 ## AWS CDK Python Project Setup
 
-If virtualenv is needed, please create and activate it. You can find instructions in the [Setup and Deployment](./../README.md#setup-and-deployment) section. Once virtualenv is activated, you can install the required dependencies for the AWS CDK and API implementation.
+If virtualenv is needed, please create and activate it. You can find instructions in the [Setup and Deployment](./../README.md#setup-and-deployment) section. Once virtualenv is activated, you can install the required dependencies for the AWS CDK and API implementation.<br>
 **Note:** Please verify that current directory is <repository path>/serverless-samples/queue-based-ingestion/python-cdk
 
 ```
@@ -46,7 +46,7 @@ pip install -r ./src/api/requirements.txt
 
 At this point, you can now synthesize the AWS CloudFormation template for this code.
 
-**Note:**: The value of the variable `API_STACK_NAME` inside `app.py` is used to create an Amazon Simple Storage Service (Amazon S3) Bucket with the same name. So update `API_STACK_NAME` inside `app.py` with a unique stack name.
+**Note**: The value of the variable `API_STACK_NAME` inside `app.py` is used to create an Amazon Simple Storage Service (Amazon S3) Bucket with the same name. So update `API_STACK_NAME` inside `app.py` with a unique stack name.
 
 After updating the value, commit the changes to the local git repo using the below commands. This step is only needed if you are planning to deploy the CICD pipeline for this example.
 
@@ -79,7 +79,7 @@ After the stack is created manually, you will need to create a user account for 
 - You need to create and confirm user signups. You can use AWS Console to complete this process.
 
 - As an alternative to the AWS Management Console, you can use AWS CLI to create and confirm user signup:
-  Note down UserPoolClient Id from output of AWS CDK deploy command and use that value in below commands.
+  - Note down UserPoolClient Id from output of AWS CDK deploy command and use that value in below commands.
 
 ```bash
    aws cognito-idp sign-up --client-id <cognito user pool application client id> --username <username> --password <password> --user-attributes Name="name",Value="<username>"
