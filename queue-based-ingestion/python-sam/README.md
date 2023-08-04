@@ -58,7 +58,7 @@ sam deploy --guided
 The first command will build the source of your application. The second command will package and deploy your application to AWS, with a series of prompts:
 
 - **Stack Name**: The name of the stack to deploy to AWS CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name. We will use `queue-based-ingestion`. <br>
-**\*Note:** This stack name is used to define Amazon Simple Storage Service (Amazon S3) Bucket name, so please use unqiue stack name. If you observe duplicate Amazon S3 Bucket name error then provide unique `Stack Name` during `sam deploy` command.
+  **Note:** This stack name is used to define Amazon Simple Storage Service (Amazon S3) Bucket name, so please use unqiue stack name. If you observe duplicate Amazon S3 Bucket name error then provide unique `Stack Name` during `sam deploy` command.
 
 - **AWS Region**: The AWS region you want to deploy your app to.
 - **Parameter CognitoStackName**: The shared Amazon Cognito stack name
@@ -91,14 +91,14 @@ To test the end-to-end flow of application, use below steps:
 ```
 
 2. Submit a new Job Request via API call using /submit-job-request endpoint. This API call sends a message to Amazon Simple Queue Service (Amazon SQS) queue and triggers a job process. For the API call, you need to use the IdToken generated in the previous step.<br>
-Below is a sample `curl` command. In HTTP request, you provide a payload specific to the job process. This payload will be published to Amazon SQS queue.
+   Below is a sample `curl` command. In HTTP request, you provide a payload specific to the job process. This payload will be published to Amazon SQS queue.
 
 ```bash
    curl --location --request POST 'https://<API Gateway Sender API Endpoint>/submit-job-request'  -H 'Content-Type: application/json' --data-raw '< Batch process JSON Payload>' -H 'Authorization:<IdToken>'
 
     e.g.
    curl --location --request POST 'https://<API Gateway Sender API Endpoint>/submit-job-request'  -H 'Content-Type: application/json' --data-raw '{"testMessagePaylaod":"paylaod123"}' -H 'Authorization:<IdToken>'
-   ```
+```
 
 3. Once the message is published to Amazon SQS via Amazon API Gateway endpoint, SendMessageResponse payload will be provided as part of the HTTP response. Note down the `MessageId` attribute from response.<br>
    Sample SendMessageResponse payload
@@ -168,7 +168,7 @@ aws cloudformation create-stack --stack-name queue-based-ingestion-cicd --templa
 
 The pipeline will attempt to run and will fail at the SourceCodeRepo stage as there is no code in the AWS CodeCommit yet.
 
-**\*Note:** You may need to set up AWS CodeCommit repository access for HTTPS users [using Git credentials](https://docs.aws.amazon.com/codecommit/latest/userguide/setting-up-gc.html?icmpid=docs_acc_console_connect_np) and [set up the AWS CLI Credential Helper](https://docs.aws.amazon.com/console/codecommit/connect-tc-alert-np).\*
+**Note:** You may need to set up AWS CodeCommit repository access for HTTPS users [using Git credentials](https://docs.aws.amazon.com/codecommit/latest/userguide/setting-up-gc.html?icmpid=docs_acc_console_connect_np) and [set up the AWS CLI Credential Helper](https://docs.aws.amazon.com/console/codecommit/connect-tc-alert-np).\*
 
 Once you have access to the code repository, navigate to python-sam folder, and, if you changed stack name, make sure that Parameters section of template.yaml is updated with the output values from the shared Cognito stack, and push code base to CodeCommit to start automated deployments.
 You can find URL to AWS CodeCommit Repository in the output section of the CloudFormation stack deployed above.
@@ -188,7 +188,7 @@ Note that the same Amazon Cognito stack is used in both testing and production d
 
 To delete the sample application that you created, use the AWS CLI:
 
-**\*Note:** :All below command examples refer to `stack-name` as `queue-based-ingestion`, please use appropriate stack you have provided earlier during `sam deploy` command.
+**Note:** :All below command examples refer to `stack-name` as `queue-based-ingestion`, please use appropriate stack you have provided earlier during `sam deploy` command.
 
 Before deleting the stack, ensure that the Amazon S3 bucket created to store the output of the job process is empty. You can get the bucket name from the AWS CloudFormation stack output or resources section, then open the AWS Management Console, navigate to the Amazon S3 bucket, and empty it.
 

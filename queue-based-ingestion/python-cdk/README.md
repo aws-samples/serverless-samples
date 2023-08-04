@@ -35,7 +35,7 @@ This project contains source code and supporting files for a serverless applicat
 ## AWS CDK Python Project Setup
 
 If virtualenv is needed, please create and activate it. You can find instructions in the [Setup and Deployment](./../README.md#setup-and-deployment) section. Once virtualenv is activated, you can install the required dependencies for the AWS CDK and API implementation.
-**\*Note:** Please verify that current directory is <repository path>/serverless-samples/queue-based-ingestion/python-cdk
+**Note:** Please verify that current directory is <repository path>/serverless-samples/queue-based-ingestion/python-cdk
 
 ```
 pip install -r requirements.txt
@@ -46,7 +46,7 @@ pip install -r ./src/api/requirements.txt
 
 At this point, you can now synthesize the AWS CloudFormation template for this code.
 
-**\*Note:**: The value of the variable `API_STACK_NAME` inside `app.py` is used to create an Amazon Simple Storage Service (Amazon S3) Bucket with the same name. So update `API_STACK_NAME` inside `app.py` with a unique stack name.
+**Note:**: The value of the variable `API_STACK_NAME` inside `app.py` is used to create an Amazon Simple Storage Service (Amazon S3) Bucket with the same name. So update `API_STACK_NAME` inside `app.py` with a unique stack name.
 
 After updating the value, commit the changes to the local git repo using the below commands. This step is only needed if you are planning to deploy the CICD pipeline for this example.
 
@@ -55,6 +55,7 @@ git add app.py
 
 git commit -m "update stack name"
 ```
+
 Please do not push this change to the remote origin repo, so do not run the `git push` command.
 
 ```bash
@@ -67,7 +68,7 @@ The AWS `cdk synth` command executes your app, which causes the resources define
 
 This example uses AWS CDK stack that deploys Amazon Cognito resources. The stack will be deployed automatically if you use a CI/CD pipeline. To deploy it manually, you can use the following command:
 
-**\*Note:** Please verify that current directory is <repository path>/serverless-samples/queue-based-ingestion/python-cdk
+**Note:** Please verify that current directory is <repository path>/serverless-samples/queue-based-ingestion/python-cdk
 
 ```bash
 cdk deploy <your stack-name>-cognito
@@ -95,7 +96,7 @@ aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id <cognit
 
 ## Manually Deploy The Sample Application
 
-**\*Note:**: Before deploying application manually, first time you will need to deploy shared Amazon Cognito stack, see the previous section for details.
+**Note:**: Before deploying application manually, first time you will need to deploy shared Amazon Cognito stack, see the previous section for details.
 
 To build and deploy your application for the first time, run the following in your shell:
 
@@ -107,7 +108,7 @@ This command will package and deploy your application to the AWS
 
 The Amazon API Gateway endpoint API will be displayed in the outputs when the deployment is complete.
 
-**\*Note:**: The value of variable `API_STACK_NAME` inside `app.py` is used to create an Amazon Simple Storage Service (Amazon S3) Bucket with the same name, so if a duplicate bucket name error is observed during `cdk deploy`, then please update the API_STACK_NAME variable with a unique stack name and run `cdk synth` and `cdk deploy` commands again.
+**Note:**: The value of variable `API_STACK_NAME` inside `app.py` is used to create an Amazon Simple Storage Service (Amazon S3) Bucket with the same name, so if a duplicate bucket name error is observed during `cdk deploy`, then please update the API_STACK_NAME variable with a unique stack name and run `cdk synth` and `cdk deploy` commands again.
 
 ## Unit Tests
 
@@ -129,12 +130,14 @@ To test the end-to-end flow of application, use the following steps:
 ```
 
 2. Submit a new Job Request via API call using /submit-job-request endpoint. This API call sends a message to the Amazon Simple Queue Service (Amazon SQS) queue and triggers a job process. For the API call, you need to use the IdToken generated in the previous step.<br>
-Below is a sample `curl` command. In HTTP request provide a payload specific to job process, this payload will be published to Amazon SQS queue.
+   Below is a sample `curl` command. In HTTP request provide a payload specific to job process, this payload will be published to Amazon SQS queue.
+
 ```bash
 curl --location --request POST 'https://<API Gateway Sender API Endpoint>/submit-job-request'  -H 'Content-Type: application/json' --data-raw '< Batch process JSON Payload>' -H 'Authorization:<IdToken>'
-   ```
+```
+
 3. Once the message is published to Amazon SQS via Amazon API Gateway endpoint, SendMessageResponse payload will be provided as part of the HTTP response. Note down the `MessageId` attribute from response.<br>
-Sample SendMessageResponse payload
+   Sample SendMessageResponse payload
 
 ```bash
 <?xml version="1.0" encoding="UTF-8"?>
@@ -180,12 +183,11 @@ cdk deploy <your stack-name>-cicd
 
 The pipeline will attempt to run and will fail at the SourceCodeRepo stage as there is no code in the AWS CodeCommit yet.
 
-**\*Note:** Please verify that current directory is <repository path>/serverless-samples/queue-based-ingestion/python-cdk
+**Note:** Please verify that current directory is <repository path>/serverless-samples/queue-based-ingestion/python-cdk
 
 To verify it, run the command basename `pwd` - it should return python-cdk as an end of the directory path.
 
-**\*Note:** You may need to set up AWS CodeCommit repository access for HTTPS users [using Git credentials](https://docs.aws.amazon.com/codecommit/latest/userguide/setting-up-gc.html?icmpid=docs_acc_console_connect_np) and [set up the AWS CLI Credential Helper](https://docs.aws.amazon.com/console/codecommit/connect-tc-alert-np).
-
+**Note:** You may need to set up AWS CodeCommit repository access for HTTPS users [using Git credentials](https://docs.aws.amazon.com/codecommit/latest/userguide/setting-up-gc.html?icmpid=docs_acc_console_connect_np) and [set up the AWS CLI Credential Helper](https://docs.aws.amazon.com/console/codecommit/connect-tc-alert-np).
 
 ```bash
 git remote rename origin upstream
@@ -204,9 +206,9 @@ Note that the same Amazon Cognito stack is used in both testing and production d
 
 To delete the sample application that you created, use the AWS CLI:
 
-**\*Note:** : For all below commands, use the stack name you have provided in the variable `API_STACK_NAME` inside the `app.py` file.
+**Note:** : For all below commands, use the stack name you have provided in the variable `API_STACK_NAME` inside the `app.py` file.
 
-Before deleting the stack, ensure that the Amazon S3 bucket created to store the output of the job process is empty. You can get the bucket name from the AWS CloudFormation stack output or resources section. 
+Before deleting the stack, ensure that the Amazon S3 bucket created to store the output of the job process is empty. You can get the bucket name from the AWS CloudFormation stack output or resources section.
 
 Below is a command that will list all resources for the stack, look for `job-payload-output-bucket*` in the resource's `PhysicalResourceId` section.
 
@@ -232,6 +234,7 @@ Below is a command that will list all resources for the stack, look for `pipelin
 ```bash
 aws cloudformation list-stack-resources --stack-name <your stack-name>
 ```
+
 In the above output of the list-stack-resources' command, look for `job-payload-output-bucket*-cicd-int-test-app`, which is an Amazon S3 bucket created to store the output of the job process during integration testing.
 Then open the AWS Management Console, navigate to the Amazon S3 bucket with the above naming convention, and empty it.
 
