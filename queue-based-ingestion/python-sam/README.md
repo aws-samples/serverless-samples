@@ -188,7 +188,7 @@ Note that the same Amazon Cognito stack is used in both testing and production d
 
 To delete the sample application that you created, use the AWS CLI:
 
-**Note:** :All below command examples refer to `stack-name` as `queue-based-ingestion`, please use appropriate stack you have provided earlier during `sam deploy` command.
+**Note:**:All below command examples refer to the `stack-name` as `queue-based-ingestion`, please use the name of stack you have provided earlier while executing `sam deploy` command.
 
 Before deleting the stack, ensure that the Amazon S3 bucket created to store the output of the job process is empty. You can get the bucket name from the AWS CloudFormation stack output or resources section, then open the AWS Management Console, navigate to the Amazon S3 bucket, and empty it.
 
