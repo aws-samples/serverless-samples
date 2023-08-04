@@ -112,7 +112,7 @@ The Amazon API Gateway endpoint API will be displayed in the outputs when the de
 
 ## Unit Tests
 
-Unit tests are defined in the `tests\unit` folder in this project. Use `pip` to install the `./tests/requirements.txt` and run unit tests.
+Unit tests are defined in the `tests\unit` folder in this project. Use `pip` to install `./tests/requirements.txt` and run unit tests.
 
 ```bash
 pip install -r ./tests/requirements.txt

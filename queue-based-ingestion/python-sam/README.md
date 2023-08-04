@@ -1,6 +1,6 @@
 # Python-AWS Serverless Application Model (AWS SAM)
 
-This is implementation of the Queue-based ingestion with Amazon API Gateway using Python and AWS Serverless Application Model (AWS SAM).
+This is an implementation of the Queue-based ingestion with Amazon API Gateway using Python and AWS Serverless Application Model (AWS SAM).
 
 ## Project Structure
 

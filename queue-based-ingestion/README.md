@@ -1,5 +1,5 @@
 # Amazon API Gateway: Queue based Ingestion.
- 
+
 This example shows Amazon API Gateway and Amazon Simple Queue Service (Amazon SQS) integration capabilities. However, rather than just focusing on technical aspects, we have used a common use case of triggering long-running batch processes with very minimal input.
 <br>
 In this use case, any client applications will call an API using Amazon API Gateway to submit a new job request. We buffer these job requests in Amazon SQS queue. AWS Lambda will process these requests by triggering business logic and then use Amazon DynamoDB to keep track of each request. Also, client applications can get the status of each submitted job request using a Job Status API endpoint. <br>
@@ -38,14 +38,14 @@ These examples create the following resources in your AWS account:<br>
 <li>Amazon API Gateway endpoint which allows submit requests to start new jobs and integrates with Amazon SQS Queue. <br>
 <li>Amazon SQS Queue to store incoming job requests.<br>
 <li>Amazon API Gateway endpoint which provides status of job.<br>
-<li>AWS Lambda function used as an Authorizer for Amazon API Gateway.<br>
+<li>AWS Lambda function is used as an Authorizer for Amazon API Gateway.<br>
 <li>AWS Lambda function to process messages from Amazon SQS queue.<br>
 <li>AWS Lambda function to process get Job Status API requests coming to Amazon API Gateway and provide status of each Job Request and link to Job output payload.<br>
 <li>AWS Lambda function that simulates business logic processing for job, this needs to be replaced by business logic specific to your usecase.<br>
 <li>Amazon DynamoDB tables to store details of job requests and status of job.<br>
 <li>Amazon S3 bucket to store output of job process.<br>
 <li>AWS Identity and Access Management (IAM) Roles for Lambda functions, with appropriate permissions to access Amazon S3 buckets, Amazon SQS queues, and Amazon DynamoDB Table. <br>
-<li>Amazon API Gateway access logs stream in Amazon CloudWatch Logs.<br>
+<li>Amazon API Gateway access logs stream into Amazon CloudWatch Logs.<br>
 <li>Amazon Simple Notification Service (Amazon SNS) topic for the alarms.<br>
 <li>Errors alarms for all AWS Lambda functions.<br>
 <li>CloudWatch Dashboard with API Gateway, AWS Lambda, and Amazon DynamoDB metrics pre-configured.<br>
@@ -98,7 +98,7 @@ Deploy using:
 
 Each example implements logging using Amazon CloudWatch Logs, emits custom metrics using Embedded Metrics Format, configures Amazon CloudWatch alerts, and creates an Amazon CloudWatch dashboard. AWS X-Ray distributed tracing is enabled whenever it is supported. AWS Lambda functions bundle the AWS X-Ray SDK for additional instrumentation. Amazon API Gateway access logging is enabled with a 30 day retention period.
 
-Check the AWS CloudFormation outputs of your deployment to see the Amazon CloudWatch dashboard URL, references to the Amazon API Gateway access logs stream, and alarms topics in Amazon SNS.
+Check the AWS CloudFormation outputs of your deployment to see the Amazon CloudWatch dashboard URL, references to the Amazon API Gateway access logs stream, and alarm topics in Amazon SNS.
 
 The dashboard is operational immediately:
 ![Soluton diagram](./assets/Cloudwatch_dashboard.png)
