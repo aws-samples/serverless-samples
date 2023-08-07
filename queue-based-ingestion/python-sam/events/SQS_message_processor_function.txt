@@ -1,0 +1,22 @@
+{
+   "Records":[
+      {
+         "messageId":"2ffb86df-0038-4777-bf44-84e7b85a63f0",
+         "receiptHandle":"AQEBPa13bnLMCYR6SGpE9e9iDYMFSWEkMYf4seG7u5jScMBlbTs9TwaPifgIaf8CxvpNO0nqadhHdc0Bc8Zmim4EepXe8ydv/H1Jd5+rh7oSLBP3mKrggUwpGzXQWO4OkasX2gpkm9oNH2XbS/iuZvDRuooQTLcXZ7ej5uqfKhP1jq6DxfGfLds4CwywSA9lDB40ElQka0FQgowV9T20odNfRn8wfk0W+IrgDLEDIyAsJ9KiWADHGN9fvysnwKO9SRdBF1qnZDr8svZ5pQ5qVCl6mLlXatQZuefzlK7CddpFzs8+mrnY52/6VF7gt6euYN5JqvLaVPpQGwJ8ow31QStJDza4UWPQ1RA+SGCTkAUsYzI0qM3urBCktmnTYnwdGVScxUKIxExb9rduIHLObBvzWk0E7TvCnanTNBLjeAUQEGQ=",
+         "body":"{ \"testmessage\": \"aws-forked-009\" }",
+         "attributes":{
+            "ApproximateReceiveCount":"1",
+            "SentTimestamp":"1646009685044",
+            "SenderId":"AAAAAAAAAAAAA:1646009685007573009",
+            "ApproximateFirstReceiveTimestamp":"1646009685057"
+         },
+         "messageAttributes":{
+            
+         },
+         "md5OfBody":"63d53175a9a175b791e04bd2fb38abdc",
+         "eventSource":"aws:sqs",
+         "eventSourceARN":"arn:aws:sqs:us-east-1:111111111:apigw-sqs-ingestion-sender-queue",
+         "awsRegion":"us-east-1"
+      }
+   ]
+}
