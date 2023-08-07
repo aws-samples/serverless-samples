@@ -669,7 +669,7 @@ Resources:
                 - codepipeline.amazonaws.com
       Path: /
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AWSCodePipelineFullAccess
+        - arn:aws:iam::aws:policy/AWSCodePipeline_FullAccess
         - arn:aws:iam::aws:policy/AWSCodeCommitReadOnly
       Policies:
         - PolicyName: CodePipelineAccess
