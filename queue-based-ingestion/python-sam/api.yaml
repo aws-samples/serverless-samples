@@ -1,0 +1,53 @@
+openapi: 3.0.1
+info:
+  title: API Gateway SQS Ingestion API
+  version: 2021-03-31 17:32:29UTC
+paths:  
+  /job-status/{job-id}:
+    get:
+      responses:
+        default:
+          description: "Default response for GET /job-status"
+
+      x-amazon-apigateway-integration:
+        type: "aws_proxy"
+        credentials:
+          Fn::GetAtt: [JobRequestAPIRole, Arn]
+        connectionType: "INTERNET"
+        payloadFormatVersion: '2.0'
+        httpMethod: "POST"
+        uri: 
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetJobStatusFunction.Arn}/invocations"
+    parameters:
+    - name: "job-id"
+      in: "path"
+      description: "Generated path parameter for job-id"
+      required: true
+      schema:
+        type: "string"
+  /submit-job-request:
+    post:
+      responses:
+        default:
+          description: Response for POST /
+      x-amazon-apigateway-integration:
+        type: aws_proxy
+        integrationSubtype: SQS-SendMessage
+        credentials:
+          Fn::GetAtt: [JobRequestAPIRole, Arn]
+        connectionType: INTERNET
+        payloadFormatVersion: '1.0'
+        requestParameters:
+          MessageBody: $request.body
+          QueueUrl:
+            Ref: JobRequestQueue
+x-amazon-apigateway-cors:
+  allowMethods:
+    - '*'
+  maxAge: 0
+  allowCredentials: false
+  allowOrigins:
+    - '*'
+x-amazon-apigateway-importexport-version: '1.0'
+
+

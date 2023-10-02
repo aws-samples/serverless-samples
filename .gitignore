@@ -5,3 +5,4 @@
 *samconfig.toml*
 *.venv*
 *__pycache__*
+queue-based-ingestion/python-cdk/cdk.out/cdk.out
