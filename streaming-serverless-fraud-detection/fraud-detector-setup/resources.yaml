@@ -284,6 +284,8 @@ Resources:
   SampleDataS3Bucket:
     Type: "AWS::S3::Bucket"
     Properties:
+      VersioningConfiguration:
+        Status: Enabled
       BucketName: !Sub ${AWS::AccountId}-${AWS::StackName}-sample-data
 
 Outputs:
