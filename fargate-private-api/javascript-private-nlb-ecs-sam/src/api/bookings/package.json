@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Bookings Service REST API",
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.43.0",
+    "@aws-sdk/client-dynamodb": "^3.556.0",
     "@aws-sdk/lib-dynamodb": "^3.43.0",
     "@aws-sdk/util-dynamodb": "^3.43.0",
     "aws-embedded-metrics": "^2.0.4",
