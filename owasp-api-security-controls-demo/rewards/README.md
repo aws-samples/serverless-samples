@@ -15,7 +15,13 @@ This scenario demonstrates mitigation for the following OWASP risks.
 
 ### Retrieving order and user details
 
-The AppSync API allows listing orders with a Query as shown in the top left of the diagram above. API is locked with the Cognito user pool created for the [Order service](../order/README.md). The query combines data from two sources. It gets order details from the Orders DynamoDB table using native DynamoDB resolver (top right of diagram above). It gets user details from Cognito using a Lambda function as resolver (bottom right of diagram above). The Lambda function receives the username from the Orders data and invokes the [`AdminGetUser`](https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminGetUser.html) API to get user full name and email attributes.
+The AppSync API allows listing orders with a Query as shown in the top left of the diagram above. API is locked with the Cognito user pool created for the [Order service](../order/README.md). **This mitigates for broken authentication risk**.
+
+The query combines data from two sources. It gets order details from the Orders DynamoDB table using native DynamoDB resolver (top right of diagram above). It gets user details from Cognito using a Lambda function as resolver (bottom right of diagram above). The Lambda function receives the username from the Orders data and invokes the [`AdminGetUser`](https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_AdminGetUser.html) API to get user full name and email attributes.
+
+Only authenticated Cognito users belonging to `Marketing` or `Datascience` groups can run queries. **This mitigates for broken function level authorization risk**.
+
+Field level Cognito directive for User restricts access to user PII data to marketing team only. **This mitigates for broken object property level authorization risk**.
 
 ## Testing controls
 
@@ -25,10 +31,14 @@ The AppSync API allows listing orders with a Query as shown in the top left of t
 2. [Optional] Install [`jq`](https://jqlang.github.io/jq/download/) to make it easy to review query output.
 
 ### Mitigation for broken authentication
-1. You need the Reward API endpoint, Cognito user pool name, and Cognito client id. You can get both from the terminal where you ran the deploy command. Alternately, run `sam list stack-outputs --stack-name <stack name>` to retrieve this. We will use the sample GraphQL query [sample_query.gql](./graphql/sample_query.gql). Run the curl command below. It has no authorization header.
+1. You need the Reward API endpoint, Cognito user pool name, and Cognito client id. You can get these from the terminal where you ran the deploy command. Alternately, run `sam list stack-outputs --stack-name <stack name>` to retrieve this. 
+
+We will use the sample GraphQL query - [sample_query.gql](./graphql/sample_query.gql). Run the curl command below. It has no authorization header.
 
 ```bash
-curl -H "Content-Type: application/json" -XPOST https://<api id>.appsync-api.<region>.amazonaws.com/graphql -d @rewards/graphql/sample_query.gql
+curl -H "Content-Type: application/json" \
+  -XPOST https://<api id>.appsync-api.<region>.amazonaws.com/graphql \
+  -d @rewards/graphql/sample_query.gql
 ```
 
 The request above will fail.
@@ -43,21 +53,32 @@ The request above will fail.
 ```
 
 ### Mitigation for broken object property level authorization
-2. Marketing user needs access to PII data such as email for running marketing campaign. In a real world scenario, you will have a custom attribute to indicate if user has opted out of campaigns to further filter the data retrieved. The data science team is also interested in this data to build personalisation model. While they need access to user attributes such as geographic location or tenure on the platform but must not have access to PII data. GraphQL allows you to set fine-grained permissions against fields. Review the [graphql schema](./graphql/schema.graphql). The `user` field on type `Order` has authentication set to `@aws_auth(cognito_groups: ["Marketing"])`. Also note that the permisison on the Query itself allows both Marketing and Datascience Cognito groups access.
+2. Marketing user needs access to PII data such as email for running marketing campaign. In a real world scenario, you will have a custom attribute to indicate if user has opted out of campaigns to further filter the data retrieved. 
+
+The data science team is also interested in this data to build personalisation model. While they need access to user attributes such as geographic location or tenure on the platform, they must not have access to PII data. 
+
+GraphQL allows you to set fine-grained permissions against fields. Review the [graphql schema](./graphql/schema.graphql). The `user` field on type `Order` has authentication set to `@aws_auth(cognito_groups: ["Marketing"])`. Also note that the permission on the Query itself allows both `Marketing` and `Datascience` Cognito groups access which is the default permission for all fields.
 
 To test this, try invoking the AppSync endpoint as marketing user. First authenticate as `marketing` to retrieve JWT tokens.
 
 ```bash
-aws cognito-idp admin-initiate-auth --user-pool-id <cognito user pool> --client-id <client if> --auth-flow ADMIN_NO_SRP_AUTH --auth-parameters 'USERNAME=marketing,PASSWORD="<marketing password>"'
+aws cognito-idp admin-initiate-auth \
+  --user-pool-id <cognito user pool> \
+  --client-id <client id> \
+  --auth-flow ADMIN_NO_SRP_AUTH \
+  --auth-parameters 'USERNAME=marketing,PASSWORD="<marketing password>"'
 ```
 
 Invoke the AppSync endpoint using the Id token from command above as `Authorization` header.
 
 ```bash
-curl -H "Content-Type: application/json" -H "Authorization: <id token>” -XPOST https://<api id>.appsync-api.<region>.amazonaws.com/graphql -d @rewards/graphql/sample_query.gql | jq '.'
+curl -H "Content-Type: application/json" \
+  -H "Authorization: <id token>" \
+  -XPOST https://<api id>.appsync-api.<region>.amazonaws.com/graphql \
+  -d @rewards/graphql/sample_query.gql | jq '.'
 ```
 
-You should see an output like this. It has been truncated for brevity. 
+You should see an output like this with details of all 3 orders. It has been truncated for brevity. 
 
 ```json
 {
@@ -81,7 +102,7 @@ You should see an output like this. It has been truncated for brevity.
 }
 ```
 
-3. Now rerun the same commands as datascience user. First, authenticate with Cognito as `datascientist` and use the id token to invoke AppSync. You will see `null` for user data. The response will also include an error field that explains why this is null. The frontend application will handle this is a real world scenario.
+3. Now rerun the same commands as datascience user. Authenticate with Cognito as `datascientist` and use the id token to invoke AppSync. You will see `null` for user data. The response will also include an error field that explains why this is null. The frontend application will handle this is a real world scenario.
 
 ```json
 {
@@ -125,7 +146,7 @@ You should see an output like this. It has been truncated for brevity.
 ```
 
 ### Mitigation for broken function level authorization
-1. Cognito is the default authentication but not all Cognito users can access the data. Try authenticating as `mary` and use the Id token for the curl command. This will return message below.
+4. Cognito is the default authentication but not all Cognito users can access the data. Try authenticating as `mary` and use the Id token for the curl command. This will return message below.
 
 ```json
 {
@@ -152,4 +173,3 @@ You should see an output like this. It has been truncated for brevity.
   ]
 }
 ```
-

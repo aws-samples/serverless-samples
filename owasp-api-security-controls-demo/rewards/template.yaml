@@ -26,6 +26,7 @@ Resources:
   UserDetailsFunction:
     Type: AWS::Serverless::Function
     Properties:
+      Description: reInforce 2024 - APS332 - Rewards service Lambda datasource
       Handler: index.handler
       CodeUri: ./src
       Environment:

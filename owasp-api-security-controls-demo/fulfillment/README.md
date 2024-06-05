@@ -1,8 +1,8 @@
 # Fulfillment service
 
-The fulfillment service is used by baristas to close coffee orders. The baristas will access the orders over a private REST API Gateway. [AWS IAM](https://aws.amazon.com/iam) is used for authentication.
+This service is used by baristas to fulfill coffee orders. The baristas access the orders over a private REST API Gateway. [AWS IAM](https://aws.amazon.com/iam) is used for authentication.
 
-Users of this application are internal. The easiest way to vend AWS credentials is to federate the corporate identity provider to AWS. The AIM roles on AWS will provide access to the API. This in a real world will be managed by the application the users access.
+Users of this application are internal. The easiest way to vend AWS credentials is to federate the corporate identity provider to AWS. The IAM roles on AWS will provide permissions to access to the API. This demo does not cover federation with IAM.
 
 ![Payment service architecture](../assets/FulfillmentService.png)
 
@@ -15,15 +15,17 @@ This scenario demonstrates mitigation for the following OWASP risks.
 
 ## How it works
 
-This service has 2 interfaces. The first is a queue based interface that accepts orders from the order service. A lambda function persists orders in a DynamoDB table with status as "PENDING". The API gateway integrates with another Lambda function to retrieve outstanding orders and update order status.
+This service has 2 interfaces. The first is a queue based interface that accepts orders from the order service. A lambda function persists orders in a DynamoDB table with status as "PENDING". 
+
+The API gateway integrates with a different Lambda function to retrieve outstanding orders and update order status. **IAM mitigates for broken authentication**.
 
 ### Listing outstanding orders
 
-The `listPendingOrders` resource uses a global index to query orders at status "PENDING".
+The `listPendingOrders` resource uses a global index to query orders with status "PENDING".
 
 ### Updating order
 
-As baristas pick up orders for processing, they can move the order to IN_PROGRESS and finally "CLOSE" them. The `updateOrderStatus` resource accepts a POST request to update order status.
+As baristas pick up orders for processing, they can move the order to "IN_PROGRESS" and mark them "DONE" once coffee is prepared. The `updateOrderStatus` resource accepts a POST request to update order status.
 
 ## Testing controls
 

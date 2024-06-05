@@ -93,14 +93,17 @@ Resources:
 
 Outputs:
   CognitoUserPool:
-    Description: Cognito user pool
+    Description: Cognito user pool id
     Value: !GetAtt OrderServiceStack.Outputs.CognitoUserPool
   CognitoUserPoolClient:
-    Description: Cognito user pool client
+    Description: Cognito user pool client id
     Value: !GetAtt OrderServiceStack.Outputs.CognitoUserPoolClient
   OrderServiceApi:
     Description: Order service API
     Value: !GetAtt OrderServiceStack.Outputs.OrderApi
+  OrdersTable:
+    Description: Order table
+    Value: !GetAtt OrderServiceStack.Outputs.OrderTableName
   PaymentServiceApi:
     Description: Payment service API
     Value: !GetAtt PaymentServiceStack.Outputs.PaymentsApi
@@ -110,6 +113,9 @@ Outputs:
   FilfillmentServiceApi:
     Description: Fulfillment service API
     Value: !GetAtt FulfillmentServiceStack.Outputs.FulfillmentApi
+  FulfillmentTable:
+    Description: Fulfillment table
+    Value: !GetAtt FulfillmentServiceStack.Outputs.FulfillmentTableName
   ApiVpceDns:
     Description: API Gateway VPC endpoint DNS
     Value: !Select [1, !Split [":", !GetAtt PaymentServiceStack.Outputs.VpceDns]]

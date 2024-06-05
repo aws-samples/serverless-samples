@@ -3,9 +3,6 @@ Transform: AWS::Serverless-2016-10-31
 Description: reInforce APS332 - Order service
 Parameters:
   # Cognito parameters
-  CognitoUserPoolName:
-    Type: String
-    Default: CoffeeShopUserPool
   CognitoUserPoolClientName:
     Type: String
     Default: CoffeeShopUserPoolClient
@@ -75,7 +72,6 @@ Resources:
   CognitoUserPool:
     Type: AWS::Cognito::UserPool
     Properties:
-      UserPoolName: !Ref CognitoUserPoolName
       UsernameConfiguration: 
         CaseSensitive: false
       AdminCreateUserConfig:
@@ -117,6 +113,8 @@ Resources:
         - Name: email
           Value:
             Ref: AdminEmail
+        - Name: name
+          Value: ArnavDesai
 
   CognitoUserPoolMktg:
     Type: AWS::Cognito::UserPoolUser
@@ -130,6 +128,8 @@ Resources:
         - Name: email
           Value:
             Ref: MktgEmail
+        - Name: name
+          Value: JaneDoe
 
   CognitoUserPoolDatascientist:
     Type: AWS::Cognito::UserPoolUser
@@ -143,6 +143,8 @@ Resources:
         - Name: email
           Value:
             Ref: DatascientistEmail
+        - Name: name
+          Value: JohnDoe
 
   CognitoUserPoolCustomer1:
     Type: AWS::Cognito::UserPoolUser

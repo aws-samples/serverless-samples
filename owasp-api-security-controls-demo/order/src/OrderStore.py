@@ -3,7 +3,6 @@
 
 import os
 from aws_lambda_powertools import Logger
-from datetime import datetime, timezone
 from typing import Dict
 from boto3.dynamodb.conditions import Key
 from UserAbacSession import UserAbacSession
@@ -37,7 +36,6 @@ class OrderStore(object):
         item = {
             **data,
             'user_id': self._user_session.user_id,
-            'order_date': datetime.now(timezone.utc).isoformat(),
         }
         response = self._table.put_item(Item=item)
         logger.info("response", extra={'response': response})

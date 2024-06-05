@@ -12,6 +12,7 @@ import urllib.parse
 import requests
 import boto3
 from aws_requests_auth.aws_auth import AWSRequestsAuth
+from datetime import datetime, timezone
 import os
 import json
 
@@ -117,12 +118,20 @@ def place_order():
         "APIGatewayProxyEvent", extra={
             'APIGatewayProxyEvent': app.current_event})
     try:
+        # POST payload
         order_data = app.current_event.json_body
+
+        # user context from payload
         claims = app.current_event.request_context.authorizer.claims
         user_id = claims['sub']
         username = claims['cognito:username']
-        order_data["username"] = username
+        order_data['username'] = username
+
+        # process payment
+        order_data['order_date'] = datetime.now(timezone.utc).isoformat()
         payment = process_payment(username, order_data['amount'])
+
+        # publish to fulfillment service
         fulfillment = publish_to_fulfillment_service(
             order_data['order_id'], order_data['item'], order_data['order_date'])
     except Exception as e:
@@ -134,6 +143,8 @@ def place_order():
         extra={
             'user_id': user_id,
             'order_data': order_data})
+
+    # store order
     user_session = UserAbacSession(user_id)
     order_store = OrderStore(user_session, is_admin(claims))
     return order_store.store(order_data)

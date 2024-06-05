@@ -13,8 +13,8 @@ parameter_overrides = [
   "DatascientistEmail=<email 3>",
   "Customer1Email=<email 4>",
   "Customer2Email=<email 5>",
-  "VpcId=<your VPC>",
-  "Subnet1=<private subnet 1>",
-  "Subnet2=<private subnet 2>"
+  "VpcId=<your VPC id>",
+  "Subnet1=<private subnet 1 id>",
+  "Subnet2=<private subnet 2 id>"
 ]
 tags = "project=\"owasp-api-security-demo\""

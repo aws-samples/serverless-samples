@@ -201,3 +201,6 @@ Outputs:
   SqsVpcEndpoint:
     Description: VPC endpoint name
     Value: !Ref FulfillmentQVpcEndpoint
+  FulfillmentTableName:
+    Description: Fulfillment table name
+    Value: !Ref FulfillmentTable
