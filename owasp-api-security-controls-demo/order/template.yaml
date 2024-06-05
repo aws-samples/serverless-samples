@@ -393,3 +393,9 @@ Outputs:
   CognitoUserPoolClient:
     Description: Cognito user pool clinet
     Value: !Ref CognitoUserPoolClient
+  OrderTableName:
+    Description: Order table name
+    Value: !Ref OrderTable
+  OrderTableArn:
+    Description: Order table name
+    Value: !GetAtt OrderTable.Arn

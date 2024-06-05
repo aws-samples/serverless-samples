@@ -11,6 +11,8 @@ This example demonstrates how you can mitigate for application focused [OWASP AP
 
 The controls demonstrated in this example must be used in conjunction with perimeter security controls. We will use the example of a microservice based coffee shop application below to demonstrate the controls.
 
+> Note: Controls here rely on native AWS services. But there are multiple ways to implement them. You can also use open source or third party tools. The exact solution and choice of tools will depend on your use case. We encourage you to have a discussion with your AWS account team to dive deeper to identify the best solution for you.
+
 ![Coffee Shop Microservices Architecture](./assets/OverallArchitecture.png)
 
 ## How it works

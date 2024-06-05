@@ -1,0 +1,130 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: reInforce APS332 - Rewards service
+Parameters:
+  OrderTableName:
+    Description: Order DynamoDB table name
+    Type: String
+  OrderTableArn:
+    Description: Order DynamoDB table arn
+    Type: String
+  CognitoUserPoolId:
+    Description: Cognito user pool
+    Type: String
+
+Globals:
+  Api:
+    TracingEnabled: true
+  Function:
+    Timeout: 5
+    Runtime: nodejs20.x
+    Tracing: Active
+    Architectures:
+      - arm64
+
+Resources:
+  UserDetailsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      CodeUri: ./src
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref CognitoUserPoolId
+      Policies:
+        - Version: '2012-10-17' 
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminGetUser
+              Resource: !Sub 'arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${CognitoUserPoolId}'
+
+  RewardsApiServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: reInforce 2024 - APS332 - AppSync API service role
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 
+                - appsync.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: OrderTableAccessPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:Query
+                  - dynamodb:GetItem
+                  - dynamodb:BatchGetItem
+                  - dynamodb:Scan
+                Resource: !Ref OrderTableArn
+        - PolicyName: LambdaInvokePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !GetAtt UserDetailsFunction.Arn
+
+  RewardsApi:
+    Type: AWS::Serverless::GraphQLApi
+    Properties:
+      SchemaUri: ./graphql/schema.graphql
+      Auth:
+        Type: AMAZON_COGNITO_USER_POOLS
+        UserPool:
+          UserPoolId: !Ref CognitoUserPoolId
+          AwsRegion: !Sub ${AWS::Region}
+          DefaultAction: ALLOW
+      DataSources:
+        DynamoDb:
+          OrderDataSource:
+            TableName: !Ref OrderTableName
+            TableArn: !Ref OrderTableArn
+            ServiceRoleArn: !GetAtt RewardsApiServiceRole.Arn
+        Lambda:
+          UserDataSource:
+            FunctionArn: !GetAtt UserDetailsFunction.Arn
+            ServiceRoleArn: !GetAtt RewardsApiServiceRole.Arn
+      Functions:
+        listOrderTable:
+          Runtime:
+            Name: APPSYNC_JS
+            Version: "1.0.0"
+          DataSource: OrderDataSource
+          CodeUri: ./graphql/resolvers/listOrders.js
+        lambdaInvoker:
+          Runtime:
+            Name: APPSYNC_JS
+            Version: 1.0.0
+          DataSource: UserDataSource
+          CodeUri: ./graphql/resolvers/lambdaInvoker.js
+      Resolvers:
+        Query:
+          listOrders:
+            Runtime:
+              Name: APPSYNC_JS
+              Version: "1.0.0"
+            Pipeline:
+            - listOrderTable
+        Order:
+          userDetails:
+            FieldName: user
+            Runtime:
+              Name: APPSYNC_JS
+              Version: 1.0.0
+            Pipeline:
+            - lambdaInvoker
+
+Outputs:
+  RewardsApi:
+    Description: Rewards service API
+    Value: !GetAtt RewardsApi.GraphQLUrl

@@ -1,0 +1,16 @@
+{
+  "query": "query GetOrders {
+    listOrders(filter: {order_date: {gt: \"2024-05-30\"}}, limit: 5) {
+      items {
+        item
+        order_date
+        amount
+        user {
+          email
+          name
+        }
+        user_id
+      }
+    }
+  }"
+}

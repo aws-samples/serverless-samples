@@ -121,6 +121,7 @@ def place_order():
         claims = app.current_event.request_context.authorizer.claims
         user_id = claims['sub']
         username = claims['cognito:username']
+        order_data["username"] = username
         payment = process_payment(username, order_data['amount'])
         fulfillment = publish_to_fulfillment_service(
             order_data['order_id'], order_data['item'], order_data['order_date'])

@@ -12,7 +12,6 @@ This scenario demonstrates mitigation for the following OWASP risks.
 | -- | --------- | ----- |
 |API1:2023|Broken Object Level Authorization|Role based access control based on IAM permissions|
 |API2:2023|Broken Authentication|IAM|
-|API3:2023|Broken API Object Property Level Authorization|API Gateway Input validation|
 
 ## How it works
 

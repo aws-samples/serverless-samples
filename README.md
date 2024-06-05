@@ -48,6 +48,8 @@ This repository contains samples of Serverless application code.
 - ## queue-based-ingestion
   This example demonstrates Amazon API Gateway and Amazon Simple Queue Service (Amazon SQS) integration capabilities. However rather than just focusing on technical aspects, we have used a common use case of triggering long-running batch processes with very minimal input. A reference application is created to showcase the implementation of this use case using a serverless approach that includes CI/CD pipelines, automated unit and integration testing, and workload observability. [README](./queue-based-ingestion)
 
+- ## owasp-api-security-controls-demo
+  This example demonstrates implementing OWASP controls for a sample microservice application using Amazon API Gateway and AWS AppSync. Refer to [README](./owasp-api-security-controls-demo) for details.
 
 ## Security
 
