@@ -1,8 +1,0 @@
-// package.json
-{
-  "name": "rewards-service",
-  "type": "module",
-  "description": "reInforce APS332 - Rewards service",
-  "version": "1.0",
-  "license": "MIT"
-}
