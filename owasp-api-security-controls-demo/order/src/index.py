@@ -61,7 +61,8 @@ def process_payment(cust_name, price):
             headers={
                 'Accept': 'application/json',
                 'Host': PAYMENTS_API_DNS_NAME},
-            json=payload)
+            json=payload,
+            timeout=5)
         logger.info(f"Payment processing: {res.status_code}, {res.json()}")
         if res.status_code != 200:
             raise BadRequestError("payment processing error")

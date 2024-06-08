@@ -23,6 +23,7 @@ Resources:
       GroupDescription: reInforce APS332 - Order function security group
       SecurityGroupEgress:
         -
+          Description: Allow all egress traffic
           IpProtocol: "-1"
           CidrIp: "0.0.0.0/0"
 
@@ -30,6 +31,7 @@ Resources:
     Type: AWS::EC2::SecurityGroupIngress
     DependsOn: VpceSecurityGroup
     Properties:
+      Description: Allow all inbound traffic from same security group
       GroupId: !Ref VpceSecurityGroup
       IpProtocol: "tcp"
       FromPort: "0"
@@ -49,15 +51,45 @@ Resources:
         - !Ref VpceSecurityGroup
       PrivateDnsEnabled: true
 
+  # IAM Role for API Gateway + CloudWatch Logging
+  CloudWatchRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            Action: 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+        Path: /
+        ManagedPolicyArns:
+          - 'arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs'
+
+  ApiCWLRoleArn:
+    Type: AWS::ApiGateway::Account
+    Properties: 
+      CloudWatchRoleArn: !GetAtt CloudWatchRole.Arn
+
+  PaymentApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+
   PaymentApi:
     Type: AWS::Serverless::Api
+    DependsOn: ApiCWLRoleArn
     Properties:
       Description: Payment API
+      TracingEnabled: true
       StageName: Prod
       EndpointConfiguration: PRIVATE
       Cors: "'*'"
       Auth:
         DefaultAuthorizer: AWS_IAM
+      AccessLogSetting:
+        DestinationArn: !GetAtt PaymentApiLogGroup.Arn
+        Format: '{ "requestId": "$context.requestId", "path": "$context.path", "routeKey": "$context.routeKey", "ip": "$context.identity.sourceIp", "requestTime": "$context.requestTime", "httpMethod": "$context.httpMethod","statusCode": $context.status }'
       DefinitionBody:
         x-amazon-apigateway-request-validators:
           all:

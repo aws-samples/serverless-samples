@@ -22,14 +22,14 @@ The diagram below depicts the flow for placing an order.
 
 ![Placing an order](../assets/PlaceOrder.png)
 
-1. User authenticates with Cognito and uses the ID token as `Authorization` header for API Gateway. 
-2. API Gateway uses a Cognito authorizer to validate the token and rejects the request if a valid token is not passed.
+1. User authenticates with Cognito and uses the ID token as `Authorization` header for API Gateway. Cognito password policy ensures strong password.
+2. API Gateway uses a Cognito authorizer to validate the token and rejects the request if token is invalid.
 3. If token is valid, API Gateway invokes the Lambda function. It passes the subject, `sub`, in the token as claims field to  Lambda function.
 4. The function invokes the payment service to process payment.
 5. It then posts the order details to the fulfillment service queue.
 6. There are 2 steps to persisting the order details in DynamoDB table. The function execution role does not have permissions to access DynamoDB table.
-   6a. The function assumes a role with DynamoDB permissions and tags the session with UserId set to the unique Cognito identifier or `sub` for the authenticated user. 
-   6b. The identifier, `sub`, is used as the partition key for DynamoDB while creating a record. Order date is used as the sort key. The combination of user id and order date uniquely identifies each record.
+   6a. The function assumes a role with DynamoDB permissions and tags the session with `UserId` key set to the unique Cognito identifier or `sub` for the authenticated user. 
+   6b. The identifier, `sub`, is used as the DynamoDB partition key while creating a record. Order date is used as the sort key. The combination of user id and order date uniquely identifies each record.
 
 **Using Cognito as authorizer mitigates for API2:2023 - Broken Authentication.**
 
@@ -40,10 +40,10 @@ The diagram below depicts the flow for listing orders as a user.
 ![List order as user](../assets/ListOrderUser.png)
 
 1. User authenticates with Cognito and uses the ID token as `Authorization` header for API Gateway. 
-2. API Gateway uses a Cognito authorizer to validate the token and rejects the request if a valid token is not passed.
+2. API Gateway uses a Cognito authorizer to validate the token and rejects the request if token is invalid.
 3. If token is valid, API Gateway invokes the Lambda function. It passes the subject, `sub`, in the token as claims field to  Lambda function.
 4. There are 2 steps to retrieving the order details. The function execution role does not have permissions to access DynamoDB table.
-   6a. The Lambda function assumes a role with DynamoDB permissions and tags the session with UserId set to the unique Cognito identifier or `sub` for the authenticated user. 
+   6a. The Lambda function assumes a role with DynamoDB permissions and tags the session with `UserId` key set to the unique Cognito identifier or `sub` for the authenticated user. 
    6b. The identifier, `sub`, is used as the partition key for DynamoDB `query`. This ensures only orders placed by authenticated user are retrieved. 
 
 **Using role based access control for DynamoDB records mitigates for API1:2023 - Broken Object Level Authorization.**
@@ -55,7 +55,7 @@ The diagram below depicts the flow for listing orders as admin. Admin user belon
 ![List order as admin](../assets/ListOrderAdmin.png)
 
 1. User authenticates with Cognito and uses the ID token as `Authorization` header for API Gateway. 
-2. API Gateway uses a Cognito authorizer to validate the token and rejects the request if a valid token is not passed.
+2. API Gateway uses a Cognito authorizer to validate the token and rejects the request if token is invalid.
 3. If token is valid, API Gateway invokes the Lambda function. It passes the subject, `sub`, in the token as claims field to  Lambda function. In addition, it passes a `cognito:groups` claim.
 4. There are 2 steps to retrieving the order details. The function execution role does not have permissions to access DynamoDB table.
    6a. The Lambda function assumes a role with DynamoDB permissions and tags the session with UserId set to the unique Cognito identifier or `sub` for the authenticated user. 
@@ -63,7 +63,7 @@ The diagram below depicts the flow for listing orders as admin. Admin user belon
 
 > Note: Using scan on large tables is not performant. We have used scan for ease of demonstration. Refer to the [blog on effective data storage for DynamoDB](https://aws.amazon.com/blogs/database/effective-data-sorting-with-amazon-dynamodb/) for best practices.
 
-**Using role based access control for DynamoDB records mitigates for API5:2023 - Broken Function Level Authorization.**
+**Using role based access control (RBAC) for DynamoDB records mitigates for API5:2023 - Broken Function Level Authorization.**
 
 ## Testing controls
 
@@ -124,7 +124,7 @@ curl -H "Content-Type: application/json" \
 
 Again, you can verify entries in DynamoDB table.
 
-3. Retrieve orders as user Paulo. The JWT tokens have an expiry of 60 minutes. If you run this command within 60 mins of executing step 2, you can use the same token. If not, rerun the `admin-initiate-auth` commands above to get new tokens.
+3. Retrieve orders as user Paulo. The JWT tokens have an expiry of 60 minutes. If you run this command within 60 mins of executing step 2, you can use the same token. If not, rerun the `admin-initiate-auth` command in step 2 above to get new tokens.
 
 ```bash
 curl -H "Content-Type: application/json" \

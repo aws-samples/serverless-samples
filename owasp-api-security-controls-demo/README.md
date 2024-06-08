@@ -41,7 +41,7 @@ Brief summary of the components below. Refer to the respective service folder to
    Copy the file `samconfig.toml.example` at the root of this folder to `samconfig.toml`. Replace values in angular brackets `<>` in `samconfig.toml` with ones specific for your deployment. 
    
    Note:
-   1. Please specify valid email address as you will receive temporary password on this email. You need this for subsequent steps. If you get the email address wrong, you will have to delete and redeply the stack as Amazon Cognito will not allow updating emails.
+   1. Please specify valid email address as you will receive temporary password on this email. You need this for subsequent steps. If you get the email address wrong, you will have to delete and redeploy the stack as Amazon Cognito will not allow updating emails.
    2. Specify existing VPC and subnet ids in the region you are deploying to.
 
    ```bash
@@ -97,7 +97,7 @@ Brief summary of the components below. Refer to the respective service folder to
     }
    ```
 
-    **3.2.** Use the session token and respond to the challenge to set a new password. Command below for Mary.
+    **3.2.** Use the session token and respond to the challenge to set a new password. New password must have lower case letters, uppercase letters, numbers, special characters, and must have a minimum length of 8. Command below for Mary.
 
     ```bash
     aws cognito-idp admin-respond-to-auth-challenge \
@@ -137,3 +137,7 @@ Please refer to the Readme in service sub-folders for test instructions.
 ```bash
 sam delete
 ```
+
+> Note: We recommend using `sam` to delete the stack instead of doing it from the console as `sam` will clean up artifacts like Lambda zip files and also delete CloudWatch log streams.
+
+3. [Optional] If this is the first time you used `sam`, the cli creates an S3 bucket through a CloudFormation stack named `aws-sam-cli-managed-default`. If you retain this stack, future sam deployments to the region will reuse the bucket. If you do not wish to retain this, you can delete the stack from the console.

@@ -55,10 +55,51 @@ Resources:
         - !Ref VpceSecurityGroup
       PrivateDnsEnabled: true
 
+  FulfillmentDLQ: 
+    Type: AWS::SQS::Queue
+    Properties: 
+      SqsManagedSseEnabled: true
+
   FulfillmentQ:
     Type: AWS::SQS::Queue
     Properties:
       SqsManagedSseEnabled: true
+      RedrivePolicy: 
+        deadLetterTargetArn: !GetAtt FulfillmentDLQ.Arn
+        maxReceiveCount: 5
+
+  FulfillmentQPolicy:      
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Statement: 
+          - 
+            Action: 
+              - sqs:SendMessage
+              - sqs:ReceiveMessage
+            Effect: "Allow"
+            Resource: FulfillmentQ.Arn
+            Principal:
+              AWS:
+                - !Sub ${AWS::AccountId}
+            Condition:
+              Bool:
+                "aws:SecureTransport": true
+          - 
+            Action: 
+              - sqs:SendMessage
+              - sqs:ReceiveMessage
+            Effect: "Allow"
+            Resource: FulfillmentDLQ.Arn
+            Principal:
+              AWS:
+                - !Sub ${AWS::AccountId}
+            Condition:
+              Bool:
+                "aws:SecureTransport": true
+      Queues: 
+        - !Ref FulfillmentQ
+        - !Ref FulfillmentDLQ
 
   FulfillmentQLambda:
     Type: AWS::Serverless::Function
@@ -81,6 +122,7 @@ Resources:
       Environment:
         Variables:
           FULFILLMENT_TABLE: !Ref FulfillmentTable
+      # ReservedConcurrentExecutions: 5
       Events:
         ProcessOrders:
           Type: SQS
@@ -127,6 +169,11 @@ Resources:
             ProjectionType: ALL
 
   # Fulfillment service
+  FulfillmentApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+
   FulfillmentApi:
     Type: AWS::Serverless::Api
     Properties:
@@ -134,6 +181,7 @@ Resources:
       StageName: !Ref ApiStage
       EndpointConfiguration: PRIVATE
       Cors: "'*'"
+      TracingEnabled: true
       Auth:
         DefaultAuthorizer: AWS_IAM
         # https://github.com/aws/serverless-application-model/issues/1708#issuecomment-1108812052
@@ -152,6 +200,9 @@ Resources:
               }
             }
           }]
+      AccessLogSetting:
+        DestinationArn: !GetAtt FulfillmentApiLogGroup.Arn
+        Format: '{ "requestId": "$context.requestId", "path": "$context.path", "routeKey": "$context.routeKey", "ip": "$context.identity.sourceIp", "requestTime": "$context.requestTime", "httpMethod": "$context.httpMethod","statusCode": $context.status }'
 
   FulfillmentFunction:
     Type: AWS::Serverless::Function
@@ -171,6 +222,7 @@ Resources:
         Variables:
           FULFILLMENT_TABLE_NAME: !Ref FulfillmentTable
           ORDER_STATUS_INDEX: !Ref OrderStatusDDBIndexName
+      # ReservedConcurrentExecutions: 5
       Events:
         UpdateOrderStatus:
           Type: Api

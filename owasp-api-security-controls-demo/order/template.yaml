@@ -79,6 +79,10 @@ Resources:
       Policies:
         PasswordPolicy:
           MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
       AutoVerifiedAttributes:
         - email
       Schema:
@@ -231,10 +235,16 @@ Resources:
       SecurityGroupIds:
         - !Ref OrderServiceSecurityGroup
 
+  OrderApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+
   OrderApi:
     Type: AWS::Serverless::Api
     Properties:
       Description: Order API
+      TracingEnabled: true
       StageName: Prod
       Cors: "'*'"
       Auth:
@@ -242,6 +252,9 @@ Resources:
         Authorizers:
           CognitoAuthorizer:
             UserPoolArn: !GetAtt CognitoUserPool.Arn
+      AccessLogSetting:
+        DestinationArn: !GetAtt OrderApiLogGroup.Arn
+        Format: '{ "requestId": "$context.requestId", "path": "$context.path", "routeKey": "$context.routeKey", "ip": "$context.identity.sourceIp", "requestTime": "$context.requestTime", "httpMethod": "$context.httpMethod","statusCode": $context.status }'
 
   OrderTableAccessRole:
     Type: AWS::IAM::Role
@@ -311,7 +324,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - execute-api:Invoke
-                Resource: !Sub arn:aws:execute-api:${AWS::Region}:*:*/Prod/POST/makePayment/*
+                Resource: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:*/Prod/POST/makePayment
         - PolicyName: FulfillmentQAccess
           PolicyDocument:
             Version: "2012-10-17"
@@ -329,6 +342,7 @@ Resources:
       Handler: index.lambda_handler
       CodeUri: src/
       Role: !GetAtt OrderFunctionRole.Arn
+      # ReservedConcurrentExecutions: 5
       Environment:
         Variables:
           RESOURCE_ACCESS_ROLE_ARN: !GetAtt OrderTableAccessRole.Arn

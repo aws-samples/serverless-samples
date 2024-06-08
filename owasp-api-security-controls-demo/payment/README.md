@@ -118,7 +118,7 @@ Rerun the same `awscurl` command above. You will now see the message below.
 
 ### Mitigation for broken object property level authorization
 
-5. One way to mitigate for this risk is application level checks for inputs. This sample shows how API Gateway input validation using schema can prevent adding or modifying payload requests.
+1. One way to mitigate for this risk is application level checks for inputs. This sample shows how API Gateway input validation using schema can prevent adding or modifying payload requests. Remove the API deny policy from the EC2 instance role first.
 
 Try changing the payload for awscurl request to add or remove fields or changing datatype. For example, try the awscurl command with payloads below. In the first one, `id` has been replaced with `payment_id`. 
 
@@ -132,6 +132,4 @@ In the one below, price has been changed to string datatype.
 {"id": "ABC123", "name": "Jane Doe", "card": "HASH1234", "price": "5.99"}
 ```
 
-In both case, you will see `{"message": "Invalid request body"}`. Make sure you remove the API deny policy from the EC2 instance role from step 3 above.
-
-
+In both case, you will see `{"message": "Invalid request body"}`.

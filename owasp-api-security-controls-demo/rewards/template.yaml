@@ -29,6 +29,7 @@ Resources:
       Description: reInforce 2024 - APS332 - Rewards service Lambda datasource
       Handler: index.handler
       CodeUri: ./src
+      # ReservedConcurrentExecutions: 5
       Environment:
         Variables:
           USER_POOL_ID: !Ref CognitoUserPoolId
