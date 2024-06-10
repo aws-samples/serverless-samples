@@ -42,8 +42,8 @@ Resources:
         Type: CODEPIPELINE
       Environment:
         Type: LINUX_CONTAINER
-        ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/amazonlinux2-x86_64-standard:python3.12
+        ComputeType: BUILD_GENERAL1_MEDIUM
+        Image: aws/codebuild/amazonlinux-x86_64-lambda-standard:python3.12
         EnvironmentVariables:
           - Name: BUILD_OUTPUT_BUCKET
             Value: !Ref BuildArtifactsBucket
@@ -68,8 +68,8 @@ Resources:
         Type: CODEPIPELINE
       Environment:
         Type: LINUX_CONTAINER
-        ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/amazonlinux2-x86_64-standard:python3.12
+        ComputeType: BUILD_GENERAL1_MEDIUM
+        Image: aws/codebuild/amazonlinux-x86_64-lambda-standard:python3.12
         EnvironmentVariables:
           - Name: TEST_APPLICATION_STACK_NAME
             Value: !Sub ${AWS::StackName}-Testing
