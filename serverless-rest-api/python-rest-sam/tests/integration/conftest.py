@@ -6,8 +6,8 @@ import os
 import pytest
 import time
 
-APPLICATION_STACK_NAME = os.getenv('TEST_APPLICATION_STACK_NAME', None)
-COGNITO_STACK_NAME = os.getenv('TEST_COGNITO_STACK_NAME', None)
+APPLICATION_STACK_NAME = os.getenv('TEST_APPLICATION_STACK_NAME', 'python-rest-sam')
+COGNITO_STACK_NAME = os.getenv('TEST_COGNITO_STACK_NAME', 'serverless-api-cognito')
 globalConfig = {}
 
 
@@ -120,7 +120,7 @@ def create_api_key():
     )
     result["enterpriseUsagePlanApiKeyValue"] = api_key_value
     # wait for API key to be propagated 
-    time.sleep(60)
+    time.sleep(120)
     return result
 
 

@@ -1,3 +1,6 @@
-pytest
-pytest-freezegun
-moto
+pytest>=7 
+moto==3.1.19 
+pytest-freezegun 
+requests
+boto3
+
