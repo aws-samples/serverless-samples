@@ -69,7 +69,7 @@ class ServerlessApiStack(cdk.Stack):
                                                    entry='src/api',
                                                    index='locations.py',
                                                    handler='lambda_handler',
-                                                   runtime=lmbd.Runtime.PYTHON_3_8,
+                                                   runtime=lmbd.Runtime.PYTHON_3_9,
                                                    memory_size=1024,
                                                    tracing=lmbd.Tracing.ACTIVE,
                                                    environment={
@@ -84,7 +84,7 @@ class ServerlessApiStack(cdk.Stack):
                                                    entry='src/api',
                                                    index='resources.py',
                                                    handler='lambda_handler',
-                                                   runtime=lmbd.Runtime.PYTHON_3_8,
+                                                   runtime=lmbd.Runtime.PYTHON_3_9,
                                                    memory_size=1024,
                                                    tracing=lmbd.Tracing.ACTIVE,
                                                    environment={
@@ -99,7 +99,7 @@ class ServerlessApiStack(cdk.Stack):
                                                   entry='src/api',
                                                   index='bookings.py',
                                                   handler='lambda_handler',
-                                                  runtime=lmbd.Runtime.PYTHON_3_8,
+                                                  runtime=lmbd.Runtime.PYTHON_3_9,
                                                   memory_size=1024,
                                                   tracing=lmbd.Tracing.ACTIVE,
                                                   environment={
@@ -116,7 +116,7 @@ class ServerlessApiStack(cdk.Stack):
                                                     entry='src/api',
                                                     index='authorizer.py',
                                                     handler='lambda_handler',
-                                                    runtime=lmbd.Runtime.PYTHON_3_8,
+                                                    runtime=lmbd.Runtime.PYTHON_3_9,
                                                     memory_size=1024,
                                                     tracing=lmbd.Tracing.ACTIVE,
                                                     environment={
