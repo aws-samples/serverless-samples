@@ -6,8 +6,8 @@ import os
 import pytest
 import time
 
-APPLICATION_STACK_NAME = os.getenv('TEST_APPLICATION_STACK_NAME', 'python-rest-sam')
-COGNITO_STACK_NAME = os.getenv('TEST_COGNITO_STACK_NAME', 'serverless-api-cognito')
+APPLICATION_STACK_NAME = os.getenv('TEST_APPLICATION_STACK_NAME', None)
+COGNITO_STACK_NAME = os.getenv('TEST_COGNITO_STACK_NAME', None)
 globalConfig = {}
 
 
