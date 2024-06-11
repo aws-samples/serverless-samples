@@ -95,6 +95,8 @@ Resources:
           Mutable: true
           Required: true
       DeletionProtection: INACTIVE # For production usage set to ACTIVE to prevent accidental deletion of pool
+      UserPoolAddOns:
+        AdvancedSecurityMode: ENFORCED
 
   CognitoUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
@@ -334,6 +336,29 @@ Resources:
                   - sqs:SendMessage
                 Resource: 
                   - !Ref FulfillmentQArn
+
+  OrderFunctionDenyEC2Policy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: DenyEC2FromFunctionCode
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Deny
+            Action:
+              - ec2:CreateNetworkInterface
+              - ec2:DeleteNetworkInterface
+              - ec2:DescribeNetworkInterfaces
+              - ec2:DetachNetworkInterface
+              - ec2:AssignPrivateIpAddresses
+              - ec2:UnassignPrivateIpAddresses
+            Resource: '*'
+            Condition:
+              ArnEquals:
+                lambda:SourceFunctionArn:
+                  - !GetAtt OrderFunction.Arn
+      Roles:
+        - !Ref OrderFunctionRole
 
   OrderFunction:
     Type: AWS::Serverless::Function

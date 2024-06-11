@@ -53,18 +53,33 @@ Resources:
 
   # IAM Role for API Gateway + CloudWatch Logging
   CloudWatchRole:
-      Type: AWS::IAM::Role
-      Properties:
-        AssumeRolePolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-            Action: 'sts:AssumeRole'
-            Effect: Allow
-            Principal:
-              Service: apigateway.amazonaws.com
-        Path: /
-        ManagedPolicyArns:
-          - 'arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs'
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          Action: 'sts:AssumeRole'
+          Effect: Allow
+          Principal:
+            Service: apigateway.amazonaws.com
+      Path: /
+      Policies:
+        - PolicyName: CloudWatchAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                  - logs:PutLogEvents
+                  - logs:GetLogEvents
+                  - logs:FilterLogEvents
+                Resource:
+                  - !GetAtt PaymentApiLogGroup.Arn
+                  - !Sub ${PaymentApiLogGroup.Arn}:log-stream:*
 
   ApiCWLRoleArn:
     Type: AWS::ApiGateway::Account
