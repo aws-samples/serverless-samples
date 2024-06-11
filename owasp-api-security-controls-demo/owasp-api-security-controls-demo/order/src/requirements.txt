@@ -1,0 +1,3 @@
+aws-lambda-powertools
+requests
+aws-requests-auth

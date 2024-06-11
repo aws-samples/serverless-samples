@@ -1,0 +1,20 @@
+version = 0.1
+[default.deploy.parameters]
+stack_name = "reinforce-aps332-demo"
+resolve_s3 = true
+s3_prefix = "reinforce-aps332-demo"
+region = "< your region, ex, us-west-2>"
+capabilities = "CAPABILITY_IAM CAPABILITY_AUTO_EXPAND"
+image_repositories = []
+disable_rollback = false
+parameter_overrides = [
+  "AdminEmail=<email 1>",
+  "MktgEmail=<email 2>",
+  "DatascientistEmail=<email 3>",
+  "Customer1Email=<email 4>",
+  "Customer2Email=<email 5>",
+  "VpcId=<your VPC id>",
+  "Subnet1=<private subnet 1 id>",
+  "Subnet2=<private subnet 2 id>"
+]
+tags = "project=\"owasp-api-security-demo\""
