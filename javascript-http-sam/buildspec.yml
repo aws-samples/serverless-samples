@@ -4,6 +4,8 @@
 version: 0.2
 phases:
   install:
+    runtime-versions:
+      nodejs: 20
     commands:
       # Install all dependencies (including dependencies for running tests)
       - cd ./javascript-http-sam

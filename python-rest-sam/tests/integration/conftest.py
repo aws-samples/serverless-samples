@@ -120,7 +120,7 @@ def create_api_key():
     )
     result["enterpriseUsagePlanApiKeyValue"] = api_key_value
     # wait for API key to be propagated 
-    time.sleep(60)
+    time.sleep(120)
     return result
 
 
