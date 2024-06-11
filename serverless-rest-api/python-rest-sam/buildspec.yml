@@ -5,7 +5,7 @@ version: 0.2
 phases:
   install:
     runtime-versions:
-      python: 3.8
+      python: 3.12
     commands:
       # Install all dependencies (including dependencies for running tests)
       - cd ./python-rest-sam
