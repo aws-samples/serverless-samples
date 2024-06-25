@@ -51,6 +51,9 @@ This repository contains samples of Serverless application code.
 - ## owasp-api-security-controls-demo
   This example demonstrates controls to mitigate application centric [OWASP API security risks](https://owasp.org/API-Security/editions/2023/en/0x11-t10/) for a sample microservice application using Amazon API Gateway and AWS AppSync. Refer to [README](./owasp-api-security-controls-demo) for details.
 
+- ## apigw-log-analytic
+  This solution provides analytics for Amazon API Gateway (REST endpoints). It visualizes and analyzes API Gateway access logs using an Amazon QuickSight dashboard. This pre-built dashboard enables you to analyze API usage by visualizing various components. These visuals include customer identifiers with usage plans, helping developers identify popular routes, errors, authentication methods, and users reaching quota limits. [README](./apigw-log-analytic)
+
 ## Security
 
 See [CONTRIBUTING](./CONTRIBUTING.md#security-issue-notifications) for more information.
