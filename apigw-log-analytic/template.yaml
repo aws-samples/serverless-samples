@@ -1,7 +1,5 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-
-
 AWSTemplateFormatVersion : '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: "This is the template for creating Amazon API Gateway access logging"
@@ -17,10 +15,7 @@ Parameters:
       Type: "String"
       Default: "cron(0/10 * * * ? *)"
       Description: "The schedule when the crawler runs. Use this cron schedule to control the frequency of data refresh"
-
 Resources:
-
-
   ApiGatewayAccessLogsEnrichmentFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -39,14 +34,10 @@ Resources:
               Resource:
                 - 'arn:aws:apigateway:*::/usageplans'
                 - 'arn:aws:apigateway:*::/usageplans/*/*'
-
   AccessLogsBucket:
-    
     Type: AWS::S3::Bucket
-    DeletionPolicy: Retain
-    
+    DeletionPolicy: Retain 
   DeliveryStream:
-    
     DependsOn: AccessLogsBucket
     Type: AWS::KinesisFirehose::DeliveryStream
     DependsOn:
@@ -69,7 +60,6 @@ Resources:
               Parameters:
                 - ParameterName: LambdaArn
                   ParameterValue: !GetAtt ApiGatewayAccessLogsEnrichmentFunction.Arn
-
   DeliveryStreamRole:
     Type: AWS::IAM::Role
     Properties:
@@ -84,7 +74,6 @@ Resources:
             Condition:
               StringEquals:
                 'sts:ExternalId': !Ref 'AWS::AccountId'
-
   DeliveryStreamPolicy:
     Type: AWS::IAM::Policy
     Properties:
@@ -114,8 +103,6 @@ Resources:
               - 'lambda:InvokeFunction'
               - 'lambda:GetFunctionConfiguration'
             Resource: !GetAtt ApiGatewayAccessLogsEnrichmentFunction.Arn
-
-
   QuickSightDataSourceS3ThroughAthena:
       Type: "AWS::QuickSight::DataSource"
       Properties:
@@ -138,9 +125,6 @@ Resources:
                 - "quicksight:PassDataSource"
                 - "quicksight:UpdateDataSource"
                 - "quicksight:DeleteDataSource"
-  
-  
-
   ApiAccessLogsDataSet:
       DependsOn: GlueDatabasAPIGWlog
       Type: "AWS::QuickSight::DataSet"
@@ -3145,20 +3129,29 @@ Resources:
               Type: string
             - Name: identity.usageplanname
               Type: string
+            - Name: authorizeError
+              Type: string
+            - Name: authorizeLatency
+              Type: string
+            - Name: authorizeStatus
+              Type: string
+            - Name: authorizerError
+              Type: string
+            - Name: authorizerIntegrationLatency
+              Type: string
+            - Name: authorizerIntegrationStatus
+              Type: string
+            - Name: authorizerLatency
+              Type: string
+            - Name: authorizerStatus
+              Type: string
             - Name: date
               Type: string
-
           Location: !Sub "s3://${AccessLogsBucket}/logs/"
-            
-                      
-          
-          
           InputFormat: org.apache.hadoop.mapred.TextInputFormat
           OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
           SerdeInfo: 
             SerializationLibrary: org.openx.data.jsonserde.JsonSerDe
-  
-  
   GlueCrawlerRoleAPIGWlog:
     Type: AWS::IAM::Role
     Properties:
@@ -3193,8 +3186,6 @@ Resources:
                     - - 'arn:aws:s3:::'
                       - !Ref AccessLogsBucket
                       - '*'
-                
-        
   GlueCrawlerAPIGWlog:
     Type: AWS::Glue::Crawler
     DependsOn: GlueTableAPIGWlog
@@ -3208,24 +3199,17 @@ Resources:
           - DatabaseName: !Ref GlueDatabasAPIGWlog
             Tables:
               - logs
-      
       RecrawlPolicy:
         RecrawlBehavior: CRAWL_EVERYTHING
       SchemaChangePolicy:
         UpdateBehavior: UPDATE_IN_DATABASE
         DeleteBehavior: LOG
-     
       Schedule: 
-        ScheduleExpression: !Ref DataRefreshFrequency
-        
-        
+        ScheduleExpression: !Ref DataRefreshFrequency      
 Outputs:
   AccessLogsS3bucket:
     Description: "S3 Access Logs bucket"
     Value: !Ref AccessLogsBucket
-    
-
   DeliveryStream:
     Description: "Kinesis Firehose Stream Delivery to S3"
     Value: !GetAtt DeliveryStream.Arn
-    
