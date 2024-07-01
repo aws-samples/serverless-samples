@@ -199,10 +199,6 @@ Resources:
                   Type: "STRING"
                 - Name: "identityprincipalorgid"
                   Type: "STRING"
-                - Name: "identityvpcid"
-                  Type: "STRING"
-                - Name: "identityvpceid"
-                  Type: "STRING"
                 - Name: "identityuser"
                   Type: "STRING"
                 - Name: "identityuseragent"
@@ -311,8 +307,6 @@ Resources:
                     - "identitycognitoidentityid"
                     - "identitycognitoidentitypoolid"
                     - "identityprincipalorgid"
-                    - "identityvpcid"
-                    - "identityvpceid"
                     - "identityuser"
                     - "identityuseragent"
                     - "identityuserarn"
@@ -3092,10 +3086,6 @@ Resources:
             - Name: identitycognitoidentitypoolid
               Type: string
             - Name: identityprincipalorgid
-              Type: string
-            - Name: identityvpcid
-              Type: string
-            - Name: identityvpceid
               Type: string
             - Name: identityuser
               Type: string
