@@ -257,6 +257,10 @@ Resources:
                   Type: "STRING"
                 - Name: "authorizerStatus"
                   Type: "STRING"
+                - Name: "integrationLatency"
+                  Type: "STRING"
+                - Name: "responseLatency"
+                  Type: "STRING"
                 - Name: "date"
                   Type: "STRING"
                 - Name: "year"
@@ -336,6 +340,8 @@ Resources:
                     - "authorizerLatency"
                     - "authorizerIntegrationStatus"
                     - "authorizerStatus"
+                    - "integrationLatency"
+                    - "responseLatency"
                     - "date"
                     - "year"
                     - "month"
@@ -3144,6 +3150,10 @@ Resources:
             - Name: authorizerLatency
               Type: string
             - Name: authorizerStatus
+              Type: string
+            - Name: integrationLatency
+              Type: string
+            - Name: responseLatency
               Type: string
             - Name: date
               Type: string
