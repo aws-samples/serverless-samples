@@ -169,8 +169,6 @@ Resources:
                   Type: "STRING"
                 - Name: "authorizerproperty"
                   Type: "STRING"
-                - Name: "awsendpointrequestid"
-                  Type: "STRING"
                 - Name: "deploymentid"
                   Type: "STRING"
                 - Name: "domainname"
@@ -239,23 +237,23 @@ Resources:
                   Type: "STRING"
                 - Name: "authorizeError"
                   Type: "STRING"
-                - Name: "authorizeLatency"
+                - Name: "authorizelatency"
                   Type: "STRING"
                 - Name: "authorizeStatus"
                   Type: "STRING"
                 - Name: "authorizerError"
                   Type: "STRING"
-                - Name: "authorizerIntegrationLatency"
+                - Name: "authorizerintegrationlatency"
                   Type: "STRING"
                 - Name: "authorizerIntegrationStatus"
                   Type: "STRING"
-                - Name: "authorizerLatency"
+                - Name: "authorizerlatency"
                   Type: "STRING"
                 - Name: "authorizerStatus"
                   Type: "STRING"
-                - Name: "integrationLatency"
+                - Name: "integrationlatency"
                   Type: "STRING"
-                - Name: "responseLatency"
+                - Name: "responselatency"
                   Type: "STRING"
                 - Name: "date"
                   Type: "STRING"
@@ -265,82 +263,99 @@ Resources:
                   Type: "STRING"
                 - Name: "day"
                   Type: "STRING"
+                  
         LogicalTableMap:
-          c002e3c1-f63c-4f4b-b51e-f0cd21bc553e:
-            Alias: "logs"
-            Source:
-              PhysicalTableId: "92fea1a7-5ffd-4ac1-8d5a-8724b335270f"
-            DataTransforms:
-              - CreateColumnsOperation:
-                  Columns:
-                    - ColumnName: "parse_date"
-                      ColumnId: "123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea"
-                      Expression: "parseDate({requesttime}, \"yyyy-MM-dd'T'HH:mm:ss\")"
-              - ProjectOperation:
-                  ProjectedColumns:
-                    - "requestid"
-                    - "ip"
-                    - "requesttime"
-                    - "httpmethod"
-                    - "routekey"
-                    - "status"
-                    - "protocol"
-                    - "responselength"
-                    - "extendedrequestid"
-                    - "accountid"
-                    - "apiid"
-                    - "authorizerclaimsproperty"
-                    - "authorizerprincipalid"
-                    - "authorizerproperty"
-                    - "awsendpointrequestid"
-                    - "deploymentid"
-                    - "domainname"
-                    - "domainprefix"
-                    - "errormessage"
-                    - "errorresponsetype"
-                    - "errorvalidationerrorstring"
-                    - "identityaccountid"
-                    - "identityapikeyid"
-                    - "identitycaller"
-                    - "identitycognitoauthenticationprovider"
-                    - "identitycognitoauthenticationtype"
-                    - "identitycognitoidentityid"
-                    - "identitycognitoidentitypoolid"
-                    - "identityprincipalorgid"
-                    - "identityuser"
-                    - "identityuseragent"
-                    - "identityuserarn"
-                    - "path"
-                    - "requestoverrideheader"
-                    - "requestoverridepath"
-                    - "requestoverridequerystring"
-                    - "responseoverrideheader"
-                    - "responseoverridestatus"
-                    - "requesttimeepoch"
-                    - "resourcepath"
-                    - "stage"
-                    - "wafresponsecode"
-                    - "webaclarn"
-                    - "sub"
-                    - "clientid"
-                    - "aud"
-                    - "identity.apikeyname"
-                    - "identity.usageplanname"
-                    - "authorizeError"
-                    - "authorizerError"
-                    - "authorizeLatency"
-                    - "authorizeStatus"
-                    - "authorizerIntegrationLatency"
-                    - "authorizerLatency"
-                    - "authorizerIntegrationStatus"
-                    - "authorizerStatus"
-                    - "integrationLatency"
-                    - "responseLatency"
-                    - "date"
-                    - "year"
-                    - "month"
-                    - "day"
-                    - "parse_date"
+            c002e3c1-f63c-4f4b-b51e-f0cd21bc553e:
+              Alias: "logs"
+              Source:
+                PhysicalTableId: "92fea1a7-5ffd-4ac1-8d5a-8724b335270f"
+              DataTransforms:
+              
+                - CastColumnTypeOperation:
+                    ColumnName: "authorizelatency"
+                    NewColumnType: "INTEGER"
+                - CastColumnTypeOperation:
+                    ColumnName: "authorizerintegrationlatency"
+                    NewColumnType: "INTEGER"
+                - CastColumnTypeOperation:
+                    ColumnName: "authorizerlatency"
+                    NewColumnType: "INTEGER"
+                - CastColumnTypeOperation:
+                    ColumnName: "integrationlatency"
+                    NewColumnType: "INTEGER"
+                - CastColumnTypeOperation:
+                    ColumnName: "responselatency"
+                    NewColumnType:  "INTEGER"
+                - CreateColumnsOperation:
+                    Columns:
+                      - ColumnName: "parse_date"
+                        ColumnId: "123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea"
+                        Expression: "parseDate({requesttime}, \"yyyy-MM-dd'T'HH:mm:ss\")"
+                - ProjectOperation:
+                    ProjectedColumns:
+                      - "requestid"
+                      - "ip"
+                      - "requesttime"
+                      - "httpmethod"
+                      - "routekey"
+                      - "status"
+                      - "protocol"
+                      - "responselength"
+                      - "extendedrequestid"
+                      - "accountid"
+                      - "apiid"
+                      - "authorizerclaimsproperty"
+                      - "authorizerprincipalid"
+                      - "authorizerproperty"
+                      - "awsendpointrequestid"
+                      - "deploymentid"
+                      - "domainname"
+                      - "domainprefix"
+                      - "errormessage"
+                      - "errorresponsetype"
+                      - "errorvalidationerrorstring"
+                      - "identityaccountid"
+                      - "identityapikeyid"
+                      - "identitycaller"
+                      - "identitycognitoauthenticationprovider"
+                      - "identitycognitoauthenticationtype"
+                      - "identitycognitoidentityid"
+                      - "identitycognitoidentitypoolid"
+                      - "identityprincipalorgid"
+                      - "identityuser"
+                      - "identityuseragent"
+                      - "identityuserarn"
+                      - "path"
+                      - "requestoverrideheader"
+                      - "requestoverridepath"
+                      - "requestoverridequerystring"
+                      - "responseoverrideheader"
+                      - "responseoverridestatus"
+                      - "requesttimeepoch"
+                      - "resourcepath"
+                      - "stage"
+                      - "wafresponsecode"
+                      - "webaclarn"
+                      - "sub"
+                      - "clientid"
+                      - "aud"
+                      - "identity.apikeyname"
+                      - "identity.usageplanname"
+                      - "authorizeError"
+                      - "authorizerError"
+                      - "authorizelatency"
+                      - "authorizeStatus"
+                      - "authorizerintegrationlatency"
+                      - "authorizerlatency"
+                      - "authorizerIntegrationStatus"
+                      - "authorizerStatus"
+                      - "integrationlatency"
+                      - "responselatency"
+                      - "date"
+                      - "year"
+                      - "month"
+                      - "day"
+                      - "parse_date"
         DataSetUsageConfiguration:
           DisableUseAsDirectQuerySource: false
           DisableUseAsImportedSource: false
@@ -3057,8 +3072,6 @@ Resources:
               Type: string
             - Name: authorizerproperty
               Type: string
-            - Name: awsendpointrequestid
-              Type: string
             - Name: deploymentid
               Type: string
             - Name: domainname
@@ -3128,23 +3141,23 @@ Resources:
             - Name: authorizeError
               Type: string
             - Name: authorizeLatency
-              Type: string
+              Type: int
             - Name: authorizeStatus
               Type: string
             - Name: authorizerError
               Type: string
             - Name: authorizerIntegrationLatency
-              Type: string
+              Type: int
             - Name: authorizerIntegrationStatus
               Type: string
             - Name: authorizerLatency
-              Type: string
+              Type: int
             - Name: authorizerStatus
               Type: string
             - Name: integrationLatency
-              Type: string
+              Type: int
             - Name: responseLatency
-              Type: string
+              Type: int
             - Name: date
               Type: string
           Location: !Sub "s3://${AccessLogsBucket}/logs/"
@@ -3202,7 +3215,7 @@ Resources:
       RecrawlPolicy:
         RecrawlBehavior: CRAWL_EVERYTHING
       SchemaChangePolicy:
-        UpdateBehavior: UPDATE_IN_DATABASE
+        UpdateBehavior: LOG
         DeleteBehavior: LOG
       Schedule: 
         ScheduleExpression: !Ref DataRefreshFrequency      
