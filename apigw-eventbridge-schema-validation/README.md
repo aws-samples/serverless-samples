@@ -294,12 +294,10 @@ curl --location --request POST '<YOUR API URL>' \
 Required objects and properties have been removed, which will be caught by the request validator and rejected.  Note: if your event is passed through successfully, you may need to wait for the new schema version to be created and processed.
 
 ```
-{"message": "Invalid request body"}%
+{ "message": "[object has missing required properties ([\"medication\",\"procedure\",\"schedule\",\"team\"])]"}% 
 ```
 
-Run the [first request from stage two](#stage2-cmd) again with all required fields and the validator will pass the event through to Eventbridge.  With the trigger enabled, any new schema versions created will trigger an update to the API Gateway model.  
-
-If you want to optionally disable schema updates at any point, run the command below.  This disables the rule in Eventbridge that triggers the Lambda function to update the API Gateway model with a new schema.  This is not required for the next step.  
+Run the [first request from stage two](#stage2-cmd) again with all required fields and the validator will pass the event through to Eventbridge.  With the trigger enabled, any new schema versions created will trigger an update to the API Gateway model.  If you want to optionally disable schema updates at any point, run the command below.  This disables the rule in Eventbridge that triggers the Lambda function to update the API Gateway model with a new schema.  This is not required for the next step.  
 
 ```
 sam deploy --parameter-overrides SchemaEnforcementEnabledOrDisabled=DISABLED

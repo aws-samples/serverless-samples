@@ -73,9 +73,9 @@ async function uploadSchema(schema, restApiId, modelName) {
 
 }
 
+// removes metadata added by AWS Eventbridge so this is not required by the API GW model
 function modifySchema(schemaJson) {
     const schema = JSON.parse(schemaJson);
-    //console.log("SCHEMA: \n" + JSON.stringify(schema));
 
     // remove the x-amazon-events-detail-type property from the schema
     delete schema['x-amazon-events-detail-type'];
@@ -101,7 +101,7 @@ function modifySchema(schemaJson) {
     return schema;
 }
 
-// create a function that exports an eventbridge schema using export_schema from boto3
+// Downloads latest schema version from the registry
 async function downloadSchema(schemaRegistry, schemaName) {
     const config = { }
     const client = new SchemasClient(config);
@@ -113,13 +113,10 @@ async function downloadSchema(schemaRegistry, schemaName) {
     };
     const command = new ExportSchemaCommand(input);
     const response = await client.send(command);
-
-    console.log("** Schema content: " +  response.Content);
-    console.log("** schema version" + response.SchemaVersion);
-    console.log("** schema name: " + response.SchemaName);
     return response.Content;
 }
 
+// Lambda Handler
 export const handler = async (event) => {
 
     console.log('Event received:', JSON.stringify(event, null, 2));
