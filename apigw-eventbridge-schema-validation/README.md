@@ -1,11 +1,13 @@
-# Automating the schema lifecycle with EventBridge and API Gateway
+# Automating event validation with EventBridge and API Gateway
 
-In event driven architectures, validation of events can be challenging to put into practice.  Speed of development requires a balance with governance.  You can validate events on the consumer and producer side to ensure all entities meet the agreed upon specifications.  [Amazon Eventbridge](https://aws.amazon.com/eventbridge/) is a serverless event bus that can perform discovery, versioning and consumption of event schemas.  Consumers can also download code bindings to speed up development.  Schema discovery provides the freedom for developers to put events on the bus and have schemas created on-demand.  You have several options on the consumer side, but what about validation for the producer side of the equation?  We'll focus on schema notification, modification, promotion and enforcement on the producer side in this solution.  
+Validation of events is a simple concept, but putting it into practice in an enterprise environment can be challenging. Generating, managing and applying schemas across multiple environments and teams requires coordination and automation.  Finding the right balance of speed and governance can be tricky.  By incrementally increasing governance at the right stages of the event lifecycle and using AWS services to automate schema generation and validation, you can enable developers to move quickly while applying the right level of governance.  This solution will focus on automating schema creation, modification, promotion and enforcement.
+
+[Amazon Eventbridge](https://aws.amazon.com/eventbridge/) is a serverless event bus that can perform discovery and versioning of event schemas.  Event consumers can download schemas and code bindings to validate events and speed up development.  This provides the freedom for developers to create events without having to worry about managing schemas. Discovered schemas serve their purpose for consumer validation of events, but what about validating events before they are routed downstream to consumers?  Schema validation is not currently a native feature of Eventbridge; however, API Gateway models can be used to validate requests.  By placing API Gateway in front of the event bus, you can validate requests as well as implement caching, authorization, rate limiting and other features of the service.  In this solution you'll learn through examples how to automate schema notification, modification, promotion and enforcement.  
 
 ![Architecture flow of producer and consumer](./assets/Producer_Consumer.png)
 <p style="text-align:center; font-style: italic"> Figure 1: Producers and consumers with schema discovery </p>
 
-Before we dive into the solution, let's discuss three stages of event metadata evolution.  You can find a reference to these stages in a talk by Sam Dengler during the [:goto conference](https://youtu.be/-Pv_kYflEEg?si=a7CDRdnGPtSH1agk&t=808).  As events evolve from inception to production, its important consumers can discover and understand event structure and how it changes over time.  Events go through multiple iterations of testing and refinement, similar to how an application evolves toward production.  
+Before we dive into the solution, let's discuss three stages of event evolution.  You can find a reference to these stages in a [talk by Sam Dengler](https://youtu.be/-Pv_kYflEEg?si=a7CDRdnGPtSH1agk&t=808).  As events evolve from inception to production, its important consumers can discover and understand event structure and how it changes over time.  Events go through multiple iterations of testing and refinement, similar to how an application evolves toward production.  
 
 Events start as raw information, a skeleton of what the event will eventually look like.  This allows developers to rapidly build, test and refine event structures without any dependence on the event.  The second stage is where events are exposed to consumers within the bounded context.  This enables consumers to test events within a limited scope, ensuring they meet requirements within their context.  The third stage is where events are expanded to include other business and technical related metadata.  This may involve adding required fields and any additional refinement required by consumers to effectively process the event across many bounded contexts or business domains.
 
@@ -62,7 +64,7 @@ In the next stage, the event is refined within the surgery team's bounded contex
 
 ```
 
-In the last stage, you bring in other bounded contexts and consumers.  Here we might need to know if and what types of therapy are required and where those will occur.  We may have follow-up appointments and reminder details.  
+In the last stage, you bring in other bounded contexts and consumers.  Here you might need to know if and what types of therapy are required and where those will occur.  We may have follow-up appointments and reminder details.  
 
 **Stage 3**
 ```json
@@ -98,7 +100,7 @@ In the last stage, you bring in other bounded contexts and consumers.  Here we m
 }
 
 ```
-You now understand how events evolve, but how do you apply governance to events through these stages? The next section covers two solutions using schema discovery to provide automated validation to events.  
+Next, you'll apply governance to events through each of these stages. The next section covers two solutions using schema discovery to provide automated validation to events.  
 
 # Architecture and Implementation
 
@@ -114,7 +116,7 @@ Another option is to control these changes through your CI CD pipeline.  The sch
 Let's review the implementation through each stage. 
 
 ### Stage 1
-This is the stage where raw events are being produced and we have no consumers dependent on the events.  Here, the development team is producing events at will through Eventbridge with no model validation applied.  The schema updater can be toggled off.  Schemas will be discovered and versioned, but not applied to requests. 
+This is the stage where raw events are being produced and there are no consumers dependent on the events.  Here, the development team is producing events at will through Eventbridge with no model validation applied.  The schema updater is toggled off.  Schemas will be discovered and versioned, but not applied to requests. 
 
 ### Stage 2
 In this stage, events are starting to build a solid domain structure and are tested within a bounded context.  Your team has the option of applying request validation when it's appropriate.  Since there are consumers within the same bounded context, you can start enforcing validation, balancing it with active development.  The decision to enforce request validation should be based on testing and feedback from the consumers in this stage.  This is where the CI CD approach can provide additional safeguards and oversight because you can base your schema updates on successful iterations of test runs in your pipeline.   
@@ -154,8 +156,8 @@ Important: this application uses various AWS services and there are costs associ
 1. During the prompts:
     * Enter a stack name
     * Enter the desired AWS Region
-    * Allow SAM CLI to create IAM roles with the required permissions.
     * For the parameters, you can accept the defaults. 
+   *  Allow SAM CLI to create IAM roles with the required permissions.
 
 Once you have run `sam deploy --guided` mode once and saved arguments to a configuration file (samconfig.toml), you can use `sam deploy` in future to use these defaults.  
 
@@ -211,7 +213,8 @@ Once the first schema version is created, you can move on to the next step.  To 
 ```
 sam deploy --parameter-overrides SchemaEnforcementEnabledOrDisabled=ENABLED
 ```
-With the rule enabled, run the following command to send another event to the custom event bus.  
+<p id="stage2-cmd"> </p> With the rule enabled, run the following command to send another event to the custom event bus. 
+
 ```
 curl --location --request POST '<YOUR API URL>' \
 --header 'Content-Type: application/json' \
@@ -294,15 +297,17 @@ Required objects and properties have been removed, which will be caught by the r
 {"message": "Invalid request body"}%
 ```
 
-Run the first request from stage two with all required fields and the validator will pass the event through to Eventbridge.  With the trigger enabled, any new schema versions created will trigger an update to the API Gateway model.  To toggle this off, you can disable the trigger: 
+Run the [first request from stage two](#stage2-cmd) again with all required fields and the validator will pass the event through to Eventbridge.  With the trigger enabled, any new schema versions created will trigger an update to the API Gateway model.  
+
+If you want to optionally disable schema updates at any point, run the command below.  This disables the rule in Eventbridge that triggers the Lambda function to update the API Gateway model with a new schema.  This is not required for the next step.  
 
 ```
 sam deploy --parameter-overrides SchemaEnforcementEnabledOrDisabled=DISABLED
 ```
 
-This feature can be leveraged across environments and API deployments to quickly enable and disable schema validation at the request level.  No additional code is required to perform the schema validation.  To scale validators to additional resources and methods, add request validator definitions to the SAM template under the appropriate path(s).
+The schema update feature can be leveraged across environments and API deployments to quickly enable and disable schema validation at the request level.  No additional code is required to perform the schema validation.  To scale validators to additional resources and methods, add request validator definitions to the SAM template under the appropriate path(s).
 
-To test the third stage, send an event with broader business context, which will generate another schema version.
+To test the third stage, send an event with a broader business context, which will generate another schema version.  If the schema update rule and trigger are still enabled, the API Gateway model will be updated with the latest schema from this event.
 
 ```
 curl --location --request POST '<YOUR API URL>' \

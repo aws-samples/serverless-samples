@@ -22,7 +22,7 @@ Resources:
 ##########################################################################
 # Permissions to allow lambda to create logs, download and upload schema
 ##########################################################################
-  LogPolicy:
+  EventSchemaValidationLogPolicy:
     Type: AWS::IAM::Policy
     Properties:
       PolicyName: LogPolicy
@@ -36,9 +36,9 @@ Resources:
               - 'logs:PutLogEvents'
             Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
       Roles:
-        - !Ref ExportSchemaLambdaFunctionRole
+        - !Ref EventSchemaValidationLambdaFunctionRole
 
-  UpdateModelPolicy:
+  EventSchemaValidationLogPolicyUpdateModelPolicy:
     Type: AWS::IAM::Policy
     Properties:
       PolicyName: UpdateModelPolicy
@@ -54,9 +54,9 @@ Resources:
               - !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis/${Api}/models/*'
               - !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis/${Api}/*'
       Roles:
-        - !Ref ExportSchemaLambdaFunctionRole
+        - !Ref EventSchemaValidationLambdaFunctionRole
 
-  ExportSchemaPolicy:
+  EventSchemaValidationExportSchemaPolicy:
     Type: AWS::IAM::Policy
     Properties:
       PolicyName: ExportSchemaPolicy
@@ -68,9 +68,9 @@ Resources:
               - schemas:ExportSchema
             Resource: "*"
       Roles:
-        - !Ref ExportSchemaLambdaFunctionRole
+        - !Ref EventSchemaValidationLambdaFunctionRole
 
-  ExportSchemaLambdaFunctionRole:
+  EventSchemaValidationLambdaFunctionRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -86,7 +86,7 @@ Resources:
 ##########################################################################
 #  Lambda function triggered from event schema version creation
 ##########################################################################
-  LambdaFunction:
+  EventSchemaValidationLogPolicyLambdaFunction:
     Type: AWS::Serverless::Function
     Properties:
       Timeout:  5
@@ -99,7 +99,7 @@ Resources:
           ApiModelName: !Sub '${ApiModelName}'
           ApiId: !Ref Api
           SchemaRegistry: !Sub '${SchemaRegistryName}'
-      Role: !GetAtt ExportSchemaLambdaFunctionRole.Arn
+      Role: !GetAtt EventSchemaValidationLambdaFunctionRole.Arn
       Events:
         Trigger:
           Type: CloudWatchEvent
@@ -115,22 +115,22 @@ Resources:
 ##########################################################################
 #  EventBus, Schema Registry and Schema Discoverer
 ##########################################################################
-  SchedulingCustomEventBus:
+  EventSchemaValidationSchedulingEventBus:
     Type: AWS::Events::EventBus
     Properties:
-      Name: SchedulingCustomEventBus
+      Name: !Sub '${AWS::StackName}-healthcare-scheduling'
 
-  SchedulingSchemaDiscoverer:
+  EventSchemaValidationSchedulingSchemaDiscoverer:
     Type: AWS::EventSchemas::Discoverer
     Properties:
-      SourceArn: !GetAtt SchedulingCustomEventBus.Arn
+      SourceArn: !GetAtt EventSchemaValidationSchedulingEventBus.Arn
       Description: 'schema discovery for scheduling event bus'
 
 
   ##########################################################################
   # Define role for eventbridge rule to send events to cloudwatch log group
   ##########################################################################
-  EventBridgeToCloudWatchRole:
+  EventSchemaValidationEventBridgeToCloudWatchRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -146,19 +146,19 @@ Resources:
   SchedulingEventBridgeRule:
     Type: AWS::Events::Rule
     Properties:
-      EventBusName: !Ref SchedulingCustomEventBus
+      EventBusName: !Ref EventSchemaValidationSchedulingEventBus
       EventPattern:
         source:
           - "scheduling.event"
-      RoleArn: !GetAtt EventBridgeToCloudWatchRole.Arn
+      RoleArn: !GetAtt EventSchemaValidationEventBridgeToCloudWatchRole.Arn
       Targets:
-        - Arn: !GetAtt SchedulingLogGroup.Arn
+        - Arn: !GetAtt EventSchemaValidationSchedulingLogGroup.Arn
           Id: SendToCloudWatchLogs
 
 ##########################################################################
 # Rule to log events to CloudWatch Logs
 ##########################################################################
-  SchedulingLogGroup:
+  EventSchemaValidationSchedulingLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: /aws/events/scheduling-events-source-catch-all
@@ -167,7 +167,7 @@ Resources:
 ##########################################################################
 #   API GATEWAY ROLE WITH PERMISSIONS TO PUT EVENTS
 ##########################################################################
-  ApiGatewayEventBridgeRole:
+  EventSchemaValidationApiGatewayEventBridgeRole:
     Type: AWS::IAM::Role
     Properties:
       Path: !Join ["", ["/", !Ref "AWS::StackName", "/"]]
@@ -189,7 +189,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - 'events:PutEvents'
-                Resource: !GetAtt SchedulingCustomEventBus.Arn
+                Resource: !GetAtt EventSchemaValidationSchedulingEventBus.Arn
         # add another policy to allow access to CloudWatch Logs
         - PolicyName: CloudWatchLogs
           PolicyDocument:
@@ -214,6 +214,10 @@ Resources:
         - ${ResourceName} From Stack ${AWS::StackName}
         - ResourceName: Api
       StageName: dev
+      GatewayResponses:
+        BAD_REQUEST_BODY:
+          ResponseTemplates:
+            "application/json": '{ "message": "$context.error.validationErrorString"}'
       DefinitionBody:
         openapi: '3.0'
         info: {}
@@ -253,7 +257,7 @@ Resources:
                 type: "aws"
                 uri:
                   Fn::Sub: "arn:aws:apigateway:${AWS::Region}:events:action/PutEvents"
-                credentials: !GetAtt  ApiGatewayEventBridgeRole.Arn
+                credentials: !GetAtt  EventSchemaValidationApiGatewayEventBridgeRole.Arn
                 httpMethod: "POST"
                 responses:
                   default:
@@ -271,13 +275,13 @@ Resources:
                             {
                               "Detail": "$util.escapeJavaScript($input.json("$.detail")).replaceAll("\\'","'")",
                               "DetailType": "$inputRoot.detail-type",
-                              "EventBusName": "SchedulingCustomEventBus",
+                              "EventBusName": "${AWS::StackName}-healthcare-scheduling",
                               "Source": "$inputRoot.source"
                             }
                           ]
                       }
 
-                    - { EventBusName: !Ref SchedulingCustomEventBus }
+                    - { EventBusName: !Ref EventSchemaValidationSchedulingEventBus }
 
       EndpointConfiguration: REGIONAL
 
