@@ -129,10 +129,14 @@ Once you configure API Gateway access logs, it takes a few minutes for the logs 
 
 **Congnito based access control**
 If you are using [Amazon Cognito](https://aws.amazon.com/pm/cognito/?gclid=CjwKCAjw74e1BhBnEiwAbqOAjNsHPd0SoVxdGF33x27NozfK-9PWWQ2_1x62VdHIAajb2B9XUcjCzhoC8hYQAvD_BwE&trk=f5fef02c-2926-48d3-898a-b4d668742a20&sc_channel=ps&ef_id=CjwKCAjw74e1BhBnEiwAbqOAjNsHPd0SoVxdGF33x27NozfK-9PWWQ2_1x62VdHIAajb2B9XUcjCzhoC8hYQAvD_BwE:G:s&s_kwcid=AL!4422!3!651737511575!e!!g!!amazon%20cognito!19845796024!146736269189) to control access to REST APIs, this visual can help you understand which users are interacting with your APIs.
+
 ![dashboard overview](./assets/apigw-log-analytic-cognito.jpg)
 
 **400 errors (quota exceeded, unauthorized, and invalid-signature) requests**
-![dashboard overview](./assets/kaidin-400-errors.jpg)
+
+This visual provides insights into 4xx errors in your API requests, focusing on quota exceeded, unauthorized, and invalid signature errors. You can identify trends and patterns affecting your API's performance and reliability. This breakdown helps pinpoint root causes, enabling targeted improvements, enhanced security measures, and optimized quota management for a seamless and secure API experience.
+
+![dashboard overview](./assets/apigw-log-analytic-400-errors.jpg)
 
 **API by usage plan**
 ![dashboard overview](./assets/kaidin-usageplan.jpg)
