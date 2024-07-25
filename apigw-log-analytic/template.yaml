@@ -375,6 +375,7 @@ Resources:
           Sheets:
             - SheetId: 9b348200-9f40-4cc3-87a7-0cff574178e7
               Title: Amazon API Gateway Access Logs
+              Description: Amazon API Gateway access log analytics (REST API)
               Name: API Access Logs
               FilterControls:
                 - RelativeDateTime:
@@ -495,7 +496,467 @@ Resources:
                       InfoIconLabelOptions:
                         Visibility: HIDDEN
                     Type: MULTI_SELECT
+                - Dropdown:
+                    FilterControlId: 4399a6ab-b7a7-4d59-8cdb-7f1b385612d4
+                    Title: requestid equals
+                    SourceFilterId: 8daf68de-f2e6-40ba-88b1-14a075ce2d5b
+                    DisplayOptions:
+                      SelectAllOptions:
+                        Visibility: VISIBLE
+                    Type: MULTI_SELECT
               Visuals:
+                - LineChartVisual:
+                    VisualId: 45d3c91a-b739-435e-b411-bc3598ba6c4d
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">Authorizer Latency metric</inline>
+                            <br/>
+                            <b>AuthorizerLatency</b>
+                            : The authorizer latency in ms.
+                            <br/>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: HIDDEN
+                    ChartConfiguration:
+                      FieldWells:
+                        LineChartAggregatedFieldWells:
+                          Category:
+                            - DateDimensionField:
+                                FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: parse_date
+                                DateGranularity: MINUTE
+                                HierarchyId: 4045293c-408f-48a1-867f-26bf96edd9fd
+                          Values:
+                            - NumericalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerintegrationlatency.5.1721934353596
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: authorizerintegrationlatency
+                                AggregationFunction:
+                                  SimpleNumericalAggregation: AVERAGE
+                          Colors: []
+                      SortConfiguration:
+                        CategorySort:
+                          - FieldSort:
+                              FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                              Direction: DESC
+                        CategoryItemsLimitConfiguration:
+                          OtherCategories: INCLUDE
+                        ColorItemsLimitConfiguration:
+                          OtherCategories: INCLUDE
+                        SmallMultiplesLimitConfiguration:
+                          OtherCategories: INCLUDE
+                      Type: LINE
+                      XAxisDisplayOptions:
+                        AxisLineVisibility: VISIBLE
+                        ScrollbarOptions:
+                          Visibility: HIDDEN
+                      XAxisLabelOptions:
+                        Visibility: HIDDEN
+                      PrimaryYAxisDisplayOptions:
+                        AxisOptions:
+                          TickLabelOptions:
+                            LabelOptions:
+                              FontConfiguration:
+                                FontSize:
+                                  Relative: LARGE
+                      PrimaryYAxisLabelOptions:
+                        Visibility: HIDDEN
+                      Legend:
+                        Visibility: VISIBLE
+                        Title:
+                          Visibility: HIDDEN
+                        Position: BOTTOM
+                        Height: 73px
+                      DataLabels:
+                        Visibility: HIDDEN
+                        Overlap: DISABLE_OVERLAP
+                      Tooltip:
+                        TooltipVisibility: VISIBLE
+                        SelectedTooltipType: DETAILED
+                        FieldBasedTooltip:
+                          AggregationVisibility: HIDDEN
+                          TooltipTitleType: PRIMARY_VALUE
+                          TooltipFields:
+                            - FieldTooltipItem:
+                                FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                                Visibility: VISIBLE
+                            - FieldTooltipItem:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerintegrationlatency.5.1721934353596
+                                Visibility: VISIBLE
+                    Actions: []
+                    ColumnHierarchies:
+                      - DateTimeHierarchy:
+                          HierarchyId: 4045293c-408f-48a1-867f-26bf96edd9fd
+                          DrillDownFilters: []
+                - TableVisual:
+                    VisualId: 6c6cfb11-9d57-496c-8010-b8867a369802
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">API Latency metrics</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: HIDDEN
+                    ChartConfiguration:
+                      FieldWells:
+                        TableAggregatedFieldWells:
+                          GroupBy:
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.6.1721929687669
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: domainname
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.path.7.1721929741611
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: path
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identity.usageplanname.6.1721931706541
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: identity.usageplanname
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerError.8.1721934788329
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: authorizerError
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.errorresponsetype.11.1721934831475
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: errorresponsetype
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizeStatus.11.1721941958390
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: authorizeStatus
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.11.1721941985480
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: status
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerIntegrationStatus.12.1721941987902
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: authorizerIntegrationStatus
+                          Values:
+                            - NumericalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.integrationlatency.4.1720019536246
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: integrationlatency
+                                AggregationFunction:
+                                  SimpleNumericalAggregation: AVERAGE
+                            - NumericalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.responselatency.5.1720019536590
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: responselatency
+                                AggregationFunction:
+                                  SimpleNumericalAggregation: AVERAGE
+                            - NumericalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerintegrationlatency.7.1721934377514
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: authorizerintegrationlatency
+                                AggregationFunction:
+                                  SimpleNumericalAggregation: AVERAGE
+                      SortConfiguration:
+                        PaginationConfiguration:
+                          PageSize: 500
+                          PageNumber: 1
+                      TableOptions:
+                        HeaderStyle:
+                          TextWrap: WRAP
+                          Height: 25
+                        RowAlternateColorOptions:
+                          Status: DISABLED
+                          UsePrimaryBackgroundColor: ENABLED
+                      FieldOptions:
+                        SelectedFieldOptions:
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.6.1721929687669
+                            CustomLabel: Domain
+                          - FieldId: c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.path.7.1721929741611
+                            CustomLabel: Path
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identity.usageplanname.6.1721931706541
+                            CustomLabel: Usahe Plan
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerError.8.1721934788329
+                            Width: 250px
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.errorresponsetype.11.1721934831475
+                            CustomLabel: Error
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.integrationlatency.4.1720019536246
+                            CustomLabel: Integration Latency
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.responselatency.5.1720019536590
+                            CustomLabel: ResponseLatency
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerintegrationlatency.7.1721934377514
+                            CustomLabel: AuthorizerLatency
+                        Order: []
+                    Actions: []
+                - KPIVisual:
+                    VisualId: 79b9ba02-d149-47c0-95f5-aeed49fd80f9
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">Athorizer Latency (ms)</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: VISIBLE
+                    ChartConfiguration:
+                      FieldWells:
+                        Values:
+                          - NumericalMeasureField:
+                              FieldId: >-
+                                c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerintegrationlatency.0.1721934278922
+                              Column:
+                                DataSetIdentifier: logs
+                                ColumnName: authorizerintegrationlatency
+                              AggregationFunction:
+                                SimpleNumericalAggregation: AVERAGE
+                        TargetValues: []
+                        TrendGroups: []
+                      SortConfiguration: {}
+                      KPIOptions:
+                        Comparison:
+                          ComparisonMethod: PERCENT_DIFFERENCE
+                        PrimaryValueDisplayType: ACTUAL
+                        PrimaryValueFontConfiguration:
+                          FontSize:
+                            Relative: MEDIUM
+                        SecondaryValueFontConfiguration:
+                          FontSize:
+                            Relative: EXTRA_LARGE
+                        Sparkline:
+                          Visibility: VISIBLE
+                          Type: AREA
+                          TooltipVisibility: HIDDEN
+                        VisualLayoutOptions:
+                          StandardLayout:
+                            Type: VERTICAL
+                    Actions: []
+                    ColumnHierarchies: []
+                - KPIVisual:
+                    VisualId: 770ebcae-29b2-46fb-ae55-278742b58a86
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">Integration Latency (ms)</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: VISIBLE
+                    ChartConfiguration:
+                      FieldWells:
+                        Values:
+                          - NumericalMeasureField:
+                              FieldId: >-
+                                c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.integrationlatency.0.1720020064800
+                              Column:
+                                DataSetIdentifier: logs
+                                ColumnName: integrationlatency
+                              AggregationFunction:
+                                SimpleNumericalAggregation: AVERAGE
+                        TargetValues: []
+                        TrendGroups: []
+                      SortConfiguration: {}
+                      KPIOptions:
+                        Comparison:
+                          ComparisonMethod: PERCENT_DIFFERENCE
+                        PrimaryValueDisplayType: ACTUAL
+                        PrimaryValueFontConfiguration:
+                          FontSize:
+                            Relative: MEDIUM
+                        SecondaryValueFontConfiguration:
+                          FontSize:
+                            Relative: EXTRA_LARGE
+                        Sparkline:
+                          Visibility: VISIBLE
+                          Type: AREA
+                          TooltipVisibility: HIDDEN
+                        VisualLayoutOptions:
+                          StandardLayout:
+                            Type: VERTICAL
+                    Actions: []
+                    ColumnHierarchies: []
+                - KPIVisual:
+                    VisualId: a4ea5045-4476-47e6-a4d4-026656829165
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">Response Latency (ms)</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: VISIBLE
+                    ChartConfiguration:
+                      FieldWells:
+                        Values:
+                          - NumericalMeasureField:
+                              FieldId: >-
+                                c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.responselatency.1.1720019904631
+                              Column:
+                                DataSetIdentifier: logs
+                                ColumnName: responselatency
+                              AggregationFunction:
+                                SimpleNumericalAggregation: AVERAGE
+                        TargetValues: []
+                        TrendGroups: []
+                      SortConfiguration: {}
+                      KPIOptions:
+                        Comparison:
+                          ComparisonMethod: PERCENT_DIFFERENCE
+                        PrimaryValueDisplayType: ACTUAL
+                        PrimaryValueFontConfiguration:
+                          FontSize:
+                            Relative: MEDIUM
+                        SecondaryValueFontConfiguration:
+                          FontSize:
+                            Relative: EXTRA_LARGE
+                        Sparkline:
+                          Visibility: VISIBLE
+                          Type: AREA
+                          TooltipVisibility: HIDDEN
+                        VisualLayoutOptions:
+                          StandardLayout:
+                            Type: VERTICAL
+                    Actions: []
+                    ColumnHierarchies: []
+                - LineChartVisual:
+                    VisualId: e67999e9-2bb9-454a-a607-6de02c414b3f
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">API Latency metrics</inline>
+                            <br/>
+                            <b>IntegrationLatency</b>
+                            : The integration latency in ms.
+                            <br/>
+                            <b>ResponseLatency</b>
+                            : The response latency in ms.
+                            <br/>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: HIDDEN
+                    ChartConfiguration:
+                      FieldWells:
+                        LineChartAggregatedFieldWells:
+                          Category:
+                            - DateDimensionField:
+                                FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: parse_date
+                                DateGranularity: MINUTE
+                                HierarchyId: 74301366-a3f8-446e-8058-7c1b6418f882
+                          Values:
+                            - NumericalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.integrationlatency.4.1720019536246
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: integrationlatency
+                                AggregationFunction:
+                                  SimpleNumericalAggregation: AVERAGE
+                            - NumericalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.responselatency.5.1720019536590
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: responselatency
+                                AggregationFunction:
+                                  SimpleNumericalAggregation: AVERAGE
+                          Colors: []
+                      SortConfiguration:
+                        CategorySort:
+                          - FieldSort:
+                              FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                              Direction: DESC
+                        CategoryItemsLimitConfiguration:
+                          OtherCategories: INCLUDE
+                        ColorItemsLimitConfiguration:
+                          OtherCategories: INCLUDE
+                        SmallMultiplesLimitConfiguration:
+                          OtherCategories: INCLUDE
+                      Type: LINE
+                      XAxisDisplayOptions:
+                        ScrollbarOptions:
+                          Visibility: HIDDEN
+                      XAxisLabelOptions:
+                        Visibility: HIDDEN
+                      PrimaryYAxisDisplayOptions:
+                        AxisOptions:
+                          TickLabelOptions:
+                            LabelOptions:
+                              FontConfiguration:
+                                FontSize:
+                                  Relative: LARGE
+                      Legend:
+                        Visibility: VISIBLE
+                        Title:
+                          Visibility: HIDDEN
+                        Position: BOTTOM
+                        Height: 73px
+                      DataLabels:
+                        Visibility: HIDDEN
+                        Overlap: DISABLE_OVERLAP
+                      Tooltip:
+                        TooltipVisibility: VISIBLE
+                        SelectedTooltipType: DETAILED
+                        FieldBasedTooltip:
+                          AggregationVisibility: HIDDEN
+                          TooltipTitleType: PRIMARY_VALUE
+                          TooltipFields:
+                            - FieldTooltipItem:
+                                FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                                Visibility: VISIBLE
+                            - FieldTooltipItem:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.integrationlatency.4.1720019536246
+                                Visibility: VISIBLE
+                            - FieldTooltipItem:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.responselatency.5.1720019536590
+                                Visibility: VISIBLE
+                    Actions: []
+                    ColumnHierarchies:
+                      - DateTimeHierarchy:
+                          HierarchyId: 74301366-a3f8-446e-8058-7c1b6418f882
+                          DrillDownFilters: []
                 - TableVisual:
                     VisualId: dfffca24-a266-4729-8a52-cd15aae3bcef
                     Title:
@@ -503,7 +964,7 @@ Resources:
                       FormatText:
                         RichText: |-
                           <visual-title>
-                            <inline font-size="16px">API raw requests</inline>
+                            <inline font-size="20px">API raw requests</inline>
                           </visual-title>
                     Subtitle:
                       Visibility: VISIBLE
@@ -554,6 +1015,12 @@ Resources:
                                   ColumnName: identity.apikeyname
                             - CategoricalDimensionField:
                                 FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.5.1717171925342
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: requestid
+                            - CategoricalDimensionField:
+                                FieldId: >-
                                   c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.sub.8.1717439538001
                                 Column:
                                   DataSetIdentifier: logs
@@ -594,14 +1061,65 @@ Resources:
                                 Column:
                                   DataSetIdentifier: logs
                                   ColumnName: ip
-                          Values:
-                            - CategoricalMeasureField:
+                            - CategoricalDimensionField:
                                 FieldId: >-
-                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.5.1717171925342
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizeError.20.1720020929430
                                 Column:
                                   DataSetIdentifier: logs
-                                  ColumnName: requestid
-                                AggregationFunction: DISTINCT_COUNT
+                                  ColumnName: authorizeError
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerError.21.1720020930436
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: authorizerError
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.errormessage.22.1720020930978
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: errormessage
+                          Values:
+                            - NumericalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.integrationlatency.15.1720020869514
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: integrationlatency
+                                AggregationFunction:
+                                  SimpleNumericalAggregation: AVERAGE
+                            - NumericalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.responselatency.16.1720020869876
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: responselatency
+                                AggregationFunction:
+                                  SimpleNumericalAggregation: AVERAGE
+                            - NumericalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerlatency.17.1720020870506
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: authorizerlatency
+                                AggregationFunction:
+                                  SimpleNumericalAggregation: AVERAGE
+                            - NumericalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerintegrationlatency.18.1720020870893
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: authorizerintegrationlatency
+                                AggregationFunction:
+                                  SimpleNumericalAggregation: AVERAGE
+                            - NumericalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizelatency.19.1720020871254
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: authorizelatency
+                                AggregationFunction:
+                                  SimpleNumericalAggregation: AVERAGE
                       SortConfiguration:
                         RowSort:
                           - FieldSort:
@@ -614,6 +1132,7 @@ Resources:
                       FieldOptions:
                         SelectedFieldOptions:
                           - FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716957746063
+                            Width: 93px
                             CustomLabel: Date
                           - FieldId: >-
                               c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.4.1716957809242
@@ -627,8 +1146,36 @@ Resources:
                           - FieldId: >-
                               c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identity.usageplanname.1.1716957751227
                             CustomLabel: Usage Plan
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.5.1717171925342
+                            CustomLabel: Request count
                           - FieldId: c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.sub.8.1717439538001
                             Width: 200px
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizeError.20.1720020929430
+                            Width: 316px
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerError.21.1720020930436
+                            Width: 252px
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.errormessage.22.1720020930978
+                            Width: 376px
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.integrationlatency.15.1720020869514
+                            Width: 202px
+                            CustomLabel: Integration latency (ms)
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.responselatency.16.1720020869876
+                            CustomLabel: Responce Latency (ms)
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerlatency.17.1720020870506
+                            CustomLabel: Authorizer Latency (ms)
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerintegrationlatency.18.1720020870893
+                            CustomLabel: Authorizerintegration Latency (ms)
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizelatency.19.1720020871254
+                            CustomLabel: Authorize Latency (ms)
                         Order: []
                     Actions: []
                 - KPIVisual:
@@ -674,6 +1221,7 @@ Resources:
                         Sparkline:
                           Visibility: VISIBLE
                           Type: AREA
+                          TooltipVisibility: HIDDEN
                         VisualLayoutOptions:
                           StandardLayout:
                             Type: VERTICAL
@@ -686,7 +1234,7 @@ Resources:
                       FormatText:
                         RichText: |-
                           <visual-title>
-                            <inline font-size="16px">Authentication Failed Requests</inline>
+                            <inline font-size="20px">Authentication Failed Requests</inline>
                           </visual-title>
                     Subtitle:
                       Visibility: VISIBLE
@@ -746,6 +1294,8 @@ Resources:
                         HeaderStyle:
                           TextWrap: WRAP
                           Height: 25
+                        CellStyle:
+                          Height: 25
                         RowAlternateColorOptions:
                           Status: DISABLED
                           UsePrimaryBackgroundColor: ENABLED
@@ -787,7 +1337,7 @@ Resources:
                     Title:
                       Visibility: VISIBLE
                       FormatText:
-                        RichText: "<visual-title>\n  <inline font-size=\"16px\">Cognito based access control\_</inline>\n</visual-title>"
+                        RichText: "<visual-title>\n  <inline font-size=\"20px\">Cognito based access control\_</inline>\n</visual-title>"
                     Subtitle:
                       Visibility: VISIBLE
                     ChartConfiguration:
@@ -966,6 +1516,7 @@ Resources:
                         Sparkline:
                           Visibility: VISIBLE
                           Type: AREA
+                          TooltipVisibility: HIDDEN
                         VisualLayoutOptions:
                           StandardLayout:
                             Type: VERTICAL
@@ -1014,6 +1565,7 @@ Resources:
                         Sparkline:
                           Visibility: VISIBLE
                           Type: AREA
+                          TooltipVisibility: HIDDEN
                         VisualLayoutOptions:
                           StandardLayout:
                             Type: VERTICAL
@@ -1024,7 +1576,10 @@ Resources:
                     Title:
                       Visibility: VISIBLE
                       FormatText:
-                        RichText: <visual-title>Quota limits reached for APIs</visual-title>
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">Quota limits reached for APIs</inline>
+                          </visual-title>
                     Subtitle:
                       Visibility: VISIBLE
                     ChartConfiguration:
@@ -1113,7 +1668,7 @@ Resources:
                       FormatText:
                         RichText: |-
                           <visual-title>
-                            <inline font-size="16px">API Usage By API Key</inline>
+                            <inline font-size="20px">API Usage By API Key</inline>
                           </visual-title>
                     Subtitle:
                       Visibility: VISIBLE
@@ -1205,6 +1760,7 @@ Resources:
                     ColumnHierarchies:
                       - DateTimeHierarchy:
                           HierarchyId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                          DrillDownFilters: []
                 - LineChartVisual:
                     VisualId: b1e76221-4bd7-409e-bcd4-5290f8af24c2
                     Title:
@@ -1212,7 +1768,7 @@ Resources:
                       FormatText:
                         RichText: |-
                           <visual-title>
-                            <inline font-size="16px">API call by user agent</inline>
+                            <inline font-size="20px">API call by user agent</inline>
                           </visual-title>
                     Subtitle:
                       Visibility: HIDDEN
@@ -1286,6 +1842,7 @@ Resources:
                     ColumnHierarchies:
                       - DateTimeHierarchy:
                           HierarchyId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                          DrillDownFilters: []
                 - TableVisual:
                     VisualId: bda614ce-02d8-482b-ab4a-e52d010b5399
                     Title:
@@ -1293,7 +1850,7 @@ Resources:
                       FormatText:
                         RichText: |-
                           <visual-title>
-                            <inline font-size="16px">400 errors</inline>
+                            <inline font-size="20px">4xx Errors</inline>
                           </visual-title>
                     Subtitle:
                       Visibility: VISIBLE
@@ -1408,7 +1965,7 @@ Resources:
                       FormatText:
                         RichText: |-
                           <visual-title>
-                            <inline font-size="16px">API Route</inline>
+                            <inline font-size="20px">API Route</inline>
                           </visual-title>
                     Subtitle:
                       Visibility: HIDDEN
@@ -1494,6 +2051,7 @@ Resources:
                     ColumnHierarchies:
                       - DateTimeHierarchy:
                           HierarchyId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                          DrillDownFilters: []
                 - LineChartVisual:
                     VisualId: 1dec300f-5376-455c-9a89-62b3609e642c
                     Title:
@@ -1501,7 +2059,7 @@ Resources:
                       FormatText:
                         RichText: |-
                           <visual-title>
-                            <inline font-size="16px">30 days API usage by domain</inline>
+                            <inline font-size="20px">30 days API usage by domain</inline>
                           </visual-title>
                     Subtitle:
                       Visibility: HIDDEN
@@ -1516,7 +2074,14 @@ Resources:
                                   ColumnName: parse_date
                                 DateGranularity: MINUTE
                                 HierarchyId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
-                          Values: []
+                          Values:
+                            - CategoricalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.2.1721929067913
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: requestid
+                                AggregationFunction: DISTINCT_COUNT
                           Colors:
                             - CategoricalDimensionField:
                                 FieldId: >-
@@ -1543,10 +2108,6 @@ Resources:
                             MissingDateVisibility: HIDDEN
                         ScrollbarOptions:
                           Visibility: HIDDEN
-                          VisibleRange:
-                            PercentRange:
-                              From: 68.8140655105973
-                              To: 77.8140655105973
                       XAxisLabelOptions:
                         Visibility: HIDDEN
                       PrimaryYAxisDisplayOptions:
@@ -1557,6 +2118,8 @@ Resources:
                               FontConfiguration:
                                 FontSize:
                                   Relative: LARGE
+                      PrimaryYAxisLabelOptions:
+                        Visibility: HIDDEN
                       DefaultSeriesSettings:
                         AxisBinding: PRIMARY_YAXIS
                         LineStyleSettings:
@@ -1570,7 +2133,7 @@ Resources:
                           Visibility: HIDDEN
                           CustomLabel: Customer
                         Position: BOTTOM
-                        Height: 62px
+                        Height: 82px
                       DataLabels:
                         Visibility: HIDDEN
                         Overlap: DISABLE_OVERLAP
@@ -1588,10 +2151,15 @@ Resources:
                                 FieldId: >-
                                   c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.1.1716956846680
                                 Visibility: VISIBLE
+                            - FieldTooltipItem:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.2.1721929067913
+                                Visibility: VISIBLE
                     Actions: []
                     ColumnHierarchies:
                       - DateTimeHierarchy:
                           HierarchyId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                          DrillDownFilters: []
                 - PieChartVisual:
                     VisualId: 5732798d-526b-4955-ae4e-d5841adfa75d
                     Title:
@@ -1599,7 +2167,7 @@ Resources:
                       FormatText:
                         RichText: |-
                           <visual-title>
-                            <inline font-size="16px">By Response Status Code</inline>
+                            <inline font-size="20px">By Response Status Code</inline>
                           </visual-title>
                     Subtitle:
                       Visibility: VISIBLE
@@ -1667,7 +2235,7 @@ Resources:
                       FormatText:
                         RichText: |-
                           <visual-title>
-                            <inline font-size="16px">400 Errors By Endpoint</inline>
+                            <inline font-size="20px">4xx Errors By Endpoint</inline>
                           </visual-title>
                     Subtitle:
                       Visibility: VISIBLE
@@ -1778,7 +2346,7 @@ Resources:
                       FormatText:
                         RichText: |-
                           <visual-title>
-                            <inline font-size="16px">API By Usage Plan</inline>
+                            <inline font-size="20px">API By Usage Plan</inline>
                           </visual-title>
                     Subtitle:
                       Visibility: VISIBLE
@@ -1848,6 +2416,9 @@ Resources:
                           - FieldId: >-
                               c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.3.1716957785210
                             CustomLabel: Status
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.5.1717171925342
+                            CustomLabel: Request count
                         Order: []
                     Actions: []
                 - TableVisual:
@@ -1857,7 +2428,7 @@ Resources:
                       FormatText:
                         RichText: |-
                           <visual-title>
-                            <inline font-size="16px">Authenticated with IAM</inline>
+                            <inline font-size="20px">Authenticated with IAM</inline>
                           </visual-title>
                     Subtitle:
                       Visibility: VISIBLE
@@ -2040,7 +2611,7 @@ Resources:
                       FormatText:
                         RichText: |-
                           <visual-title>
-                            <inline font-size="16px">Top domains</inline>
+                            <inline font-size="20px">Top domains</inline>
                           </visual-title>
                     Subtitle:
                       Visibility: VISIBLE
@@ -2156,6 +2727,7 @@ Resources:
                         Sparkline:
                           Visibility: VISIBLE
                           Type: AREA
+                          TooltipVisibility: HIDDEN
                         VisualLayoutOptions:
                           StandardLayout:
                             Type: VERTICAL
@@ -2166,7 +2738,10 @@ Resources:
                     Title:
                       Visibility: VISIBLE
                       FormatText:
-                        RichText: <visual-title>Quota Usage By Domain</visual-title>
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">Quota Usage By Domain</inline>
+                          </visual-title>
                     Subtitle:
                       Visibility: VISIBLE
                     ChartConfiguration:
@@ -2246,6 +2821,7 @@ Resources:
                     ColumnHierarchies:
                       - DateTimeHierarchy:
                           HierarchyId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.1.1717437320951
+                          DrillDownFilters: []
               Layouts:
                 - Configuration:
                     GridLayout:
@@ -2271,6 +2847,24 @@ Resources:
                         - ElementId: e70cc0b2-ce19-4a75-94d6-8bd9880e76fe
                           ElementType: VISUAL
                           ColumnIndex: 15
+                          ColumnSpan: 5
+                          RowIndex: 0
+                          RowSpan: 3
+                        - ElementId: a4ea5045-4476-47e6-a4d4-026656829165
+                          ElementType: VISUAL
+                          ColumnIndex: 20
+                          ColumnSpan: 5
+                          RowIndex: 0
+                          RowSpan: 3
+                        - ElementId: 770ebcae-29b2-46fb-ae55-278742b58a86
+                          ElementType: VISUAL
+                          ColumnIndex: 25
+                          ColumnSpan: 5
+                          RowIndex: 0
+                          RowSpan: 3
+                        - ElementId: 79b9ba02-d149-47c0-95f5-aeed49fd80f9
+                          ElementType: VISUAL
+                          ColumnIndex: 30
                           ColumnSpan: 5
                           RowIndex: 0
                           RowSpan: 3
@@ -2358,11 +2952,29 @@ Resources:
                           ColumnSpan: 36
                           RowIndex: 92
                           RowSpan: 6
+                        - ElementId: e67999e9-2bb9-454a-a607-6de02c414b3f
+                          ElementType: VISUAL
+                          ColumnIndex: 0
+                          ColumnSpan: 18
+                          RowIndex: 98
+                          RowSpan: 12
+                        - ElementId: 45d3c91a-b739-435e-b411-bc3598ba6c4d
+                          ElementType: VISUAL
+                          ColumnIndex: 18
+                          ColumnSpan: 18
+                          RowIndex: 98
+                          RowSpan: 12
+                        - ElementId: 6c6cfb11-9d57-496c-8010-b8867a369802
+                          ElementType: VISUAL
+                          ColumnIndex: 0
+                          ColumnSpan: 36
+                          RowIndex: 110
+                          RowSpan: 9
                         - ElementId: dfffca24-a266-4729-8a52-cd15aae3bcef
                           ElementType: VISUAL
                           ColumnIndex: 0
                           ColumnSpan: 36
-                          RowIndex: 98
+                          RowIndex: 119
                           RowSpan: 12
                       CanvasSizeOptions:
                         ScreenCanvasSizeOptions:
@@ -2403,6 +3015,10 @@ Resources:
                           ColumnSpan: 2
                           RowSpan: 1
                         - ElementId: 031d9f83-b3fa-4b29-bf9e-0fe1dc09935b
+                          ElementType: FILTER_CONTROL
+                          ColumnSpan: 2
+                          RowSpan: 1
+                        - ElementId: 4399a6ab-b7a7-4d59-8cdb-7f1b385612d4
                           ElementType: FILTER_CONTROL
                           ColumnSpan: 2
                           RowSpan: 1
@@ -2519,6 +3135,12 @@ Resources:
                         - d08e8b1b-4e49-497a-af4c-21f8f11900c8
                         - 28e812a6-39c0-46d2-89ea-2259cf4d12ab
                         - dfffca24-a266-4729-8a52-cd15aae3bcef
+                        - e67999e9-2bb9-454a-a607-6de02c414b3f
+                        - a4ea5045-4476-47e6-a4d4-026656829165
+                        - 770ebcae-29b2-46fb-ae55-278742b58a86
+                        - 79b9ba02-d149-47c0-95f5-aeed49fd80f9
+                        - 6c6cfb11-9d57-496c-8010-b8867a369802
+                        - 45d3c91a-b739-435e-b411-bc3598ba6c4d
               Status: ENABLED
               CrossDataset: ALL_DATASETS
             - FilterGroupId: 323fb9a5-01b4-4a99-b070-bef131c6a752
@@ -2557,6 +3179,12 @@ Resources:
                         - d08e8b1b-4e49-497a-af4c-21f8f11900c8
                         - 28e812a6-39c0-46d2-89ea-2259cf4d12ab
                         - dfffca24-a266-4729-8a52-cd15aae3bcef
+                        - e67999e9-2bb9-454a-a607-6de02c414b3f
+                        - a4ea5045-4476-47e6-a4d4-026656829165
+                        - 770ebcae-29b2-46fb-ae55-278742b58a86
+                        - 79b9ba02-d149-47c0-95f5-aeed49fd80f9
+                        - 6c6cfb11-9d57-496c-8010-b8867a369802
+                        - 45d3c91a-b739-435e-b411-bc3598ba6c4d
               Status: ENABLED
               CrossDataset: SINGLE_DATASET
             - FilterGroupId: c901fcb8-82eb-46e9-97e9-b37fbafe800a
@@ -2595,6 +3223,12 @@ Resources:
                         - 76791a29-0a23-4a36-82c2-7faa65407a49
                         - 28e812a6-39c0-46d2-89ea-2259cf4d12ab
                         - dfffca24-a266-4729-8a52-cd15aae3bcef
+                        - e67999e9-2bb9-454a-a607-6de02c414b3f
+                        - a4ea5045-4476-47e6-a4d4-026656829165
+                        - 770ebcae-29b2-46fb-ae55-278742b58a86
+                        - 79b9ba02-d149-47c0-95f5-aeed49fd80f9
+                        - 6c6cfb11-9d57-496c-8010-b8867a369802
+                        - 45d3c91a-b739-435e-b411-bc3598ba6c4d
               Status: ENABLED
               CrossDataset: ALL_DATASETS
             - FilterGroupId: 96b7d8b4-2a09-400b-a088-cc2f7c10901d
@@ -2634,6 +3268,12 @@ Resources:
                         - 76791a29-0a23-4a36-82c2-7faa65407a49
                         - d1217044-ed1d-4171-8ac0-6d5657e833f9
                         - dfffca24-a266-4729-8a52-cd15aae3bcef
+                        - e67999e9-2bb9-454a-a607-6de02c414b3f
+                        - a4ea5045-4476-47e6-a4d4-026656829165
+                        - 770ebcae-29b2-46fb-ae55-278742b58a86
+                        - 79b9ba02-d149-47c0-95f5-aeed49fd80f9
+                        - 6c6cfb11-9d57-496c-8010-b8867a369802
+                        - 45d3c91a-b739-435e-b411-bc3598ba6c4d
               Status: ENABLED
               CrossDataset: SINGLE_DATASET
             - FilterGroupId: e9bccce2-ae39-45ef-9467-3fed9be05a2d
@@ -2863,6 +3503,12 @@ Resources:
                         - 76791a29-0a23-4a36-82c2-7faa65407a49
                         - d1217044-ed1d-4171-8ac0-6d5657e833f9
                         - dfffca24-a266-4729-8a52-cd15aae3bcef
+                        - e67999e9-2bb9-454a-a607-6de02c414b3f
+                        - a4ea5045-4476-47e6-a4d4-026656829165
+                        - 770ebcae-29b2-46fb-ae55-278742b58a86
+                        - 79b9ba02-d149-47c0-95f5-aeed49fd80f9
+                        - 6c6cfb11-9d57-496c-8010-b8867a369802
+                        - 45d3c91a-b739-435e-b411-bc3598ba6c4d
               Status: ENABLED
               CrossDataset: SINGLE_DATASET
             - FilterGroupId: df5953db-4924-46a4-bb79-a79ecd9f4e8f
@@ -2902,6 +3548,12 @@ Resources:
                         - 76791a29-0a23-4a36-82c2-7faa65407a49
                         - d1217044-ed1d-4171-8ac0-6d5657e833f9
                         - dfffca24-a266-4729-8a52-cd15aae3bcef
+                        - e67999e9-2bb9-454a-a607-6de02c414b3f
+                        - a4ea5045-4476-47e6-a4d4-026656829165
+                        - 770ebcae-29b2-46fb-ae55-278742b58a86
+                        - 79b9ba02-d149-47c0-95f5-aeed49fd80f9
+                        - 6c6cfb11-9d57-496c-8010-b8867a369802
+                        - 45d3c91a-b739-435e-b411-bc3598ba6c4d
               Status: ENABLED
               CrossDataset: SINGLE_DATASET
             - FilterGroupId: c9b61537-d88d-493e-b4cc-016f7a9dfd32
@@ -2941,6 +3593,57 @@ Resources:
                         - 76791a29-0a23-4a36-82c2-7faa65407a49
                         - d1217044-ed1d-4171-8ac0-6d5657e833f9
                         - dfffca24-a266-4729-8a52-cd15aae3bcef
+                        - e67999e9-2bb9-454a-a607-6de02c414b3f
+                        - a4ea5045-4476-47e6-a4d4-026656829165
+                        - 770ebcae-29b2-46fb-ae55-278742b58a86
+                        - 79b9ba02-d149-47c0-95f5-aeed49fd80f9
+                        - 6c6cfb11-9d57-496c-8010-b8867a369802
+                        - 45d3c91a-b739-435e-b411-bc3598ba6c4d
+              Status: ENABLED
+              CrossDataset: SINGLE_DATASET
+            - FilterGroupId: 81b20657-c6a9-4084-ad29-10bba8894e8e
+              Filters:
+                - CategoryFilter:
+                    FilterId: 8daf68de-f2e6-40ba-88b1-14a075ce2d5b
+                    Column:
+                      DataSetIdentifier: logs
+                      ColumnName: requestid
+                    Configuration:
+                      FilterListConfiguration:
+                        MatchOperator: CONTAINS
+                        SelectAllOptions: FILTER_ALL_VALUES
+                        NullOption: NON_NULLS_ONLY
+              ScopeConfiguration:
+                SelectedSheets:
+                  SheetVisualScopingConfigurations:
+                    - SheetId: 9b348200-9f40-4cc3-87a7-0cff574178e7
+                      Scope: SELECTED_VISUALS
+                      VisualIds:
+                        - dfffca24-a266-4729-8a52-cd15aae3bcef
+                        - 28e812a6-39c0-46d2-89ea-2259cf4d12ab
+                        - d08e8b1b-4e49-497a-af4c-21f8f11900c8
+                        - 6bc0f099-2a22-41d0-b13c-dbfd067dd5b4
+                        - 778b0460-189d-4e56-b104-ae25691ca8cd
+                        - e70cc0b2-ce19-4a75-94d6-8bd9880e76fe
+                        - f7924f76-0dfd-4c32-adec-41fd34401e7c
+                        - 79e89278-0b94-4dfc-9dfa-01d099c3dc0b
+                        - b1e76221-4bd7-409e-bcd4-5290f8af24c2
+                        - bda614ce-02d8-482b-ab4a-e52d010b5399
+                        - 4419cba3-04ef-4e2b-b016-6ec926e57b28
+                        - 1dec300f-5376-455c-9a89-62b3609e642c
+                        - 5732798d-526b-4955-ae4e-d5841adfa75d
+                        - 616898c5-fdf5-4493-ac8f-72eae7df0bea
+                        - 2311f90c-3758-44ca-97d2-40d4982c33d8
+                        - 846055d5-a8fa-4939-a942-3ae6474055e5
+                        - 39cf3003-73b2-403e-9e15-bc9f20f7fd53
+                        - 76791a29-0a23-4a36-82c2-7faa65407a49
+                        - d1217044-ed1d-4171-8ac0-6d5657e833f9
+                        - e67999e9-2bb9-454a-a607-6de02c414b3f
+                        - a4ea5045-4476-47e6-a4d4-026656829165
+                        - 770ebcae-29b2-46fb-ae55-278742b58a86
+                        - 79b9ba02-d149-47c0-95f5-aeed49fd80f9
+                        - 6c6cfb11-9d57-496c-8010-b8867a369802
+                        - 45d3c91a-b739-435e-b411-bc3598ba6c4d
               Status: ENABLED
               CrossDataset: SINGLE_DATASET
           AnalysisDefaults:
