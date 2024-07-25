@@ -36,7 +36,7 @@ The integration works by forwarding API Gateway access logs from your Amazon API
 * AWS Glue crawler to provide fresher data to QuickSight.
 * Amazon QuickSight for analytics and visualization.
 
-  ![Architecture diagram](./assets/kaidin-solution-overview.jpg)
+  ![Architecture diagram](./assets/apigw-log-analytic-solution-overview.jpg)
 
 ## Streamlining API Access Logs
 API access logs are streamed in near real-time from Amazon API Gateway to [Amazon Data Firehose](https://www.google.com/search?client=firefox-b-1-d&q=Amazon+Kinesis+Data+Firehose). Amazon Data Firehose buffers these records, enriching them with information from the API usage plans. It then writes batches of enhanced records to an Amazon S3 bucket, ensuring durable and secure storage. To enrich the access logs, an AWS Lambda function is used. The Lambda function retrieves API Gateway usage plan details and loads them into memory. During each invocation, it processes each access log record from Firehose stream by decoding it from a base64-encoded binary. The record is then enriched with the usage plan name and customer name before being re-encoded to base64 binary and returned to the Firehose stream.
@@ -56,7 +56,7 @@ If you have not activated Amazon QuickSight in your AWS account, follow the step
     2. Click **Sign up for QuickSight**.
     3. Enter Email and account name.
 
-  ![Pre-requisites1](./assets/kaidin-prerequisite1.jpg)
+  ![Pre-requisites1](./assets/apigw-log-analytic-prerequisite1.jpg)
 
 2. Once Amazon QuickSight account setup is complete, from the Amazon QuickSight console, select your username to open the menu. Select “Manage QuickSight”.
 3. On the left menu, select “Manage Groups”.
@@ -64,7 +64,7 @@ If you have not activated Amazon QuickSight in your AWS account, follow the step
 5. Add yourself as an administrator to the dashboard by selecting the newly created group name, then click “ADD USER.”
 6. Copy the project name without '-Admins' as this is required for the project name parameters in the SAM template. It needs to be the exact same name for deployment.
 
- ![Pre-requisites1](./assets/kaidin-prerequisite2.jpg)
+ ![Pre-requisites1](./assets/apigw-log-analytic-prerequisite2.jpg)
 
 ## Implementation
 
@@ -93,22 +93,22 @@ Enter the following parameters for deployment:
 - ProjectName: Use the project name without '-Admins'. Ensure it matches the one created in the Prerequisites section 6.
 - DataRefreshFrequency: You can leave as default (every 10 minutes) or customize it based on your requirement.
 
-![deployment](./assets/kaidin-deployment1.jpg)
+![deployment](./assets/apigw-log-analytic-deployment1.jpg)
  
-![deployment](./assets/kaidin-deployment2.jpg)
+![deployment](./assets/apigw-log-analytic-deployment2.jpg)
 
 Wait a few minutes for the deployment to complete. Once the stack has been successfully created, copy the Amazon Resource Names (ARNs) of the Firehose stream and S3 bucket from the output. These resource ARNs are required for the next steps in configuring API Gateway access logging.
 
-![deployment](./assets/kaidin-deployment3.jpg)
+![deployment](./assets/apigw-log-analytic-deployment3.jpg)
 
 ## Authorize Amazon QuickSight to access your Amazon S3 bucket
 
 1. Followthe instructions to authorize Amazon QuickSight to access API Gateway S3 access logs.
 2. Select the S3 access logs bucket created and Finish and Save.
 
-![Pre-requisites1](./assets/kaidin-qs-security.jpg)
+![Pre-requisites1](./assets/apigw-log-analytic-qs-security.jpg)
 
-![Pre-requisites1](./assets/kaidin-s3-permissions.jpg)
+![Pre-requisites1](./assets/apigw-log-analytic-s3-permissions.jpg)
 
 
 ## Configure API Gateway to stream access logs to this Data Firehose stream
