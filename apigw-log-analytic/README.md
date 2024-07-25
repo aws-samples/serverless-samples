@@ -156,7 +156,7 @@ This visual shows latency metrics like response latency, integration latency, an
 1. Navigate to the Amazon QuickSight console.
 2. Select Dashboard and open the deployed QuickSight dashboard.
 
-![dashboard overview](./assets/kaidin-dashboard-navigation.jpg)
+![dashboard overview](./assets/apigw-log-analytic-dashboard-navigation.jpg)
 
 ## Cleaning Up 
 
