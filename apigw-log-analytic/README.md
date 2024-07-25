@@ -145,6 +145,10 @@ This visual provides insights into 4xx errors in your API requests, focusing on 
 
 ![dashboard overview](./assets/apigw-log-analytic-usageplan.jpg)
 
+**API Latency Metrics**
+This visual provides insight into latency metrics, including response latency, integration latency, and Lambda authorizer latency, allowing you to understand how each API is used and what the average latency is in order to optimize and improve API performance.
+![Latency metrics](./assets/apigw-log-analytic-latency.jpg)
+
 ## How to open the dashboard
 
 1. Navigate to the Amazon QuickSight console.
