@@ -125,7 +125,7 @@ Wait a few minutes for the deployment to complete. Once the stack has been succe
 Once you configure API Gateway access logs, it takes a few minutes for the logs to appear in the QuickSight dashboard. This pre-built dashboard allows you to analyze API usage by visualizing components such as 30 days of API usage by domain, popular API paths, 400 errors (quota exceeded, unauthorized, and invalid-signature) requests, users hitting quota limits, and Cognito-based and IAM authorization. Additionally, you can filter visualizations and reports by date, customer, status, usage plan, IP, and users (IAM or Cognito users). You can also customize these visuals or create new ones for your business use case, as we have included additional context fields in the API access logs.
 
 **Dashboard overview**
-![dashboard overview](./assets/kaidin-dashboard-overview.jpg)
+![dashboard overview](./assets/apigw-log-analytic-dashboard-overview.jpg)
 
 **Congnito based access control**
 ![dashboard overview](./assets/kaidin-cognito.jpg)
