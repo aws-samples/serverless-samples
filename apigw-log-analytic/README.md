@@ -138,8 +138,9 @@ This visual provides insights into 4xx errors in your API requests, focusing on 
 ![dashboard overview](./assets/apigw-log-analytic-400-errors.jpg)
 
 **API by usage plan**
-![dashboard overview](./assets/kaidin-usageplan.jpg)
-![dashboard overview](./assets/kaidin-usageplan2.jpg)
+[A usage plan](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-api-usage-plans.html#api-gateway-api-usage-plans-overview) specifies who can access one or more deployed API stages and methods. This visual provides an overview of API usage by usage plan, domain, and path, highlighting request counts and their utilization across different plans.
+
+![dashboard overview](./assets/apigw-log-analytic-usageplan.jpg)
 
 ## How to open the dashboard
 
