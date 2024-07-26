@@ -1,20 +1,43 @@
-# Automating event validation with EventBridge and API Gateway
+# Automating Event Validation Through Schema Discovery
 
-Validation of events is a simple concept, but putting it into practice in an enterprise environment can be challenging. Generating, managing and applying schemas across multiple environments and teams requires coordination and automation.  Finding the right balance of speed and governance can be tricky.  By incrementally increasing governance at the right stages of the event lifecycle and using AWS services to automate schema generation and validation, you can enable developers to move quickly while applying the right level of governance.  This solution will focus on automating schema creation, modification, promotion and enforcement.
+In event driven architectures, validation of events can be challenging to put into practice.  There are often multiple teams with unique domains and event structures.  Events might be sent from different sources with varying formats, frequency and levels of governance.  Finally, events are constantly evolving and teams need right-sized mechanisms to balance speed with governance.  In this solution, you'll learn how to apply consumer and producer event validation using AWS services to reduce custom code and operational overhead.  You'll also learn about three stages of event evolution and how you can apply different patterns of validation at each stage.
 
-[Amazon Eventbridge](https://aws.amazon.com/eventbridge/) is a serverless event bus that can perform discovery and versioning of event schemas.  Event consumers can download schemas and code bindings to validate events and speed up development.  This provides the freedom for developers to create events without having to worry about managing schemas. Discovered schemas serve their purpose for consumer validation of events, but what about validating events before they are routed downstream to consumers?  Schema validation is not currently a native feature of Eventbridge; however, API Gateway models can be used to validate requests.  By placing API Gateway in front of the event bus, you can validate requests as well as implement caching, authorization, rate limiting and other features of the service.  In this solution you'll learn through examples how to automate schema notification, modification, promotion and enforcement.  
+## Consumer and Producer Event Validation
+
+Events should be validated by both the producer and consumer, as illustrated in Figure 1 below.  The producers job is to create and send valid events before they are routed to consumers.  On the consumer side, even if you trust the source of events, you should validate them before processing.  A common way to manage and route events is through an event bus.  [Amazon EventBridge](https://aws.amazon.com/eventbridge/) is a serverless event bus that can perform discovery, versioning and consumption of event schemas.  Schema discovery provides the freedom for developers to simply put events on the bus and have schemas created and versioned within a registry.  These schemas can be used to perform validation on events.  
+
+Consumers can download [schemas in OpenAPI or JSON Schema formats](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-schema.html) and [code bindings](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-schema-code-bindings.html) in popular programming languages for strongly typed event parsing and validation.  If your programming language is not supported for code bindings or you would rather use JSON or Open API schemas, you can download versions from the console or APIs.  You'll see later in this solution how to automate the schema update process.  Once the schema is downloaded you can use third party libraries to perform validation.  For example, [Ajv](https://ajv.js.org/) for JavaScript or the [jsonschema library](https://python-jsonschema.readthedocs.io/en/stable/) for Python.  You can then validate payloads against schemas during development and in your CI pipelines.  If using code bindings, you can download them using the console, API, or within a supported IDE using the AWS Toolkit.  Code bindings can be used like other code artifacts.  For instance, if using Lambda, the binding can be used as a [layer](https://docs.aws.amazon.com/lambda/latest/dg/chapter-layers.html) dependency.  Bindings are not automatically synced to any artifact repositories, such as [AWS CodeArtifact](https://aws.amazon.com/codeartifact/); however, the Lambda code in this solution could be extended to automate binding uploads to your artifact repository on schema updates.   
+
+Producers may send events through a central service, such as Amazon API Gateway, or directly to the event bus.  When going directly to the event bus, you can use third party libraries to validate during development and within CI pipelines.  Another option is to use [Amazon API Gateway](https://aws.amazon.com/api-gateway/) as a front door to your event bus.  This is commonly used for external services sending events that need authorization.  API Gateway can also perform request validation using a schema.  Many schemas can be applied as different models, and applied to different resources and methods.  Events can also be transformed and sent directly to EventBridge without additional glue code.  Since the default EventBridge bus receives events when new schemas are created from events, you can automate the download, processing and uploading of new schemas to API Gateway from EventBridge.  This keeps the model and request validation in API Gateway in sync with event structure changes. 
 
 ![Architecture flow of producer and consumer](./assets/Producer_Consumer.png)
-<p style="text-align:center; font-style: italic"> Figure 1: Producers and consumers with schema discovery </p>
-
-Before we dive into the solution, let's discuss three stages of event evolution.  You can find a reference to these stages in a [talk by Sam Dengler](https://youtu.be/-Pv_kYflEEg?si=a7CDRdnGPtSH1agk&t=808).  As events evolve from inception to production, its important consumers can discover and understand event structure and how it changes over time.  Events go through multiple iterations of testing and refinement, similar to how an application evolves toward production.  
-
-Events start as raw information, a skeleton of what the event will eventually look like.  This allows developers to rapidly build, test and refine event structures without any dependence on the event.  The second stage is where events are exposed to consumers within the bounded context.  This enables consumers to test events within a limited scope, ensuring they meet requirements within their context.  The third stage is where events are expanded to include other business and technical related metadata.  This may involve adding required fields and any additional refinement required by consumers to effectively process the event across many bounded contexts or business domains.
+<p style="text-align:center; font-style: italic"> Figure 1: Producers and consumers with schema discovery using EventBridge </p>
 
 
-Let's use a fictitious example of a Healthcare scheduling system.  In this example, the producer's job is to create a surgical scheduled event.  In the first phase, we put together the skeleton of the event.  This might include the date, time, location, type of surgery and surgeon.  
+## Solutions 
+The following solutions use API Gateway to perform request validation and EventBridge schema discovery to automatically generate up-to-date schema versions.  Both can be extended or modified to fit unique use cases and download schemas or code bindings for consumer side validation.   
 
-**Stage 1**
+### Lambda Driven Schema Updater
+The following architecture uses Eventbridge schema discovery to generate new schema versions, download, process and post the schema to an API Gateway model for request validation.  The Lambda schema updater function will trigger on schema version changes.  The function trigger can be toggled on/off by enabling/disabling the rule in EventBridge.  This is covered in the Testing section.  This solution is a good fit for quick updates with minimal processing.  If complex testing and validation is required before updating a new schema to a model in API Gateway, see the CI CD Driven Schema Updater solution.  The rule in this solution triggers off any new schema version.  To filter further, the rule can be modified or additional processing can be applied to the function.  This provides flexibility in handling multiple domains or event types.   
+
+![Lambda based schema updater](./assets/Continuous_Lambda.png)
+<p style="text-align:center; font-style: italic"> Figure 2: Architecture that uses Lambda to update API Gateway model when a new schema is detected in EventBridge </p>
+
+### CI CD Driven Schema Updater
+Another automated option is to control these changes through your CI CD pipeline.  In this solution, the Lambda function does not apply the new schema directly to an API Gateway model.  It only downloads, processes and stores the new schema to a repository (i.e. Git, S3, artifact repository) where the CI CD pipeline can reference it.  This allows for additional testing and checks before schemas are promoted and enforced.  This approach provides more control to the schema update process in exchange for some complexity.   
+![CI CD driven schema updater](./assets/CI_CD_Updater.png)
+<p style="text-align:center; font-style: italic"> Figure 3: Architecture that uses a CI CD pipeline to update API Gateway model when a new schema is detected in EventBridge </p>
+
+## Stages of Event Evolution
+
+To apply the right level of validation, it's helpful to understand how events evolve.  You can think of events going through three major stages of refinement.  You can find a reference to these stages in a talk by Sam Dengler during the [:goto conference](https://youtu.be/-Pv_kYflEEg?si=a7CDRdnGPtSH1agk&t=808))
+
+In the first stage, events start as raw information, a skeleton of what the event will eventually look like.  This allows developers to rapidly build, test and refine event structures without dependence on the event.  In the second stage, events are exposed to consumers within the bounded context.  This enables consumers to test events within a limited scope, ensuring they meet requirements within their context.  Finally, the third stage is where events are expanded to include other business and technical related metadata.  This may involve adding required fields and any additional refinement required by consumers to effectively process the event.
+
+Let's use a fictitious example of a Healthcare scheduling system.  In this example, the producer's job is to create a surgical scheduled event.  In the first phase, we put together the skeleton of the event.  This might include the date, time, location, type of surgery and surgeon.
+
+### Stage 1
+
 ```json
 {
    ...
@@ -25,17 +48,17 @@ Let's use a fictitious example of a Healthcare scheduling system.  In this examp
             "location": "Building 6"
          },
          "surgery": {
-            "surgeon": "John Thomas",
-            "type": "Orthopedic"
+           "surgeon": "John Thomas",
+           "type": "Orthopedic"
          }
    }
 }
 
 ```
 
-In the next stage, the event is refined within the surgery team's bounded context.  At this stage, you may get feedback to include requirements for the type of anesthesia and further details about the type of surgery (ACL), medication and other related data. 
+In the next stage, you start to refine the event and work within the bounded context, namely the surgical team.  At this stage, we may get feedback to include requirements for whether anesthesia is required and further details about the type of surgery (ACL), medication, etc.
 
-**Stage 2**
+### Stage 2
 
 ```json
 {
@@ -64,9 +87,10 @@ In the next stage, the event is refined within the surgery team's bounded contex
 
 ```
 
-In the last stage, you bring in other bounded contexts and consumers.  Here you might need to know if and what types of therapy are required and where those will occur.  We may have follow-up appointments and reminder details.  
+Finally, in the last stage, we bring other bounded contexts and consumers.  Here we might need to know if and what types of therapy are required and where those will occur.  We may have follow-up appointments and reminders details.
 
-**Stage 3**
+### Stage 3
+
 ```json
 {
    ...
@@ -95,38 +119,27 @@ In the last stage, you bring in other bounded contexts and consumers.  Here you 
                "location": "left knee"
                ...
             }
-        }
+         }
    }
 }
 
 ```
-Next, you'll apply governance to events through each of these stages. The next section covers two solutions using schema discovery to provide automated validation to events.  
 
-# Architecture and Implementation
+### Implementation  Through Stages 
+Let's take a look at how event validation might be applied to each stage.  You may have unique requirements that dictate modifications.  
 
-## Direct Lambda Schema Updater
-The following architecture uses Eventbridge schema discovery to generate new schema versions, download, process and post the schema to an API Gateway model for request validation.  The Lambda schema updater function will trigger on schema version changes.  
-![Lambda based schema updater](./assets/Continuous_Lambda.png)
+#### Stage 1
+This is the stage where raw events are being produced and no consumers are dependent on the events.  Here, the development team is producing events at will through Eventbridge with limited model validation applied.  The schema updater is toggled off to allow for frequent changes without affecting development.  Schemas are still discovered, but not automatically processed or applied.    
 
-## CI CD Driven Schema Updater
-Another option is to control these changes through your CI CD pipeline.  The schema updater can act as a means to download, process and upload new schema versions to a Git repository or S3 bucket.  This allows for additional testing and checks before schemas are promoted and enforced.
-![CI CD driven schema updater](./assets/CI_CD_Updater.png)
+#### Stage 2
+This is where events are starting to build a solid domain structure and are tested within a bounded context.  Your have the option of applying request validation when it's appropriate.  Since there are consumers within the same bounded context, you may want to start enforcing validation of events.  The decision to enforce request validation should be based on testing and feedback from the consumers in this stage.  This is where the CI CD approach can provide additional safeguards and oversight because it can base your schema updates on successful iterations of test runs in your pipeline.   
 
-## Implementation  Through Stages 
-Let's review the implementation through each stage. 
-
-### Stage 1
-This is the stage where raw events are being produced and there are no consumers dependent on the events.  Here, the development team is producing events at will through Eventbridge with no model validation applied.  The schema updater is toggled off.  Schemas will be discovered and versioned, but not applied to requests. 
-
-### Stage 2
-In this stage, events are starting to build a solid domain structure and are tested within a bounded context.  Your team has the option of applying request validation when it's appropriate.  Since there are consumers within the same bounded context, you can start enforcing validation, balancing it with active development.  The decision to enforce request validation should be based on testing and feedback from the consumers in this stage.  This is where the CI CD approach can provide additional safeguards and oversight because you can base your schema updates on successful iterations of test runs in your pipeline.   
-
-### Stage 3
-This is the final stage where events grow into the full business context required to process them downstream.  You also have additional consumers that rely on our events providing the necessary structure and information.  Request validation is based on your unique business needs, but is highly encouraged at this stage to ensure valid events are produced and routed downstream.  Events that don't follow schema requirements will be rejected before any downstream routing or processing is applied.  This improves speed and reduces unnecessary downstream processing. 
+#### Stage 3
+This is the final stage where events grow into the full business context required to process them downstream.  Here we also have additional consumers that rely on our events providing the necessary structure and information.  Request validation is highly encouraged at this stage to ensure valid events are produced and routed downstream.  Events that don't follow schema requirements will be rejected before any downstream routing or processing is applied. 
 
 ## Deployment
 
-_The following solution uses the Lambda based schema updater architecture referenced above.  You can modify the SAM template and Lambda function to also use this approach for CI CD driven updates._
+The following solution uses the Lambda based schema updater architecture referenced above.  You'll deploy the solution and test the three stages covered.  You can modify the SAM template and Lambda function to also use this approach for CI CD driven updates or other unique needs your application requires.
 
 ### Pre-Requisites
 
@@ -349,9 +362,10 @@ You've successfully tested all three stages and learned how to automate validati
     sam delete
     ```
 
-# Next steps
-Check out our resources on [event driven architectures](https://aws-samples.github.io/eda-on-aws/) and additional guides and samples on [Serverlessland.com](https://www.serverlessland.com)
+## Next steps
 
+1. Review the [Best-Practices When Working with Events, Schema Registry and Amazon Eventbridge](https://community.aws/content/2dhVUFPH16jZbhZfUB73aRVJ5uD/eventbridge-schema-registry-best-practices?lang=en) community post.  
+2. Check out our resources on [event driven architectures](https://aws-samples.github.io/eda-on-aws/) and additional guides and samples on [Serverlessland.com](https://www.serverlessland.com)
 
 Copyright 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
