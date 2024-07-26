@@ -113,7 +113,7 @@ Wait a few minutes for the deployment to complete. Once the stack has been succe
 
 ## Configure API Gateway to stream access logs to this Data Firehose stream
 
-1. You can now configure API Gateway to stream access logs to this Firehose delivery stream. Follow these instructions to enable access logging on your API stages using the ARN of the Firehose delivery stream created via SAM template.
+1. You can now configure API Gateway to stream access logs to this Firehose delivery stream. [Follow these instructions](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-logging-to-kinesis.html#set-up-kinesis-access-logging-using-console) to enable access logging on your API stages using the ARN of the Firehose delivery stream created via SAM template.
 2. Under Log Format, choose the fields to include in the access logs in JSON format. Find examples in the API Gateway documentation as well as the full set of available fields in the $context variable. The below fields and mapped names are required for the analysis.
 
 ```
