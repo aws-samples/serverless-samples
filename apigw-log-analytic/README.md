@@ -23,6 +23,7 @@ In this post, we will show how to visualize and analyze API Gateway access logs 
 As we are using Amazon QuickSight for the visualization part, you have the flexibility to customize these tables and graphs based on your business use case. You can also set up [Amazon QuickSight Paginated Reports](https://aws.amazon.com/quicksight/paginated-reports/) and share reports and data exports from a single, fully managed, cloud-based business intelligence (BI) solution. API owners and product managers can receive daily or weekly reports on your API consumption.
 
 **Dashboard overview**
+
 ![dashboard overview](./assets/apigw-log-analytic-dashboard-overview.jpg)
 
 
@@ -127,7 +128,10 @@ Wait a few minutes for the deployment to complete. Once the stack has been succe
 Once you configure API Gateway access logs, it takes a few minutes for the logs to appear in the QuickSight dashboard. This pre-built dashboard allows you to analyze API usage by visualizing components such as 30 days of API usage by domain, popular API paths, 400 errors (quota exceeded, unauthorized, and invalid-signature) requests, users hitting quota limits, and Cognito-based and IAM authorization. Additionally, you can filter visualizations and reports by date, customer, status, usage plan, IP, and users (IAM or Cognito users). You can also customize these visuals or create new ones for your business use case, as we have included additional context fields in the API access logs.
 
 **Dashboard overview**
+
 ![dashboard overview](./assets/apigw-log-analytic-dashboard-overview.jpg)
+
+This pre-built dashboard allows you to analyze API usage by providing visualizations of the following components:
 
 **Congnito based access control**
 
