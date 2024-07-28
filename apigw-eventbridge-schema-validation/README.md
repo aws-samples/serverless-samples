@@ -253,7 +253,7 @@ curl --location --request POST '<YOUR API URL>' \
   }
 }'
 ```
-Eventbridge will generate a new schema version, which could take several minutes to complete.  Request validation will not be set until after the schema version is created.  You can run the same command from the first test to view schema versions.  You should see a new schema version created.  
+Eventbridge will generate a new schema version, which could take several minutes to complete.  Request validation will not be set until after the schema version is created.  You can run the same AWS CLI command from the first test to view schema versions.  You should see a second schema version created.  With the rule now enabled to trigger on schema version creation, the Lambda function will download, process and apply the schema to the API Gateway model.  
 
 Run the following command again and wait until a second schema version exists.
 ```
@@ -310,15 +310,13 @@ Required objects and properties have been removed, which will be caught by the r
 { "message": "[object has missing required properties ([\"medication\",\"procedure\",\"schedule\",\"team\"])]"}% 
 ```
 
-Run the [first request from stage two](#stage2-cmd) again with all required fields and the validator will pass the event through to Eventbridge.  With the trigger enabled, any new schema versions created will trigger an update to the API Gateway model.  If you want to optionally disable schema updates at any point, run the command below.  This disables the rule in Eventbridge that triggers the Lambda function to update the API Gateway model with a new schema.  This is not required for the next step.  
+Run the [first request from stage two](#stage2-cmd) again with all required fields and the validator will pass the event through to Eventbridge.  With the trigger enabled, any new schema versions created will trigger an update to the API Gateway model.  If you want to disable schema updates at any point, run the command below; however, you'll leave this enabled for the next step.  The command disables the rule in Eventbridge that triggers the Lambda function to update the API Gateway model with a new schema.   
 
 ```
 sam deploy --parameter-overrides SchemaEnforcementEnabledOrDisabled=DISABLED
 ```
 
-The schema update feature can be leveraged across environments and API deployments to quickly enable and disable schema validation at the request level.  No additional code is required to perform the schema validation.  To scale validators to additional resources and methods, add request validator definitions to the SAM template under the appropriate path(s).
-
-To test the third stage, send an event with a broader business context, which will generate another schema version.  If the schema update rule and trigger are still enabled, the API Gateway model will be updated with the latest schema from this event.
+To test the third stage, send the event with a broader business context below, which will generate another schema version.  With the schema update rule and trigger still enabled, the API Gateway model will be updated with the latest schema from this event.
 
 ```
 curl --location --request POST '<YOUR API URL>' \
@@ -353,7 +351,7 @@ curl --location --request POST '<YOUR API URL>' \
 }'
 ```
 
-You've successfully tested all three stages and learned how to automate validation of requests through existing events.  
+You've successfully tested all three stages and learned how to automate validation of requests through existing events.   
 
 ## Cleanup
  
