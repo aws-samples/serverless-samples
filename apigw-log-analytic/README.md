@@ -32,7 +32,7 @@ As we are using QuickSight for the visualization part, you have the flexibility 
 The integration works by forwarding API Gateway access logs from your API Gateway to Amazon S3 bucket via [Amazon Data Firehose](https://www.google.com/search?client=firefox-b-1-d&q=Amazon+Kinesis+Data+Firehose). This solution uses the following AWS services to provide near real-time logging analytics:
 
 * Amazon S3 bucket ensures durable and secure storage.
-* Amazon Data Firehose for delivering logs into an S3 bucket.
+* Amazon Data Firehose is used to deliver logs into an S3 bucket.
 * AWS Lambda function for log enrichment.
 * AWS Glue crawler to provide fresher data to QuickSight.
 * QuickSight for analytics and visualization.
