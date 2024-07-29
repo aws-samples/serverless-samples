@@ -71,7 +71,7 @@ If you have not activated QuickSight in your AWS account, follow the steps below
 
 Note: This solution supports only the [REST API Gateway](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-rest-api.html).
 
-This solution won’t create an API Gateway in your AWS account and assumes you already have an API endpoint. If you do not, follow [this tutorial](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-create-api-from-example.html) to create one.
+This solution won’t create an API Gateway in your AWS account and assumes you have an API endpoint. If you do not, follow [this tutorial](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-create-api-from-example.html) to create one.
 
 Deploy an AWS SAM template into your account. This template creates all components of the analytics pipeline, including an Amazon S3 bucket, Firehose, Lambda functions, AWS Glue, QuickSight dashboards and visuals, using Infrastructure as Code (IaC).
 
@@ -153,7 +153,7 @@ This visual provides insights into 4xx errors in your API requests, focusing on 
 
 **API Latency Metrics**
 
-This visual shows latency metrics like response latency, integration latency, and Lambda authorizer latency. It helps you see how each API performs and where you can make improvements.
+This visual shows latency metrics such as response latency, integration latency, and Lambda authorizer latency. It helps you see how each API performs and where you can make improvements.
 
 ![Latency metrics](./assets/apigw-log-analytic-latency.jpg)
 
