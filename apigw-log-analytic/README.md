@@ -69,7 +69,7 @@ If you have not activated QuickSight in your AWS account, follow the steps below
 
 ## Implementation
 
-Note: This solution supports only the [REST API Gateway](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-rest-api.html).
+Note: This solution supports the [REST API Gateway](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-rest-api.html).
 
 This solution won’t create an API Gateway in your AWS account and assumes you have an API endpoint. If you do not, follow [this tutorial](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-create-api-from-example.html) to create one.
 
