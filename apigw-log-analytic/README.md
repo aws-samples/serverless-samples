@@ -73,7 +73,7 @@ Note: This solution supports only the [REST API Gateway](https://docs.aws.amazon
 
 This solution won’t create an API Gateway in your AWS account and assumes you already have an API endpoint. If you do not, follow [this tutorial](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-create-api-from-example.html) to create one.
 
-Deploy an AWS SAM template into your account. This template creates all components of the analytics pipeline, including an Amazon S3 bucket, Amazon Data Firehose, AWS Lambda functions, AWS Glue, and Amazon QuickSight dashboards and visuals, using Infrastructure as Code (IaC).
+Deploy an AWS SAM template into your account. This template creates all components of the analytics pipeline, including an Amazon S3 bucket, Firehose, Lambda functions, AWS Glue, QuickSight dashboards and visuals, using Infrastructure as Code (IaC).
 
 Once deployment is complete, we will configure our existing API Gateway to deliver access logs to the deployed Firehose stream.
 
@@ -159,14 +159,14 @@ This visual shows latency metrics like response latency, integration latency, an
 
 ## How to open the dashboard
 
-1. Navigate to the Amazon QuickSight console.
+1. Navigate to the QuickSight console.
 2. Select Dashboard and open the deployed QuickSight dashboard.
 
 ![dashboard overview](./assets/apigw-log-analytic-dashboard-navigation.jpg)
 
 ## Cleaning Up 
 
-The SAM delete command deletes an AWS SAM application by deleting the AWS CloudFormation stack, the artifacts that were packaged and deployed to Amazon S3 and Amazon ECR, and the AWS SAM template file.
+The SAM delete command deletes an AWS SAM application by deleting the AWS CloudFormation stack, the artifacts that were packaged and deployed to S3 and Amazon ECR, and the AWS SAM template file.
 
 Note - API Gateway access logs will be retained in the S3 bucket for future reference. You may need to manually delete the bucket if necessary.
 
@@ -177,6 +177,6 @@ sam delete
 
 ## Conclusion
 
-In this post, we walked you through how Amazon API Gateway's detailed access logs provide insights into API usage. These logs include customer identifiers with usage plans, helping developers identify popular routes, errors, authentication methods, and users reaching quota limits. By using these logs, you can populate Amazon QuickSight to analyze and report on API usage patterns across domains and customer segments. 
+In this post, we walked you through how API Gateway's detailed access logs provide insights into API usage. These logs include customer identifiers with usage plans, helping developers identify popular routes, errors, authentication methods, and users reaching quota limits. By using these logs, you can populate QuickSight to analyze and report on API usage patterns across domains and customer segments. 
 
 You can customize this dashboard by creating additional visuals and tables based on your business use case. Additionally, you can customize the Lambda enrichment logic, for example, to add geo information for IP addresses and create geographic dashboards within QuickSight to identify geographically separated users.
