@@ -141,7 +141,7 @@ If you are using [Amazon Cognito](https://aws.amazon.com/pm/cognito/?gclid=CjwKC
 
 **400 errors (quota exceeded, unauthorized, and invalid-signature) requests**
 
-This visual provides insights into 4xx errors in your API requests, focusing on quota exceeded, unauthorized, and invalid signature errors. You can identify trends and patterns affecting your API's performance and reliability. This breakdown helps pinpoint root causes, enabling targeted improvements, enhanced security measures, and optimized quota management for a seamless and secure API experience.
+This visual provides insights into 4xx errors in your API requests, focusing on quota exceeded, unauthorized, and invalid signature errors. You can identify trends and patterns affecting your API's performance and reliability. This breakdown helps identify root causes, facilitating targeted improvements, stronger security measures, and optimized quota management for a seamless and secure API experience.
 
 ![dashboard overview](./assets/apigw-log-analytic-400-errors.jpg)
 
