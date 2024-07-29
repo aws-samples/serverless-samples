@@ -168,7 +168,7 @@ This visual shows latency metrics like response latency, integration latency, an
 
 The SAM delete command deletes an AWS SAM application by deleting the AWS CloudFormation stack and the artifacts.
 
-Note - API Gateway access logs retained in the S3 bucket for future reference. You may need to manually delete the bucket if necessary.
+Note - API Gateway access logs are retained in the S3 bucket for future reference. You may need to manually delete the bucket if necessary.
 
 ```
 cd apigw-log-analytic
