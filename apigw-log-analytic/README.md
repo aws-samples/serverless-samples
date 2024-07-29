@@ -98,7 +98,7 @@ Enter the following parameters for deployment:
  
 ![deployment](./assets/apigw-log-analytic-deployment2.jpg)
 
-Wait a few minutes for the deployment to complete. Once the stack has been successfully created, copy the Amazon Resource Names (ARNs) of the Firehose stream and S3 bucket from the output. These resource ARNs are required for the next steps in configuring API Gateway access logging.
+Wait a couple of minutes for the deployment to complete. Once the stack has been successfully created, copy the Amazon Resource Names (ARNs) of the Firehose stream and S3 bucket from the output. These resource ARNs are required for the next steps in configuring API Gateway access logging.
 
 ![deployment](./assets/apigw-log-analytic-deployment3.jpg)
 
