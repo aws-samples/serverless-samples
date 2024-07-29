@@ -177,6 +177,6 @@ sam delete
 
 ## Conclusion
 
-In this post, we walked you through how API Gateway's detailed access logs provide insights into API usage. These logs include customer identifiers with usage plans, helping developers identify popular routes, errors, authentication methods, and users reaching quota limits. By using these logs, you can populate QuickSight to analyze and report on API usage patterns across domains and customer segments. 
+In this repo, I walked you through how API Gateway's detailed access logs provide insights into API usage. These logs include customer identifiers with usage plans, helping developers identify popular routes, errors, authentication methods, and users reaching quota limits. By using these logs, you can populate QuickSight to analyze and report on API usage patterns across domains and customer segments. 
 
 You can customize this dashboard by creating additional visuals and tables based on your business use case. Additionally, you can customize the Lambda enrichment logic, for example, to add geo information for IP addresses and create geographic dashboards within QuickSight to identify geographically separated users.
