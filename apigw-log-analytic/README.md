@@ -1,6 +1,6 @@
 # Logging API Gateway access logs, analyzing and visualizing them using Amazon QuickSight
 
-[Amazon API Gateway](https://aws.amazon.com/api-gateway/) is a fully managed service that makes it easy for developers to create, publish, maintain, monitor, and secure APIs at any scale. APIs act as the 'front door' for applications to access data, business logic, or functionality from your backend services. Amazon API Gateway can produce detailed access logs to show who has accessed the API. When using usage plans, a customer identifier is included in the log records. API developers can use these access logs to identify popular routes, errors, authentication methods, users reaching quota limits, and gain deeper insights into API usage.
+[Amazon API Gateway](https://aws.amazon.com/api-gateway/) is a fully managed service that makes it easy for developers to create, publish, maintain, monitor, and secure APIs at any scale. APIs act as the 'front door' for applications to access data, business logic, or functionality from your backend services. API Gateway can produce detailed access logs to show who has accessed the API. When using usage plans, a customer identifier is included in the log records. API developers can use these access logs to identify popular routes, errors, authentication methods, users reaching quota limits, and gain deeper insights into API usage.
 
 You can use these logs to populate a business intelligence service, such as [Amazon QuickSight](https://aws.amazon.com/quicksight/), to analyze and report on usage patterns across your APIs and customers.
 
@@ -20,7 +20,7 @@ In this post, we will show how to visualize and analyze API Gateway access logs 
 * Latency metrics for APIs and the Lambda Authorizer
 * Filter visualizations and reports by date, domain, status, usage plan, IP, and users (IAM or Cognito users)
 
-As we are using Amazon QuickSight for the visualization part, you have the flexibility to customize these tables and graphs based on your business use case. You can also set up [Amazon QuickSight Paginated Reports](https://aws.amazon.com/quicksight/paginated-reports/) and share reports and data exports from a single, fully managed, cloud-based business intelligence (BI) solution. API owners and product managers can receive daily or weekly reports on your API consumption.
+As we are using QuickSight for the visualization part, you have the flexibility to customize these tables and graphs based on your business use case. You can also set up [Amazon QuickSight Paginated Reports](https://aws.amazon.com/quicksight/paginated-reports/) and share reports and data exports from a single, fully managed, cloud-based business intelligence (BI) solution. API owners and product managers can receive daily or weekly reports on your API consumption.
 
 **Dashboard overview**
 
@@ -29,7 +29,7 @@ As we are using Amazon QuickSight for the visualization part, you have the flexi
 
 ## Solution Overview 
 
-The integration works by forwarding API Gateway access logs from your Amazon API Gateway to S3 via Amazon Data Firehose. This solution uses the following AWS services to provide near real-time logging analytics:
+The integration works by forwarding API Gateway access logs from your API Gateway to Amazon S3 bucket via Amazon Data Firehose. This solution uses the following AWS services to provide near real-time logging analytics:
 
 * Amazon S3 bucket ensures durable and secure storage.
 * Amazon Data Firehose for delivering logs into an S3 bucket.
@@ -40,7 +40,7 @@ The integration works by forwarding API Gateway access logs from your Amazon API
   ![Architecture diagram](./assets/apigw-log-analytic-solution-overview.jpg)
 
 ## Streamlining API Access Logs
-API access logs are streamed in near real-time from Amazon API Gateway to [Amazon Data Firehose](https://www.google.com/search?client=firefox-b-1-d&q=Amazon+Kinesis+Data+Firehose). Amazon Data Firehose buffers these records, enriching them with information from the API usage plans. It then writes batches of enhanced records to an Amazon S3 bucket, ensuring durable and secure storage. To enrich the access logs, an AWS Lambda function is used. The Lambda function retrieves API Gateway usage plan details and loads them into memory. During each invocation, it processes each access log record from Firehose stream by decoding it from a base64-encoded binary. The record is then enriched with the usage plan name and customer name before being re-encoded to base64 binary and returned to the Firehose stream.
+API access logs are streamed in near real-time from API Gateway to [Amazon Data Firehose](https://www.google.com/search?client=firefox-b-1-d&q=Amazon+Kinesis+Data+Firehose). Amazon Data Firehose buffers these records, enriching them with information from the API usage plans. It then writes batches of enhanced records to an Amazon S3 bucket, ensuring durable and secure storage. To enrich the access logs, an AWS Lambda function is used. The Lambda function retrieves API Gateway usage plan details and loads them into memory. During each invocation, it processes each access log record from Firehose stream by decoding it from a base64-encoded binary. The record is then enriched with the usage plan name and customer name before being re-encoded to base64 binary and returned to the Firehose stream.
 
 ## Indexing Access Logs
 Metadata for the API access logs is stored in an [AWS Glue Data Catalog](https://docs.aws.amazon.com/glue/latest/dg/catalog-and-crawler.html), which Amazon QuickSight uses for querying. An AWS Glue crawler identifies and indexes newly written access logs. You can adjust the frequency of the Glue crawler to ensure fresher data is available in Amazon QuickSight by updating the DataRefreshFrequency parameter of the SAM template when deploying the solution. The default data refresh frequency is every 10 minutes (cron(0/10 * * * ? *)).
