@@ -43,14 +43,14 @@ The integration works by forwarding API Gateway access logs from your API Gatewa
 API access logs are streamed in near real-time from API Gateway to [Amazon Data Firehose](https://www.google.com/search?client=firefox-b-1-d&q=Amazon+Kinesis+Data+Firehose). Amazon Data Firehose buffers these records, enriching them with information from the API usage plans. It then writes batches of enhanced records to an Amazon S3 bucket, ensuring durable and secure storage. To enrich the access logs, an AWS Lambda function is used. The Lambda function retrieves API Gateway usage plan details and loads them into memory. During each invocation, it processes each access log record from Firehose stream by decoding it from a base64-encoded binary. The record is then enriched with the usage plan name and customer name before being re-encoded to base64 binary and returned to the Firehose stream.
 
 ## Indexing Access Logs
-Metadata for the API access logs is stored in an [AWS Glue Data Catalog](https://docs.aws.amazon.com/glue/latest/dg/catalog-and-crawler.html), which Amazon QuickSight uses for querying. An AWS Glue crawler identifies and indexes newly written access logs. You can adjust the frequency of the Glue crawler to ensure fresher data is available in Amazon QuickSight by updating the DataRefreshFrequency parameter of the SAM template when deploying the solution. The default data refresh frequency is every 10 minutes (cron(0/10 * * * ? *)).
+Metadata for the API access logs is stored in an [AWS Glue Data Catalog](https://docs.aws.amazon.com/glue/latest/dg/catalog-and-crawler.html), which QuickSight uses for querying. An AWS Glue crawler identifies and indexes newly written access logs. You can adjust the frequency of the Glue crawler to ensure fresher data is available in QuickSight by updating the DataRefreshFrequency parameter of the SAM template when deploying the solution. The default data refresh frequency is every 10 minutes (cron(0/10 * * * ? *)).
 
 ## Visualizing Data
-Amazon QuickSight is configured to use the S3 location of the access logs as a data source, enabling comprehensive analysis and visualization.
+QuickSight is configured to use the S3 location of the access logs as a data source, enabling comprehensive analysis and visualization.
 
 ## Pre-requisites 
 
-If you have not activated Amazon QuickSight in your AWS account, follow the steps below. Otherwise, you can skip to step 2.
+If you have not activated QuickSight in your AWS account, follow the steps below. Otherwise, you can skip to step 2.
 
 1. Create a QuickSight Account.
     1. Navigate to Amazon QuickSight service from the AWS Management console.
@@ -59,7 +59,7 @@ If you have not activated Amazon QuickSight in your AWS account, follow the step
 
   ![Pre-requisites1](./assets/apigw-log-analytic-prerequisite1.jpg)
 
-2. Once Amazon QuickSight account setup is complete, from the Amazon QuickSight console, select your username to open the menu. Select “Manage QuickSight”.
+2. Once QuickSight account setup is complete, from the QuickSight console, select your username to open the menu. Select “Manage QuickSight”.
 3. On the left menu, select “Manage Groups”.
 4. Select the “NEW GROUP” button and name the group in the format “<projectName>-Admins” (It is case sensitive). Select “CREATE.” For example, apiaccesslogs-Admins.
 5. Add yourself as an administrator to the dashboard by selecting the newly created group name, then click “ADD USER.”
