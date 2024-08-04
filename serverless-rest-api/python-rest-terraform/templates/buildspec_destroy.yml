@@ -1,0 +1,26 @@
+version: 0.2
+
+env:
+  variables:
+    CODE_SRC_DIR: python-rest-terraform/application/
+    TF_VERSION: "1.9.4"
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.12
+    commands:
+      - curl -s -qL -o terraform.zip https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip
+      - unzip -o terraform.zip
+      - mv terraform /bin
+      - rm terraform.zip
+
+  build:
+    commands:
+      - cd ${CODEBUILD_SRC_DIR}/${CODE_SRC_DIR}
+      - terraform workspace select ${TF_VAR_environment}
+      - terraform destroy --auto-approve
+
+artifacts:
+  files:
+    - '**/*'

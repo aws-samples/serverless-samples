@@ -1,0 +1,18 @@
+{
+    "resource": "/users/{userid}/bookings",
+    "path": "/users/bf6dbddc-db2e-4f70-a892-1b165556dede/bookings",
+    "httpMethod": "GET",
+    "headers": null,
+    "multiValueHeaders": null,
+    "queryStringParameters": null,
+    "multiValueQueryStringParameters": null,
+    "pathParameters": {
+        "userid": "bf6dbddc-db2e-4f70-a892-1b165556dede"
+    },
+    "stageVariables": null,
+    "requestContext": {
+        "requestId": "fd7a81e0-1099-415a-ae2e-42a4435c1c70"
+    },
+    "body": null,
+    "isBase64Encoded": false
+}

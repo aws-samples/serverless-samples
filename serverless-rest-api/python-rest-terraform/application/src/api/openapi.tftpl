@@ -1,0 +1,360 @@
+openapi: 3.0.1
+info:
+  title: Sample API
+  version: "1.0"
+servers:
+- url: /Prod
+
+paths:
+  /locations:
+    get:
+      responses: {}
+      security:
+        - LambdaAuthorizer: []
+        - ApiKeyAuth: []
+      x-amazon-apigateway-request-validator: Validate query string parameters and headers
+      x-amazon-apigateway-integration:
+        type: "aws_proxy"
+        httpMethod: "POST"
+        uri: "arn:aws:apigateway:${AwsRegion}:lambda:path/2015-03-31/functions/${LocationsFunction}/invocations"
+        passthroughBehavior: "when_no_match"
+    put:
+      responses: {}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LocationModel"
+        required: true
+      security:
+        - LambdaAuthorizer: []
+        - ApiKeyAuth: []
+      x-amazon-apigateway-request-validator: Validate body, query string parameters, and headers
+      x-amazon-apigateway-integration:
+        type: "aws_proxy"
+        httpMethod: "POST"
+        uri: "arn:aws:apigateway:${AwsRegion}:lambda:path/2015-03-31/functions/${LocationsFunction}/invocations"
+        passthroughBehavior: "when_no_match"
+      x-codegen-request-body-name: LocationModel
+  /locations/{locationid}:
+    get:
+      responses: {}
+      security:
+        - LambdaAuthorizer: []
+        - ApiKeyAuth: []
+      x-amazon-apigateway-request-validator: Validate query string parameters and headers
+      x-amazon-apigateway-integration:
+        type: "aws_proxy"
+        httpMethod: "POST"
+        uri: "arn:aws:apigateway:${AwsRegion}:lambda:path/2015-03-31/functions/${LocationsFunction}/invocations"
+        passthroughBehavior: "when_no_match"
+      parameters:
+      - name: locationid
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+    delete:
+      responses: {} 
+      security:
+        - LambdaAuthorizer: []
+        - ApiKeyAuth: []  
+      x-amazon-apigateway-request-validator: Validate query string parameters and headers
+      x-amazon-apigateway-integration:
+        type: "aws_proxy"
+        httpMethod: "POST"
+        uri: "arn:aws:apigateway:${AwsRegion}:lambda:path/2015-03-31/functions/${LocationsFunction}/invocations"
+        passthroughBehavior: "when_no_match"
+      parameters:
+      - name: locationid
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+  /locations/{locationid}/resources:
+    get:
+      responses: {} 
+      security:
+        - LambdaAuthorizer: []
+        - ApiKeyAuth: []    
+      x-amazon-apigateway-request-validator: Validate query string parameters and headers
+      x-amazon-apigateway-integration:
+        type: "aws_proxy"
+        httpMethod: "POST"
+        uri: "arn:aws:apigateway:${AwsRegion}:lambda:path/2015-03-31/functions/${ResourcesFunction}/invocations"
+        passthroughBehavior: "when_no_match"
+      parameters:
+      - name: locationid
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+    put:
+      responses: {}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResourceModel"
+        required: true      
+      security:
+        - LambdaAuthorizer: []
+        - ApiKeyAuth: []
+      x-amazon-apigateway-request-validator: Validate body, query string parameters, and headers
+      x-amazon-apigateway-integration:
+        type: "aws_proxy"
+        httpMethod: "POST"
+        uri: "arn:aws:apigateway:${AwsRegion}:lambda:path/2015-03-31/functions/${ResourcesFunction}/invocations"
+        passthroughBehavior: "when_no_match"
+      x-codegen-request-body-name: ResourceModel
+  /locations/{locationid}/resources/{resourceid}:
+    get:
+      responses: {} 
+      security:
+        - LambdaAuthorizer: []
+        - ApiKeyAuth: []    
+      x-amazon-apigateway-request-validator: Validate query string parameters and headers
+      x-amazon-apigateway-integration:
+        type: "aws_proxy"
+        httpMethod: "POST"
+        uri: "arn:aws:apigateway:${AwsRegion}:lambda:path/2015-03-31/functions/${ResourcesFunction}/invocations"
+        passthroughBehavior: "when_no_match"
+      parameters:
+      - name: locationid
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+      - name: resourceid
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+    delete:
+      responses: {}   
+      security:
+        - LambdaAuthorizer: []
+        - ApiKeyAuth: []   
+      x-amazon-apigateway-request-validator: Validate query string parameters and headers
+      x-amazon-apigateway-integration:
+        type: "aws_proxy"
+        httpMethod: "POST"
+        uri: "arn:aws:apigateway:${AwsRegion}:lambda:path/2015-03-31/functions/${ResourcesFunction}/invocations"
+        passthroughBehavior: "when_no_match"
+      parameters:
+      - name: locationid
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+      - name: resourceid
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+  /locations/{locationid}/resources/{resourceid}/bookings:
+    get:
+      responses: {}
+      security:
+        - LambdaAuthorizer: []
+        - ApiKeyAuth: []      
+      x-amazon-apigateway-request-validator: Validate query string parameters and headers
+      x-amazon-apigateway-integration:
+        type: "aws_proxy"
+        httpMethod: "POST"
+        uri: "arn:aws:apigateway:${AwsRegion}:lambda:path/2015-03-31/functions/${BookingsFunction}/invocations"
+        passthroughBehavior: "when_no_match"
+      parameters:
+      - name: locationid
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+      - name: resourceid
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+  /users/{userid}/bookings:
+    get:
+      responses: {} 
+      security:
+        - LambdaAuthorizer: []
+        - ApiKeyAuth: []     
+      x-amazon-apigateway-request-validator: Validate query string parameters and headers
+      x-amazon-apigateway-integration:
+        type: "aws_proxy"
+        httpMethod: "POST"
+        uri: "arn:aws:apigateway:${AwsRegion}:lambda:path/2015-03-31/functions/${BookingsFunction}/invocations"
+        passthroughBehavior: "when_no_match"
+      parameters:
+      - name: userid
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+    put:
+      responses: {}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingModel"
+        required: true   
+      security:
+        - LambdaAuthorizer: []
+        - ApiKeyAuth: []   
+      x-amazon-apigateway-request-validator: Validate body, query string parameters, and headers
+      x-amazon-apigateway-integration:
+        type: "aws_proxy"
+        httpMethod: "POST"
+        uri: "arn:aws:apigateway:${AwsRegion}:lambda:path/2015-03-31/functions/${BookingsFunction}/invocations"
+        passthroughBehavior: "when_no_match"
+      x-codegen-request-body-name: BookingModel
+  /users/{userid}/bookings/{bookingid}:
+    get:
+      responses: {}  
+      security:
+        - LambdaAuthorizer: []
+        - ApiKeyAuth: []    
+      x-amazon-apigateway-request-validator: Validate query string parameters and headers
+      x-amazon-apigateway-integration:
+        type: "aws_proxy"
+        httpMethod: "POST"
+        uri: "arn:aws:apigateway:${AwsRegion}:lambda:path/2015-03-31/functions/${BookingsFunction}/invocations"
+        passthroughBehavior: "when_no_match"
+      parameters:
+      - name: userid
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+      - name: bookingid
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+    delete:
+      responses: {} 
+      security:
+        - LambdaAuthorizer: []
+        - ApiKeyAuth: []     
+      x-amazon-apigateway-request-validator: Validate query string parameters and headers
+      x-amazon-apigateway-integration:
+        type: "aws_proxy"
+        httpMethod: "POST"
+        uri: "arn:aws:apigateway:${AwsRegion}:lambda:path/2015-03-31/functions/${BookingsFunction}/invocations"
+        passthroughBehavior: "when_no_match"
+      parameters:
+      - name: userid
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+      - name: bookingid
+        in: "path"
+        required: true
+        schema:
+          type: "string"
+components:
+  schemas:
+    BookingModel:
+      required:
+      - "resourceid"
+      - "starttimeepochtime"
+      type: "object"
+      properties:
+        userid:
+          type: "string"
+        resourceid:
+          type: "string"
+        starttimeepochtime:
+          type: "number"
+    ResourceModel:
+      required:
+      - name
+      type: "object"
+      properties:
+        locationid:
+          type: "string"
+        resourceid:
+          type: "string"
+        name:
+          type: "string"
+        type:
+          type: "string"
+          enum:
+          - "room"
+          - "demo"
+          - "arena"
+          - "hall"
+    LocationModel:
+      required:
+      - name
+      type: object
+      properties:
+        locationid:
+          type: "string"
+        imageUrl:
+          type: "string"
+        name:
+          type: "string"
+        description:
+          type: "string"
+  securitySchemes:
+    LambdaAuthorizer:
+      type: "apiKey"
+      name: "Authorization"
+      in: "header"
+      x-amazon-apigateway-authtype: "custom"
+      x-amazon-apigateway-authorizer:
+        type: "token"
+        authorizerUri: "arn:aws:apigateway:${AwsRegion}:lambda:path/2015-03-31/functions/${AuthorizerFunction}/invocations"
+        authorizerCredentials: "${AuthorizerLambdaRole}"
+        authorizerResultTtlInSeconds: 300
+    ApiKeyAuth: 
+      type: "apiKey"
+      in: "header"
+      name: "x-api-key"
+  
+x-amazon-apigateway-request-validators:
+  Validate query string parameters and headers:
+    validateRequestParameters: true
+    validateRequestBody: false
+  Validate body, query string parameters, and headers:
+    validateRequestParameters: true
+    validateRequestBody: true
+x-amazon-apigateway-gateway-responses:
+  BAD_REQUEST_BODY:
+    statusCode: 400
+    responseParameters:
+      gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+    responseTemplates:
+      application/json: |-
+        {
+          "message": "$context.error.messageString",
+          "responseType": "$context.error.responseType",
+          "validationErrorString": "$context.error.validationErrorString"
+        }
+  DEFAULT_4XX:
+    responseParameters:
+      gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+  DEFAULT_5XX:
+    responseParameters:
+      gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+x-amazon-apigateway-cors:
+  allowOrigins: 
+    - "'*'"
+  allowMethods:
+    - GET
+    - OPTIONS
+    - PUT
+    - DELETE
+  allowHeaders:
+    - x-apigateway-header
+    - X-Amz-Date
+    - Content-Type
+    - Authorization
+    - X-Forwarded-For
+    - X-Api-Key
+    - X-Amz-Security-Token
