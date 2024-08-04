@@ -1,0 +1,197 @@
+{
+    "widgets": [
+        {
+            "height": 6,
+            "width": 6,
+            "y": 12,
+            "x": 0,
+            "type": "metric",
+            "properties": {
+                "metrics": [
+                    [ "AWS/Lambda", "Invocations", "FunctionName", "${LocationsFunction}" ],
+                    [ ".", "Errors", ".", "." ],
+                    [ ".", "Throttles", ".", "." ],
+                    [ ".", "Duration", ".", ".", { "stat": "Average" } ],
+                    [ ".", "ConcurrentExecutions", ".", ".", { "stat": "Maximum" } ]
+                ],
+                "view": "timeSeries",
+                "region": "${AwsRegion}",
+                "stacked": false,
+                "title": "Locations Lambda",
+                "period": 60,
+                "stat": "Sum"
+            }
+        },
+        {
+            "height": 6,
+            "width": 6,
+            "y": 18,
+            "x": 0,
+            "type": "metric",
+            "properties": {
+                "metrics": [
+                    [ "AWS/Lambda", "Invocations", "FunctionName", "${ResourcesFunction}" ],
+                    [ ".", "Errors", ".", "." ],
+                    [ ".", "Throttles", ".", "." ],
+                    [ ".", "Duration", ".", ".", { "stat": "Average" } ],
+                    [ ".", "ConcurrentExecutions", ".", ".", { "stat": "Maximum" } ]
+                ],
+                "view": "timeSeries",
+                "region": "${AwsRegion}",
+                "stacked": false,
+                "title": "Resources Lambda",
+                "period": 60,
+                "stat": "Sum"
+            }
+        },
+        {
+            "height": 6,
+            "width": 6,
+            "y": 24,
+            "x": 0,
+            "type": "metric",
+            "properties": {
+                "metrics": [
+                    [ "AWS/Lambda", "Invocations", "FunctionName", "${BookingsFunction}" ],
+                    [ ".", "Errors", ".", "." ],
+                    [ ".", "Throttles", ".", "." ],
+                    [ ".", "Duration", ".", ".", { "stat": "Average" } ],
+                    [ ".", "ConcurrentExecutions", ".", ".", { "stat": "Maximum" } ]
+                ],
+                "view": "timeSeries",
+                "region": "${AwsRegion}",
+                "stacked": false,
+                "title": "Bookings Lambda",
+                "period": 60,
+                "stat": "Sum"
+            }
+        },
+        {
+            "height": 6,
+            "width": 6,
+            "y": 6,
+            "x": 6,
+            "type": "metric",
+            "properties": {
+                "metrics": [
+                    [ "AWS/Lambda", "Invocations", "FunctionName", "${AuthorizerFunction}" ],
+                    [ ".", "Errors", ".", "." ],
+                    [ ".", "Throttles", ".", "." ],
+                    [ ".", "Duration", ".", ".", { "stat": "Average" } ],
+                    [ ".", "ConcurrentExecutions", ".", ".", { "stat": "Maximum" } ]
+                ],
+                "view": "timeSeries",
+                "region": "${AwsRegion}",
+                "stacked": false,
+                "title": "Authorizer Lambda",
+                "period": 60,
+                "stat": "Sum"
+            }
+        },
+        {
+            "height": 6,
+            "width": 6,
+            "y": 12,
+            "x": 6,
+            "type": "metric",
+            "properties": {
+                "metrics": [
+                    [ "AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "${LocationsTable}", { "stat": "Maximum" } ],
+                    [ ".", "ConsumedWriteCapacityUnits", ".", ".", { "stat": "Maximum" } ],
+                    [ ".", "ProvisionedReadCapacityUnits", ".", ".", { "period": 300 } ],
+                    [ ".", "ProvisionedWriteCapacityUnits", ".", ".", { "period": 300 } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AwsRegion}",
+                "title": "DynamoDB - Locations",
+                "period": 60,
+                "stat": "Average"
+            }
+        },
+        {
+            "height": 6,
+            "width": 6,
+            "y": 18,
+            "x": 6,
+            "type": "metric",
+            "properties": {
+                "metrics": [
+                    [ "AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "${ResourcesTable}", { "stat": "Maximum" } ],
+                    [ ".", "ConsumedWriteCapacityUnits", ".", ".", { "stat": "Maximum" } ],
+                    [ ".", "ProvisionedReadCapacityUnits", ".", ".", { "period": 300 } ],
+                    [ ".", "ProvisionedWriteCapacityUnits", ".", ".", { "period": 300 } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AwsRegion}",
+                "title": "DynamoDB - Resources",
+                "period": 60,
+                "stat": "Average"
+            }
+        },
+        {
+            "height": 6,
+            "width": 6,
+            "y": 24,
+            "x": 6,
+            "type": "metric",
+            "properties": {
+                "metrics": [
+                    [ "AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "${BookingsTable}", { "period": 60, "stat": "Maximum" } ],
+                    [ ".", "ConsumedWriteCapacityUnits", ".", ".", { "period": 60, "stat": "Maximum" } ],
+                    [ ".", "ProvisionedReadCapacityUnits", ".", "." ],
+                    [ ".", "ProvisionedWriteCapacityUnits", ".", "." ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AwsRegion}",
+                "title": "DynamoDB - Bookings",
+                "period": 300,
+                "stat": "Average"
+            }
+        },
+        {
+            "height": 6,
+            "width": 6,
+            "y": 6,
+            "x": 0,
+            "type": "metric",
+            "properties": {
+                "metrics": [
+                    [ "AWS/ApiGateway", "4XXError", "ApiName", "${RestAPI}", { "yAxis": "right" } ],
+                    [ ".", "5XXError", ".", ".", { "yAxis": "right" } ],
+                    [ ".", "Count", ".", ".", { "label": "Count", "yAxis": "right" } ],
+                    [ ".", "IntegrationLatency", ".", ".", { "stat": "Average" } ],
+                    [ ".", "Latency", ".", ".", { "stat": "Average" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AwsRegion}",
+                "period": 60,
+                "stat": "Sum",
+                "title": "API Gateway"
+            }
+        },
+        {
+            "height": 6,
+            "width": 12,
+            "y": 0,
+            "x": 0,
+            "type": "metric",
+            "properties": {
+                "metrics": [
+                    [ "${ApplicationName}", "ProcessedBookings", "ServiceName", "${BookingsFunction}", "LogGroup", "${BookingsFunction}", "ServiceType", "AWS::Lambda::Function", "Service", "Bookings", { "label": "Processed Bookings"} ],
+                    [ ".", "ProcessedLocations", ".", "${LocationsFunction}", ".", "${LocationsFunction}", ".", ".", ".", "Locations", { "label": "Processed Locations"} ],
+                    [ ".", "ProcessedResources", ".", "${ResourcesFunction}", ".", "${ResourcesFunction}", ".", ".", ".", "Resources", { "label": "Processed Resources"} ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "title": "Business Metrics",
+                "region": "${AwsRegion}",
+                "period": 60,
+                "stat": "Sum"
+            }
+        }
+    ]
+}

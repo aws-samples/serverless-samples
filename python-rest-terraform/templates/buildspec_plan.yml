@@ -1,0 +1,30 @@
+version: 0.2
+
+env:
+  variables:
+    CODE_SRC_DIR: python-rest-terraform/application/
+    TF_VERSION: "1.9.4"
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.12
+    commands:
+      - curl -s -qL -o terraform.zip https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip
+      - unzip -o terraform.zip
+      - mv terraform /bin
+      - rm terraform.zip
+  build:
+    commands:
+      - cd ${CODEBUILD_SRC_DIR}/${CODE_SRC_DIR}
+      - echo ## TERRAFORM INIT : Initialize the Terraform Workspace
+      - echo terraform init -reconfigure -backend-config "bucket=${tf_state_bucket}" -backend-config "dynamodb_table=${tf_state_table}" -backend-config "region=${TF_VAR_region}" -backend-config "key=${TF_VAR_serverless_application_name}/${TF_VAR_environment}"
+      - terraform init -reconfigure -backend-config "bucket=${tf_state_bucket}" -backend-config "dynamodb_table=${tf_state_table}" -backend-config "region=${TF_VAR_region}" -backend-config "key=${TF_VAR_serverless_application_name}/${TF_VAR_environment}"
+      - terraform workspace new ${TF_VAR_environment} || true
+      - terraform workspace select ${TF_VAR_environment}
+      - echo Current workspace:$(terraform workspace show)
+      - echo ## TERRAFORM PLAN : Generate the Terraform Plan
+      - terraform plan -out tfapply
+artifacts:
+  files:
+    - '**/*'

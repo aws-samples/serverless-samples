@@ -6,7 +6,7 @@ import os
 import pytest
 import time
 
-COGNITO_STACK_NAME = os.getenv('TEST_COGNITO_STACK_NAME', None)
+COGNITO_STACK_NAME = os.getenv('TF_VAR_cognito_stack_name', None)
 globalConfig = {}
 
 

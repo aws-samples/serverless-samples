@@ -1,0 +1,19 @@
+{
+    "resource": "/locations/{locationid}/resources/{resourceid}/bookings",
+    "path": "/locations/f8216640-91a2-11eb-8ab9-57aa454facef/resources/86f0b180-9be1-11eb-a305-35487c0301a7/bookings",
+    "httpMethod": "GET",
+    "headers": null,
+    "multiValueHeaders": null,
+    "queryStringParameters": null,
+    "multiValueQueryStringParameters": null,
+    "pathParameters": {
+        "resourceid": "86f0b180-9be1-11eb-a305-35487c0301a7",
+        "locationid": "f8216640-91a2-11eb-8ab9-57aa454facef"
+    },
+    "stageVariables": null,
+    "requestContext": {
+        "requestId": "574b1db9-1eca-4171-91b3-9540d7ed1a84"
+    },
+    "body": null,
+    "isBase64Encoded": false
+}
