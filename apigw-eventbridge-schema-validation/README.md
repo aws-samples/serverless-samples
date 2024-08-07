@@ -6,7 +6,7 @@ In event driven architectures, validation of events can be challenging to put in
 
 Events should be validated by both the producer and consumer, as illustrated in Figure 1 below.  The producers job is to create and send valid events before they are routed to consumers.  On the consumer side, even if you trust the source of events, you should validate them before processing.  A common way to manage and route events is through an event bus.  [Amazon EventBridge](https://aws.amazon.com/eventbridge/) is a serverless event bus that can perform discovery, versioning and consumption of event schemas.  Schema discovery provides the freedom for developers to simply put events on the bus and have schemas created and versioned within a registry.  These schemas can be used to perform validation on events.  
 
-Consumers can download [schemas in OpenAPI or JSON Schema formats](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-schema.html) and [code bindings](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-schema-code-bindings.html) in popular programming languages for strongly typed event parsing and validation.  If your programming language is not supported for code bindings or you would rather use JSON or Open API schemas, you can download versions from the console or APIs.  You'll see later in this solution how to automate the schema update process.  Once the schema is downloaded you can use third party libraries to perform validation.  For example, [Ajv](https://ajv.js.org/) for JavaScript or the [jsonschema library](https://python-jsonschema.readthedocs.io/en/stable/) for Python.  You can then validate payloads against schemas during development and in your CI pipelines.  If using code bindings, you can download them using the console, API, or within a supported IDE using the AWS Toolkit.  Code bindings can be used like other code artifacts.  For instance, if using Lambda, the binding can be used as a [layer](https://docs.aws.amazon.com/lambda/latest/dg/chapter-layers.html) dependency.  Bindings are not automatically synced to any artifact repositories, such as [AWS CodeArtifact](https://aws.amazon.com/codeartifact/); however, the Lambda code in this solution could be extended to automate binding uploads to your artifact repository on schema updates.   
+EventBridgeConsumers can download [schemas in OpenAPI or JSON Schema formats](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-schema.html) and [code bindings](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-schema-code-bindings.html) in popular programming languages for strongly typed event parsing and validation.  If your programming language is not supported for code bindings or you would rather use JSON or Open API schemas, you can download versions from the console or APIs.  You'll see later in this solution how to automate the schema update process.  Once the schema is downloaded you can use third party libraries to perform validation.  For example, [Ajv](https://ajv.js.org/) for JavaScript or the [jsonschema library](https://python-jsonschema.readthedocs.io/en/stable/) for Python.  You can then validate payloads against schemas during development and in your CI pipelines.  If using code bindings, you can download them using the console, API, or within a supported IDE using the AWS Toolkit.  Code bindings can be used like other code artifacts.  For instance, if using Lambda, the binding can be used as a [layer](https://docs.aws.amazon.com/lambda/latest/dg/chapter-layers.html) dependency.  Bindings are not automatically synced to any artifact repositories, such as [AWS CodeArtifact](https://aws.amazon.com/codeartifact/); however, the Lambda code in this solution could be extended to automate binding uploads to your artifact repository on schema updates.   
 
 Producers may send events through a central service, such as Amazon API Gateway, or directly to the event bus.  When going directly to the event bus, you can use third party libraries to validate during development and within CI pipelines.  Another option is to use [Amazon API Gateway](https://aws.amazon.com/api-gateway/) as a front door to your event bus.  This is commonly used for external services sending events that need authorization.  API Gateway can also perform request validation using a schema.  Many schemas can be applied as different models, and applied to different resources and methods.  Events can also be transformed and sent directly to EventBridge without additional glue code.  Since the default EventBridge bus receives events when new schemas are created from events, you can automate the download, processing and uploading of new schemas to API Gateway from EventBridge.  This keeps the model and request validation in API Gateway in sync with event structure changes. 
 
@@ -129,7 +129,7 @@ Finally, in the last stage, we bring other bounded contexts and consumers.  Here
 Let's take a look at how event validation might be applied to each stage.  You may have unique requirements that dictate modifications.  
 
 #### Stage 1
-This is the stage where raw events are being produced and no consumers are dependent on the events.  Here, the development team is producing events at will through Eventbridge with limited model validation applied.  The schema updater is toggled off to allow for frequent changes without affecting development.  Schemas are still discovered, but not automatically processed or applied.    
+This is the stage where raw events are being produced and no consumers are dependent on the events.  Here, the development team is producing events at will through EventBridge with limited model validation applied.  The schema updater is toggled off to allow for frequent changes without affecting development.  Schemas are still discovered, but not automatically processed or applied.    
 
 #### Stage 2
 This is where events are starting to build a solid domain structure and are tested within a bounded context.  Your have the option of applying request validation when it's appropriate.  Since there are consumers within the same bounded context, you may want to start enforcing validation of events.  The decision to enforce request validation should be based on testing and feedback from the consumers in this stage.  This is where the CI CD approach can provide additional safeguards and oversight because it can base your schema updates on successful iterations of test runs in your pipeline.   
@@ -178,7 +178,7 @@ Copy the API URL from the output for later use in the testing section.
 
 ## Testing
 
-This first test will emulate the first stage of our event evolution.  A schema will be created in Eventbridge, but won't be enforced in API Gateway until you enable the rule to trigger the Lambda function.  This will be done in the second test.
+This first test will emulate the first stage of our event evolution.  A schema will be created in EventBridge, but won't be enforced in API Gateway until you enable the rule to trigger the Lambda function.  This will be done in the second test.
 
 Run this command multiple times to send events to the custom event bus. Replace API URL with your API endpoint. 
 
@@ -222,7 +222,7 @@ Here's an example output, if successful:
 }
 ```
 
-Once the first schema version is created, you can move on to the next step.  To test the second stage, first turn on the rule to trigger the Lambda function on schema creation by running this command to enable the Eventbridge rule and accept ('y') deployment of the changeset: 
+Once the first schema version is created, you can move on to the next step.  To test the second stage, first turn on the rule to trigger the Lambda function on schema creation by running this command to enable the EventBridge rule and accept ('y') deployment of the changeset: 
 ```
 sam deploy --parameter-overrides SchemaEnforcementEnabledOrDisabled=ENABLED
 ```
@@ -253,7 +253,7 @@ curl --location --request POST '<YOUR API URL>' \
   }
 }'
 ```
-Eventbridge will generate a new schema version, which could take several minutes to complete.  Request validation will not be set until after the schema version is created.  You can run the same AWS CLI command from the first test to view schema versions.  You should see a second schema version created.  With the rule now enabled to trigger on schema version creation, the Lambda function will download, process and apply the schema to the API Gateway model.  
+EventBridge will generate a new schema version, which could take several minutes to complete.  Request validation will not be set until after the schema version is created.  You can run the same AWS CLI command from the first test to view schema versions.  You should see a second schema version created.  With the rule now enabled to trigger on schema version creation, the Lambda function will download, process and apply the schema to the API Gateway model.  
 
 Run the following command again and wait until a second schema version exists.
 ```
@@ -284,7 +284,7 @@ Here's an example output with version 2 now available:
 
 With the Lambda trigger now enabled, the latest schema is downloaded, processed and uploaded to API Gateway replacing the current request validator.  You can view the output from the Lambda function by viewing its Cloudwatch logs.
 
-Future requests will now use the latest schema generated from Eventbridge. You can test this by sending in an event that does not have all the required fields from the latest event. 
+Future requests will now use the latest schema generated from EventBridge. You can test this by sending in an event that does not have all the required fields from the latest event. 
 
 ```
 curl --location --request POST '<YOUR API URL>' \
@@ -310,7 +310,7 @@ Required objects and properties have been removed, which will be caught by the r
 { "message": "[object has missing required properties ([\"medication\",\"procedure\",\"schedule\",\"team\"])]"}% 
 ```
 
-Run the [first request from stage two](#stage2-cmd) again with all required fields and the validator will pass the event through to Eventbridge.  With the trigger enabled, any new schema versions created will trigger an update to the API Gateway model.  If you want to disable schema updates at any point, run the command below; however, you'll leave this enabled for the next step.  The command disables the rule in Eventbridge that triggers the Lambda function to update the API Gateway model with a new schema.   
+Run the [first request from stage two](#stage2-cmd) again with all required fields and the validator will pass the event through to EventBridge.  With the trigger enabled, any new schema versions created will trigger an update to the API Gateway model.  If you want to disable schema updates at any point, run the command below; however, you'll leave this enabled for the next step.  The command disables the rule in EventBridge that triggers the Lambda function to update the API Gateway model with a new schema.   
 
 ```
 sam deploy --parameter-overrides SchemaEnforcementEnabledOrDisabled=DISABLED
@@ -362,7 +362,7 @@ You've successfully tested all three stages and learned how to automate validati
 
 ## Next steps
 
-1. Review the [Best-Practices When Working with Events, Schema Registry and Amazon Eventbridge](https://community.aws/content/2dhVUFPH16jZbhZfUB73aRVJ5uD/eventbridge-schema-registry-best-practices?lang=en) community post.  
+1. Review the [Best-Practices When Working with Events, Schema Registry and Amazon EventBridge](https://community.aws/content/2dhVUFPH16jZbhZfUB73aRVJ5uD/eventbridge-schema-registry-best-practices?lang=en) community post.  
 2. Check out our resources on [event driven architectures](https://aws-samples.github.io/eda-on-aws/) and additional guides and samples on [Serverlessland.com](https://www.serverlessland.com)
 
 Copyright 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
