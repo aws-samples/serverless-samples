@@ -6,9 +6,6 @@ const ajv = new Ajv();
 import { APIGatewayClient, UpdateModelCommand, CreateDeploymentCommand } from "@aws-sdk/client-api-gateway";
 const apiClient = new APIGatewayClient();
 
-import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
-const ssmClient = new SSMClient();
-
 const schemaName = process.env.SchemaName;
 const apiId = process.env.ApiId;
 const apiModelName = process.env.ApiModelName;
@@ -120,8 +117,6 @@ async function downloadSchema(schemaRegistry, schemaName) {
 export const handler = async (event) => {
 
     console.log('Event received:', JSON.stringify(event, null, 2));
-    console.log('Api Resource ID:', apiId);
-    console.log('Api Model Name: ' + apiModelName);
 
     // check required variables
     if (!apiId || !schemaName || !apiModelName || !schemaRegistry) {

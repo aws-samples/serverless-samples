@@ -93,6 +93,7 @@ Resources:
       CodeUri: lambda/
       Handler: index.handler
       Runtime: nodejs20.x
+      ReservedConcurrentExecutions: 10
       Environment:
         Variables:
           SchemaName: !Sub '${SchemaName}'
@@ -162,7 +163,7 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: /aws/events/scheduling-events-source-catch-all
-      RetentionInDays: 30
+      RetentionInDays: 7
 
 ##########################################################################
 #   API GATEWAY ROLE WITH PERMISSIONS TO PUT EVENTS

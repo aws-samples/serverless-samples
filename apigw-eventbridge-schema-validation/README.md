@@ -139,7 +139,7 @@ This is the final stage where events grow into the full business context require
 
 ## Deployment
 
-The following solution uses the Lambda based schema updater architecture referenced above.  You'll deploy the solution and test the three stages covered.  You can modify the SAM template and Lambda function to also use this approach for CI CD driven updates or other unique needs your application requires.
+The following solution uses the Lambda based schema updater architecture referenced above.  This is intended to be deployed to non-production environments.  You'll deploy the solution and test the three stages covered.  You can modify the SAM template and Lambda function to also use this approach for CI CD driven updates or other unique needs your application requires.
 
 ### Pre-Requisites
 
