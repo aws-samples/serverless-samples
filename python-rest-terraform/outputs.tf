@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
 output "codebuild_name" {
   value       = module.codebuild_terraform.name
   description = "The Name of the Codebuild Project"

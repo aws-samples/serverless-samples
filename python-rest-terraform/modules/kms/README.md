@@ -27,7 +27,6 @@ No modules.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_codepipeline_role_arn"></a> [codepipeline\_role\_arn](#input\_codepipeline\_role\_arn) | ARN of the codepipeline IAM role | `string` | n/a | yes |
-| <a name="input_tags"></a> [tags](#input\_tags) | Tags to be attached to the KMS Key | `map(any)` | n/a | yes |
 
 ## Outputs
 

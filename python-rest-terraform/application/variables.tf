@@ -1,21 +1,22 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
 variable "serverless_application_name" {
   description = "application name"
   type        = string
+  default     = "python-rest-tf"
 }
 
 variable "cognito_stack_name" {
   description = "an environment name for Cognito stack"
   type        = string
-}
-
-variable "region" {
-  description = "AWS region to deploy serverless application in"
-  type        = string
+  default     = "serverless-api-cognito"
 }
 
 variable "environment" {
   description = "environment name"
   type        = string
+  default     = "dev"
 }
 
 variable "lambda_python_runtime" {

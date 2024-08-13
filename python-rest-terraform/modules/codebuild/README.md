@@ -33,7 +33,6 @@ No modules.
 | <a name="input_project_name"></a> [project\_name](#input\_project\_name) | Unique name for this project | `string` | n/a | yes |
 | <a name="input_role_arn"></a> [role\_arn](#input\_role\_arn) | Codepipeline IAM role arn. | `string` | `""` | no |
 | <a name="input_s3_bucket_name"></a> [s3\_bucket\_name](#input\_s3\_bucket\_name) | Name of the S3 bucket used to store the deployment artifacts | `string` | n/a | yes |
-| <a name="input_tags"></a> [tags](#input\_tags) | Tags to be applied to the codebuild project | `map(any)` | n/a | yes |
 
 ## Outputs
 
