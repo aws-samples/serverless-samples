@@ -1,0 +1,3931 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+AWSTemplateFormatVersion : '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: "This is the template for creating Amazon API Gateway access logging"
+Parameters:
+  ProjectName:
+      Type: "String"
+      Default: "replacemewithrealprojectname"
+      Description: Enter an all-lowercase single-word name which is between 3 and 42 chars long. An S3 bucket will be created with this name to store all collected data.  
+      #MinLength : 3
+      #MaxLength : 42
+      #AllowedPattern : "^[a-z0-9]*$"
+  DataRefreshFrequency:
+      Type: "String"
+      Default: "cron(0/10 * * * ? *)"
+      Description: "The schedule when the crawler runs. Use this cron schedule to control the frequency of data refresh"
+Resources:
+  ApiGatewayAccessLogsEnrichmentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      MemorySize: 512
+      Timeout: 300 # 5 minutes
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - apigateway:GET
+              Resource:
+                - 'arn:aws:apigateway:*::/usageplans'
+                - 'arn:aws:apigateway:*::/usageplans/*/*'
+  AccessLogsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain 
+  DeliveryStream:
+    DependsOn: AccessLogsBucket
+    Type: AWS::KinesisFirehose::DeliveryStream
+    DependsOn:
+      - DeliveryStreamPolicy
+    Properties:
+      DeliveryStreamName: !Sub "amazon-apigateway-${ProjectName}"
+      DeliveryStreamType: DirectPut
+      ExtendedS3DestinationConfiguration:
+        Prefix: logs/year=!{timestamp:YYYY}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}
+        ErrorOutputPrefix: errors/!{firehose:random-string}/!{firehose:error-output-type}/!{timestamp:yyyy/MM/dd}/
+        BucketARN: !GetAtt AccessLogsBucket.Arn
+        BufferingHints:
+          IntervalInSeconds: 300
+          SizeInMBs: 10
+        RoleARN: !GetAtt DeliveryStreamRole.Arn
+        ProcessingConfiguration:
+          Enabled: true
+          Processors:
+            - Type: Lambda
+              Parameters:
+                - ParameterName: LambdaArn
+                  ParameterValue: !GetAtt ApiGatewayAccessLogsEnrichmentFunction.Arn
+  DeliveryStreamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: 'firehoseassumerole'
+            Effect: Allow
+            Principal:
+              Service: firehose.amazonaws.com
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'sts:ExternalId': !Ref 'AWS::AccountId'
+  DeliveryStreamPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      Roles:
+        - !Ref DeliveryStreamRole
+      PolicyName: firehose_delivery_policy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 's3:AbortMultipartUpload'
+              - 's3:GetBucketLocation'
+              - 's3:GetObject'
+              - 's3:ListBucket'
+              - 's3:ListBucketMultipartUploads'
+              - 's3:PutObject'
+            Resource:
+              - !GetAtt AccessLogsBucket.Arn
+              - !Join 
+                - ''
+                - - 'arn:aws:s3:::'
+                  - !Ref AccessLogsBucket
+                  - '*'
+          - Effect: Allow
+            Action:
+              - 'lambda:InvokeFunction'
+              - 'lambda:GetFunctionConfiguration'
+            Resource: !GetAtt ApiGatewayAccessLogsEnrichmentFunction.Arn
+  QuickSightDataSourceS3ThroughAthena:
+      Type: "AWS::QuickSight::DataSource"
+      Properties:
+          DataSourceId: !Sub "${ProjectName}-Athena"          
+          Name: !Sub "${ProjectName}-Athena" 
+          AwsAccountId: !Ref AWS::AccountId
+          Type: "ATHENA"
+          DataSourceParameters:
+              AthenaParameters:
+                  WorkGroup: "primary"
+          SslProperties:
+              DisableSsl: false
+          Permissions:
+            -
+              Principal: !Sub "arn:aws:quicksight:${AWS::Region}:${AWS::AccountId}:group/default/${ProjectName}-Admins"
+              Actions:
+                - "quicksight:UpdateDataSourcePermissions"
+                - "quicksight:DescribeDataSource"
+                - "quicksight:DescribeDataSourcePermissions"
+                - "quicksight:PassDataSource"
+                - "quicksight:UpdateDataSource"
+                - "quicksight:DeleteDataSource"
+  ApiAccessLogsDataSet:
+      DependsOn: GlueDatabasAPIGWlog
+      Type: "AWS::QuickSight::DataSet"
+      Properties:
+        AwsAccountId: !Ref "AWS::AccountId"
+        DataSetId: !Sub "${ProjectName}-access-logs"
+        Name: "logs"
+        ImportMode: "DIRECT_QUERY"
+        PhysicalTableMap:
+          92fea1a7-5ffd-4ac1-8d5a-8724b335270f:
+            RelationalTable:
+              DataSourceArn: !GetAtt QuickSightDataSourceS3ThroughAthena.Arn
+              Catalog: "AwsDataCatalog"
+              Schema: !Ref GlueDatabasAPIGWlog
+              Name: "logs"
+              InputColumns:
+                - Name: "requestid"
+                  Type: "STRING"
+                - Name: "ip"
+                  Type: "STRING"
+                - Name: "requesttime"
+                  Type: "STRING"
+                - Name: "httpmethod"
+                  Type: "STRING"
+                - Name: "routekey"
+                  Type: "STRING"
+                - Name: "status"
+                  Type: "STRING"
+                - Name: "protocol"
+                  Type: "STRING"
+                - Name: "responselength"
+                  Type: "STRING"
+                - Name: "extendedrequestid"
+                  Type: "STRING"
+                - Name: "accountid"
+                  Type: "STRING"
+                - Name: "apiid"
+                  Type: "STRING"
+                - Name: "authorizerclaimsproperty"
+                  Type: "STRING"
+                - Name: "authorizerprincipalid"
+                  Type: "STRING"
+                - Name: "authorizerproperty"
+                  Type: "STRING"
+                - Name: "deploymentid"
+                  Type: "STRING"
+                - Name: "domainname"
+                  Type: "STRING"
+                - Name: "domainprefix"
+                  Type: "STRING"
+                - Name: "errormessage"
+                  Type: "STRING"
+                - Name: "errorresponsetype"
+                  Type: "STRING"
+                - Name: "errorvalidationerrorstring"
+                  Type: "STRING"
+                - Name: "identityaccountid"
+                  Type: "STRING"
+                - Name: "identityapikeyid"
+                  Type: "STRING"
+                - Name: "identitycaller"
+                  Type: "STRING"
+                - Name: "identitycognitoauthenticationprovider"
+                  Type: "STRING"
+                - Name: "identitycognitoauthenticationtype"
+                  Type: "STRING"
+                - Name: "identitycognitoidentityid"
+                  Type: "STRING"
+                - Name: "identitycognitoidentitypoolid"
+                  Type: "STRING"
+                - Name: "identityprincipalorgid"
+                  Type: "STRING"
+                - Name: "identityuser"
+                  Type: "STRING"
+                - Name: "identityuseragent"
+                  Type: "STRING"
+                - Name: "identityuserarn"
+                  Type: "STRING"
+                - Name: "path"
+                  Type: "STRING"
+                - Name: "requestoverrideheader"
+                  Type: "STRING"
+                - Name: "requestoverridepath"
+                  Type: "STRING"
+                - Name: "requestoverridequerystring"
+                  Type: "STRING"
+                - Name: "responseoverrideheader"
+                  Type: "STRING"
+                - Name: "responseoverridestatus"
+                  Type: "STRING"
+                - Name: "requesttimeepoch"
+                  Type: "STRING"
+                - Name: "resourcepath"
+                  Type: "STRING"
+                - Name: "stage"
+                  Type: "STRING"
+                - Name: "wafresponsecode"
+                  Type: "STRING"
+                - Name: "webaclarn"
+                  Type: "STRING"
+                - Name: "sub"
+                  Type: "STRING"
+                - Name: "clientid"
+                  Type: "STRING"
+                - Name: "aud"
+                  Type: "STRING"
+                - Name: "identity.apikeyname"
+                  Type: "STRING"
+                - Name: "identity.usageplanname"
+                  Type: "STRING"
+                - Name: "authorizeError"
+                  Type: "STRING"
+                - Name: "authorizelatency"
+                  Type: "STRING"
+                - Name: "authorizeStatus"
+                  Type: "STRING"
+                - Name: "authorizerError"
+                  Type: "STRING"
+                - Name: "authorizerintegrationlatency"
+                  Type: "STRING"
+                - Name: "authorizerIntegrationStatus"
+                  Type: "STRING"
+                - Name: "authorizerlatency"
+                  Type: "STRING"
+                - Name: "authorizerStatus"
+                  Type: "STRING"
+                - Name: "integrationlatency"
+                  Type: "STRING"
+                - Name: "responselatency"
+                  Type: "STRING"
+                - Name: "date"
+                  Type: "STRING"
+                - Name: "year"
+                  Type: "STRING"
+                - Name: "month"
+                  Type: "STRING"
+                - Name: "day"
+                  Type: "STRING"
+                  
+        LogicalTableMap:
+            c002e3c1-f63c-4f4b-b51e-f0cd21bc553e:
+              Alias: "logs"
+              Source:
+                PhysicalTableId: "92fea1a7-5ffd-4ac1-8d5a-8724b335270f"
+              DataTransforms:
+              
+                - CastColumnTypeOperation:
+                    ColumnName: "authorizelatency"
+                    NewColumnType: "INTEGER"
+                - CastColumnTypeOperation:
+                    ColumnName: "authorizerintegrationlatency"
+                    NewColumnType: "INTEGER"
+                - CastColumnTypeOperation:
+                    ColumnName: "authorizerlatency"
+                    NewColumnType: "INTEGER"
+                - CastColumnTypeOperation:
+                    ColumnName: "integrationlatency"
+                    NewColumnType: "INTEGER"
+                - CastColumnTypeOperation:
+                    ColumnName: "responselatency"
+                    NewColumnType:  "INTEGER"
+                - CreateColumnsOperation:
+                    Columns:
+                      - ColumnName: "parse_date"
+                        ColumnId: "123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea"
+                        Expression: "parseDate({requesttime}, \"yyyy-MM-dd'T'HH:mm:ss\")"
+                - ProjectOperation:
+                    ProjectedColumns:
+                      - "requestid"
+                      - "ip"
+                      - "requesttime"
+                      - "httpmethod"
+                      - "routekey"
+                      - "status"
+                      - "protocol"
+                      - "responselength"
+                      - "extendedrequestid"
+                      - "accountid"
+                      - "apiid"
+                      - "authorizerclaimsproperty"
+                      - "authorizerprincipalid"
+                      - "authorizerproperty"
+                      - "awsendpointrequestid"
+                      - "deploymentid"
+                      - "domainname"
+                      - "domainprefix"
+                      - "errormessage"
+                      - "errorresponsetype"
+                      - "errorvalidationerrorstring"
+                      - "identityaccountid"
+                      - "identityapikeyid"
+                      - "identitycaller"
+                      - "identitycognitoauthenticationprovider"
+                      - "identitycognitoauthenticationtype"
+                      - "identitycognitoidentityid"
+                      - "identitycognitoidentitypoolid"
+                      - "identityprincipalorgid"
+                      - "identityuser"
+                      - "identityuseragent"
+                      - "identityuserarn"
+                      - "path"
+                      - "requestoverrideheader"
+                      - "requestoverridepath"
+                      - "requestoverridequerystring"
+                      - "responseoverrideheader"
+                      - "responseoverridestatus"
+                      - "requesttimeepoch"
+                      - "resourcepath"
+                      - "stage"
+                      - "wafresponsecode"
+                      - "webaclarn"
+                      - "sub"
+                      - "clientid"
+                      - "aud"
+                      - "identity.apikeyname"
+                      - "identity.usageplanname"
+                      - "authorizeError"
+                      - "authorizerError"
+                      - "authorizelatency"
+                      - "authorizeStatus"
+                      - "authorizerintegrationlatency"
+                      - "authorizerlatency"
+                      - "authorizerIntegrationStatus"
+                      - "authorizerStatus"
+                      - "integrationlatency"
+                      - "responselatency"
+                      - "date"
+                      - "year"
+                      - "month"
+                      - "day"
+                      - "parse_date"
+        DataSetUsageConfiguration:
+          DisableUseAsDirectQuerySource: false
+          DisableUseAsImportedSource: false
+          
+  ApiGwAnalysis:
+      Type: AWS::QuickSight::Analysis
+      
+      Properties:
+        AnalysisId: APIGW-access-logs
+        Name: "API Gateway Access Logs"
+        AwsAccountId: !Ref AWS::AccountId
+        ThemeArn: "arn:aws:quicksight::aws:theme/MIDNIGHT"
+        Definition:
+          DataSetIdentifierDeclarations:
+            - Identifier: logs
+              DataSetArn: !GetAtt ApiAccessLogsDataSet.Arn
+          Sheets:
+            - SheetId: 9b348200-9f40-4cc3-87a7-0cff574178e7
+              Title: Amazon API Gateway Access Logs
+              Description: Amazon API Gateway access log analytics (REST API)
+              Name: API Access Logs
+              FilterControls:
+                - RelativeDateTime:
+                    FilterControlId: 5cd135bf-4b3d-407a-ba0c-845282d0a2af
+                    Title: Date
+                    SourceFilterId: 9707953f-0355-4691-97dd-ac5f6a22fb00
+                    DisplayOptions:
+                      TitleOptions:
+                        Visibility: VISIBLE
+                        FontConfiguration:
+                          FontSize:
+                            Relative: MEDIUM
+                      DateTimeFormat: 'YYYY/MM/DD HH:mm:ss'
+                      InfoIconLabelOptions:
+                        Visibility: HIDDEN
+                - Dropdown:
+                    FilterControlId: 84aec283-3f23-4f3d-8b00-a5fb21b2458c
+                    Title: Domain
+                    SourceFilterId: dd89f5ef-815b-43aa-8183-b956addc779f
+                    DisplayOptions:
+                      SelectAllOptions:
+                        Visibility: VISIBLE
+                      TitleOptions:
+                        Visibility: VISIBLE
+                        FontConfiguration:
+                          FontSize:
+                            Relative: MEDIUM
+                      InfoIconLabelOptions:
+                        Visibility: HIDDEN
+                    Type: MULTI_SELECT
+                - Dropdown:
+                    FilterControlId: c599b1d8-740c-4e3b-8bce-7dfc8496cbbb
+                    Title: API Status
+                    SourceFilterId: 9acbe87c-6fb8-417a-a280-82c00cadf639
+                    DisplayOptions:
+                      SelectAllOptions:
+                        Visibility: VISIBLE
+                      TitleOptions:
+                        Visibility: VISIBLE
+                        FontConfiguration:
+                          FontSize:
+                            Relative: MEDIUM
+                      InfoIconLabelOptions:
+                        Visibility: HIDDEN
+                    Type: MULTI_SELECT
+                - Dropdown:
+                    FilterControlId: 8e5f1a95-0e27-46bc-a728-ef4ccbf449b2
+                    Title: Path
+                    SourceFilterId: 366b5eee-549e-4131-995c-812db28abc3b
+                    DisplayOptions:
+                      SelectAllOptions:
+                        Visibility: VISIBLE
+                      TitleOptions:
+                        Visibility: VISIBLE
+                        FontConfiguration:
+                          FontSize:
+                            Relative: MEDIUM
+                      InfoIconLabelOptions:
+                        Visibility: HIDDEN
+                    Type: MULTI_SELECT
+                - Dropdown:
+                    FilterControlId: b6b6a36b-a467-4842-aad1-a9fa2b1a9613
+                    Title: Usage Plan
+                    SourceFilterId: 20910447-e8eb-483b-bc84-808e19f39bbc
+                    DisplayOptions:
+                      SelectAllOptions:
+                        Visibility: VISIBLE
+                      TitleOptions:
+                        Visibility: VISIBLE
+                        FontConfiguration:
+                          FontSize:
+                            Relative: MEDIUM
+                      InfoIconLabelOptions:
+                        Visibility: HIDDEN
+                    Type: MULTI_SELECT
+                - Dropdown:
+                    FilterControlId: 1cae1983-1374-41ad-a58c-a246809afcb7
+                    Title: IP
+                    SourceFilterId: c28a9453-c8bb-416f-bab1-de72f64ee35a
+                    DisplayOptions:
+                      SelectAllOptions:
+                        Visibility: VISIBLE
+                      TitleOptions:
+                        Visibility: VISIBLE
+                        FontConfiguration:
+                          FontSize:
+                            Relative: MEDIUM
+                      InfoIconLabelOptions:
+                        Visibility: HIDDEN
+                    Type: MULTI_SELECT
+                - Dropdown:
+                    FilterControlId: f1d92e8f-8628-44b7-91d5-1e48909fba94
+                    Title: IAM user
+                    SourceFilterId: 46cc874c-a5ed-4ca3-bc75-62e788a2bd3e
+                    DisplayOptions:
+                      SelectAllOptions:
+                        Visibility: VISIBLE
+                      TitleOptions:
+                        Visibility: VISIBLE
+                        FontConfiguration:
+                          FontSize:
+                            Relative: MEDIUM
+                      InfoIconLabelOptions:
+                        Visibility: HIDDEN
+                    Type: MULTI_SELECT
+                - Dropdown:
+                    FilterControlId: 031d9f83-b3fa-4b29-bf9e-0fe1dc09935b
+                    Title: UserID
+                    SourceFilterId: e3bfde4b-0bf7-4641-9c81-80101fdc9b54
+                    DisplayOptions:
+                      SelectAllOptions:
+                        Visibility: VISIBLE
+                      TitleOptions:
+                        Visibility: VISIBLE
+                        FontConfiguration:
+                          FontSize:
+                            Relative: MEDIUM
+                      InfoIconLabelOptions:
+                        Visibility: HIDDEN
+                    Type: MULTI_SELECT
+                - Dropdown:
+                    FilterControlId: 4399a6ab-b7a7-4d59-8cdb-7f1b385612d4
+                    Title: requestid equals
+                    SourceFilterId: 8daf68de-f2e6-40ba-88b1-14a075ce2d5b
+                    DisplayOptions:
+                      SelectAllOptions:
+                        Visibility: VISIBLE
+                    Type: MULTI_SELECT
+              Visuals:
+                - LineChartVisual:
+                    VisualId: 45d3c91a-b739-435e-b411-bc3598ba6c4d
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">Authorizer Latency metric</inline>
+                            <br/>
+                            <b>AuthorizerLatency</b>
+                            : The authorizer latency in ms.
+                            <br/>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: HIDDEN
+                    ChartConfiguration:
+                      FieldWells:
+                        LineChartAggregatedFieldWells:
+                          Category:
+                            - DateDimensionField:
+                                FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: parse_date
+                                DateGranularity: MINUTE
+                                HierarchyId: 4045293c-408f-48a1-867f-26bf96edd9fd
+                          Values:
+                            - NumericalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerintegrationlatency.5.1721934353596
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: authorizerintegrationlatency
+                                AggregationFunction:
+                                  SimpleNumericalAggregation: AVERAGE
+                          Colors: []
+                      SortConfiguration:
+                        CategorySort:
+                          - FieldSort:
+                              FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                              Direction: DESC
+                        CategoryItemsLimitConfiguration:
+                          OtherCategories: INCLUDE
+                        ColorItemsLimitConfiguration:
+                          OtherCategories: INCLUDE
+                        SmallMultiplesLimitConfiguration:
+                          OtherCategories: INCLUDE
+                      Type: LINE
+                      XAxisDisplayOptions:
+                        AxisLineVisibility: VISIBLE
+                        ScrollbarOptions:
+                          Visibility: HIDDEN
+                      XAxisLabelOptions:
+                        Visibility: HIDDEN
+                      PrimaryYAxisDisplayOptions:
+                        AxisOptions:
+                          TickLabelOptions:
+                            LabelOptions:
+                              FontConfiguration:
+                                FontSize:
+                                  Relative: LARGE
+                      PrimaryYAxisLabelOptions:
+                        Visibility: HIDDEN
+                      Legend:
+                        Visibility: VISIBLE
+                        Title:
+                          Visibility: HIDDEN
+                        Position: BOTTOM
+                        Height: 73px
+                      DataLabels:
+                        Visibility: HIDDEN
+                        Overlap: DISABLE_OVERLAP
+                      Tooltip:
+                        TooltipVisibility: VISIBLE
+                        SelectedTooltipType: DETAILED
+                        FieldBasedTooltip:
+                          AggregationVisibility: HIDDEN
+                          TooltipTitleType: PRIMARY_VALUE
+                          TooltipFields:
+                            - FieldTooltipItem:
+                                FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                                Visibility: VISIBLE
+                            - FieldTooltipItem:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerintegrationlatency.5.1721934353596
+                                Visibility: VISIBLE
+                    Actions: []
+                    ColumnHierarchies:
+                      - DateTimeHierarchy:
+                          HierarchyId: 4045293c-408f-48a1-867f-26bf96edd9fd
+                          DrillDownFilters: []
+                - TableVisual:
+                    VisualId: 6c6cfb11-9d57-496c-8010-b8867a369802
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">API Latency metrics</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: HIDDEN
+                    ChartConfiguration:
+                      FieldWells:
+                        TableAggregatedFieldWells:
+                          GroupBy:
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.6.1721929687669
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: domainname
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.path.7.1721929741611
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: path
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identity.usageplanname.6.1721931706541
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: identity.usageplanname
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerError.8.1721934788329
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: authorizerError
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.errorresponsetype.11.1721934831475
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: errorresponsetype
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizeStatus.11.1721941958390
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: authorizeStatus
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.11.1721941985480
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: status
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerIntegrationStatus.12.1721941987902
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: authorizerIntegrationStatus
+                          Values:
+                            - NumericalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.integrationlatency.4.1720019536246
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: integrationlatency
+                                AggregationFunction:
+                                  SimpleNumericalAggregation: AVERAGE
+                            - NumericalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.responselatency.5.1720019536590
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: responselatency
+                                AggregationFunction:
+                                  SimpleNumericalAggregation: AVERAGE
+                            - NumericalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerintegrationlatency.7.1721934377514
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: authorizerintegrationlatency
+                                AggregationFunction:
+                                  SimpleNumericalAggregation: AVERAGE
+                      SortConfiguration:
+                        PaginationConfiguration:
+                          PageSize: 500
+                          PageNumber: 1
+                      TableOptions:
+                        HeaderStyle:
+                          TextWrap: WRAP
+                          Height: 25
+                        RowAlternateColorOptions:
+                          Status: DISABLED
+                          UsePrimaryBackgroundColor: ENABLED
+                      FieldOptions:
+                        SelectedFieldOptions:
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.6.1721929687669
+                            CustomLabel: Domain
+                          - FieldId: c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.path.7.1721929741611
+                            CustomLabel: Path
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identity.usageplanname.6.1721931706541
+                            CustomLabel: Usahe Plan
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerError.8.1721934788329
+                            Width: 250px
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.errorresponsetype.11.1721934831475
+                            CustomLabel: Error
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.integrationlatency.4.1720019536246
+                            CustomLabel: Integration Latency
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.responselatency.5.1720019536590
+                            CustomLabel: ResponseLatency
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerintegrationlatency.7.1721934377514
+                            CustomLabel: AuthorizerLatency
+                        Order: []
+                    Actions: []
+                - KPIVisual:
+                    VisualId: 79b9ba02-d149-47c0-95f5-aeed49fd80f9
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">Athorizer Latency (ms)</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: VISIBLE
+                    ChartConfiguration:
+                      FieldWells:
+                        Values:
+                          - NumericalMeasureField:
+                              FieldId: >-
+                                c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerintegrationlatency.0.1721934278922
+                              Column:
+                                DataSetIdentifier: logs
+                                ColumnName: authorizerintegrationlatency
+                              AggregationFunction:
+                                SimpleNumericalAggregation: AVERAGE
+                        TargetValues: []
+                        TrendGroups: []
+                      SortConfiguration: {}
+                      KPIOptions:
+                        Comparison:
+                          ComparisonMethod: PERCENT_DIFFERENCE
+                        PrimaryValueDisplayType: ACTUAL
+                        PrimaryValueFontConfiguration:
+                          FontSize:
+                            Relative: MEDIUM
+                        SecondaryValueFontConfiguration:
+                          FontSize:
+                            Relative: EXTRA_LARGE
+                        Sparkline:
+                          Visibility: VISIBLE
+                          Type: AREA
+                          TooltipVisibility: HIDDEN
+                        VisualLayoutOptions:
+                          StandardLayout:
+                            Type: VERTICAL
+                    Actions: []
+                    ColumnHierarchies: []
+                - KPIVisual:
+                    VisualId: 770ebcae-29b2-46fb-ae55-278742b58a86
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">Integration Latency (ms)</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: VISIBLE
+                    ChartConfiguration:
+                      FieldWells:
+                        Values:
+                          - NumericalMeasureField:
+                              FieldId: >-
+                                c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.integrationlatency.0.1720020064800
+                              Column:
+                                DataSetIdentifier: logs
+                                ColumnName: integrationlatency
+                              AggregationFunction:
+                                SimpleNumericalAggregation: AVERAGE
+                        TargetValues: []
+                        TrendGroups: []
+                      SortConfiguration: {}
+                      KPIOptions:
+                        Comparison:
+                          ComparisonMethod: PERCENT_DIFFERENCE
+                        PrimaryValueDisplayType: ACTUAL
+                        PrimaryValueFontConfiguration:
+                          FontSize:
+                            Relative: MEDIUM
+                        SecondaryValueFontConfiguration:
+                          FontSize:
+                            Relative: EXTRA_LARGE
+                        Sparkline:
+                          Visibility: VISIBLE
+                          Type: AREA
+                          TooltipVisibility: HIDDEN
+                        VisualLayoutOptions:
+                          StandardLayout:
+                            Type: VERTICAL
+                    Actions: []
+                    ColumnHierarchies: []
+                - KPIVisual:
+                    VisualId: a4ea5045-4476-47e6-a4d4-026656829165
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">Response Latency (ms)</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: VISIBLE
+                    ChartConfiguration:
+                      FieldWells:
+                        Values:
+                          - NumericalMeasureField:
+                              FieldId: >-
+                                c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.responselatency.1.1720019904631
+                              Column:
+                                DataSetIdentifier: logs
+                                ColumnName: responselatency
+                              AggregationFunction:
+                                SimpleNumericalAggregation: AVERAGE
+                        TargetValues: []
+                        TrendGroups: []
+                      SortConfiguration: {}
+                      KPIOptions:
+                        Comparison:
+                          ComparisonMethod: PERCENT_DIFFERENCE
+                        PrimaryValueDisplayType: ACTUAL
+                        PrimaryValueFontConfiguration:
+                          FontSize:
+                            Relative: MEDIUM
+                        SecondaryValueFontConfiguration:
+                          FontSize:
+                            Relative: EXTRA_LARGE
+                        Sparkline:
+                          Visibility: VISIBLE
+                          Type: AREA
+                          TooltipVisibility: HIDDEN
+                        VisualLayoutOptions:
+                          StandardLayout:
+                            Type: VERTICAL
+                    Actions: []
+                    ColumnHierarchies: []
+                - LineChartVisual:
+                    VisualId: e67999e9-2bb9-454a-a607-6de02c414b3f
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">API Latency metrics</inline>
+                            <br/>
+                            <b>IntegrationLatency</b>
+                            : The integration latency in ms.
+                            <br/>
+                            <b>ResponseLatency</b>
+                            : The response latency in ms.
+                            <br/>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: HIDDEN
+                    ChartConfiguration:
+                      FieldWells:
+                        LineChartAggregatedFieldWells:
+                          Category:
+                            - DateDimensionField:
+                                FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: parse_date
+                                DateGranularity: MINUTE
+                                HierarchyId: 74301366-a3f8-446e-8058-7c1b6418f882
+                          Values:
+                            - NumericalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.integrationlatency.4.1720019536246
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: integrationlatency
+                                AggregationFunction:
+                                  SimpleNumericalAggregation: AVERAGE
+                            - NumericalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.responselatency.5.1720019536590
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: responselatency
+                                AggregationFunction:
+                                  SimpleNumericalAggregation: AVERAGE
+                          Colors: []
+                      SortConfiguration:
+                        CategorySort:
+                          - FieldSort:
+                              FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                              Direction: DESC
+                        CategoryItemsLimitConfiguration:
+                          OtherCategories: INCLUDE
+                        ColorItemsLimitConfiguration:
+                          OtherCategories: INCLUDE
+                        SmallMultiplesLimitConfiguration:
+                          OtherCategories: INCLUDE
+                      Type: LINE
+                      XAxisDisplayOptions:
+                        ScrollbarOptions:
+                          Visibility: HIDDEN
+                      XAxisLabelOptions:
+                        Visibility: HIDDEN
+                      PrimaryYAxisDisplayOptions:
+                        AxisOptions:
+                          TickLabelOptions:
+                            LabelOptions:
+                              FontConfiguration:
+                                FontSize:
+                                  Relative: LARGE
+                      Legend:
+                        Visibility: VISIBLE
+                        Title:
+                          Visibility: HIDDEN
+                        Position: BOTTOM
+                        Height: 73px
+                      DataLabels:
+                        Visibility: HIDDEN
+                        Overlap: DISABLE_OVERLAP
+                      Tooltip:
+                        TooltipVisibility: VISIBLE
+                        SelectedTooltipType: DETAILED
+                        FieldBasedTooltip:
+                          AggregationVisibility: HIDDEN
+                          TooltipTitleType: PRIMARY_VALUE
+                          TooltipFields:
+                            - FieldTooltipItem:
+                                FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                                Visibility: VISIBLE
+                            - FieldTooltipItem:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.integrationlatency.4.1720019536246
+                                Visibility: VISIBLE
+                            - FieldTooltipItem:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.responselatency.5.1720019536590
+                                Visibility: VISIBLE
+                    Actions: []
+                    ColumnHierarchies:
+                      - DateTimeHierarchy:
+                          HierarchyId: 74301366-a3f8-446e-8058-7c1b6418f882
+                          DrillDownFilters: []
+                - TableVisual:
+                    VisualId: dfffca24-a266-4729-8a52-cd15aae3bcef
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">API raw requests</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: VISIBLE
+                    ChartConfiguration:
+                      FieldWells:
+                        TableAggregatedFieldWells:
+                          GroupBy:
+                            - DateDimensionField:
+                                FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716957746063
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: parse_date
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.4.1716957809242
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: domainname
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.path.3.1716957760906
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: path
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.3.1716957785210
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: status
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identity.usageplanname.1.1716957751227
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: identity.usageplanname
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identityapikeyid.6.1717439465202
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: identityapikeyid
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identity.apikeyname.7.1717439471616
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: identity.apikeyname
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.5.1717171925342
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: requestid
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.sub.8.1717439538001
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: sub
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identityuser.10.1717439558036
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: identityuser
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.errorresponsetype.10.1717439601229
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: errorresponsetype
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identityuseragent.11.1717439690211
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: identityuseragent
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.stage.12.1717439698138
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: stage
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.apiid.13.1717439703569
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: apiid
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.ip.14.1717439981914
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: ip
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizeError.20.1720020929430
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: authorizeError
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerError.21.1720020930436
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: authorizerError
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.errormessage.22.1720020930978
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: errormessage
+                          Values:
+                            - NumericalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.integrationlatency.15.1720020869514
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: integrationlatency
+                                AggregationFunction:
+                                  SimpleNumericalAggregation: AVERAGE
+                            - NumericalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.responselatency.16.1720020869876
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: responselatency
+                                AggregationFunction:
+                                  SimpleNumericalAggregation: AVERAGE
+                            - NumericalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerlatency.17.1720020870506
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: authorizerlatency
+                                AggregationFunction:
+                                  SimpleNumericalAggregation: AVERAGE
+                            - NumericalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerintegrationlatency.18.1720020870893
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: authorizerintegrationlatency
+                                AggregationFunction:
+                                  SimpleNumericalAggregation: AVERAGE
+                            - NumericalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizelatency.19.1720020871254
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: authorizelatency
+                                AggregationFunction:
+                                  SimpleNumericalAggregation: AVERAGE
+                      SortConfiguration:
+                        RowSort:
+                          - FieldSort:
+                              FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716957746063
+                              Direction: DESC
+                      TableOptions:
+                        HeaderStyle:
+                          TextWrap: WRAP
+                          Height: 25
+                      FieldOptions:
+                        SelectedFieldOptions:
+                          - FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716957746063
+                            Width: 93px
+                            CustomLabel: Date
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.4.1716957809242
+                            Width: 201px
+                            CustomLabel: Domain
+                          - FieldId: c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.path.3.1716957760906
+                            CustomLabel: Path
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.3.1716957785210
+                            CustomLabel: Status
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identity.usageplanname.1.1716957751227
+                            CustomLabel: Usage Plan
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.5.1717171925342
+                            CustomLabel: Request count
+                          - FieldId: c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.sub.8.1717439538001
+                            Width: 200px
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizeError.20.1720020929430
+                            Width: 316px
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerError.21.1720020930436
+                            Width: 252px
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.errormessage.22.1720020930978
+                            Width: 376px
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.integrationlatency.15.1720020869514
+                            Width: 202px
+                            CustomLabel: Integration latency (ms)
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.responselatency.16.1720020869876
+                            CustomLabel: Responce Latency (ms)
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerlatency.17.1720020870506
+                            CustomLabel: Authorizer Latency (ms)
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizerintegrationlatency.18.1720020870893
+                            CustomLabel: Authorizerintegration Latency (ms)
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.authorizelatency.19.1720020871254
+                            CustomLabel: Authorize Latency (ms)
+                        Order: []
+                    Actions: []
+                - KPIVisual:
+                    VisualId: 28e812a6-39c0-46d2-89ea-2259cf4d12ab
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">2xx Requests</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: VISIBLE
+                    ChartConfiguration:
+                      FieldWells:
+                        Values:
+                          - CategoricalMeasureField:
+                              FieldId: >-
+                                c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.0.1716960616971
+                              Column:
+                                DataSetIdentifier: logs
+                                ColumnName: requestid
+                              AggregationFunction: DISTINCT_COUNT
+                              FormatConfiguration:
+                                NumericFormatConfiguration:
+                                  NumberDisplayFormatConfiguration:
+                                    NumberScale: AUTO
+                                    NullValueFormatConfiguration:
+                                      NullString: 'null'
+                        TargetValues: []
+                        TrendGroups: []
+                      SortConfiguration: {}
+                      KPIOptions:
+                        Comparison:
+                          ComparisonMethod: PERCENT_DIFFERENCE
+                        PrimaryValueDisplayType: ACTUAL
+                        PrimaryValueFontConfiguration:
+                          FontSize:
+                            Relative: MEDIUM
+                        SecondaryValueFontConfiguration:
+                          FontSize:
+                            Relative: EXTRA_LARGE
+                        Sparkline:
+                          Visibility: VISIBLE
+                          Type: AREA
+                          TooltipVisibility: HIDDEN
+                        VisualLayoutOptions:
+                          StandardLayout:
+                            Type: VERTICAL
+                    Actions: []
+                    ColumnHierarchies: []
+                - TableVisual:
+                    VisualId: d08e8b1b-4e49-497a-af4c-21f8f11900c8
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">Authentication Failed Requests</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: VISIBLE
+                    ChartConfiguration:
+                      FieldWells:
+                        TableAggregatedFieldWells:
+                          GroupBy:
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.1.1716958571565
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: domainname
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.10.1717179879099
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: status
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.errorresponsetype.11.1717179831826
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: errorresponsetype
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.httpmethod.11.1717180026509
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: httpmethod
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.path.10.1717180021090
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: path
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identity.usageplanname.5.1716958635375
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: identity.usageplanname
+                          Values:
+                            - DateMeasureField:
+                                FieldId: b7efa945-8bf7-47fa-94e3-f8d90135f93f.5.1716959974692
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: first_seen
+                            - DateMeasureField:
+                                FieldId: 7b2895d6-eda5-43f3-b920-68769e8d7149.6.1716960057452
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: last_seen
+                      SortConfiguration: {}
+                      TableOptions:
+                        HeaderStyle:
+                          TextWrap: WRAP
+                          Height: 25
+                        CellStyle:
+                          Height: 25
+                        RowAlternateColorOptions:
+                          Status: DISABLED
+                          UsePrimaryBackgroundColor: ENABLED
+                      FieldOptions:
+                        SelectedFieldOptions:
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.1.1716958571565
+                            Width: 303px
+                            CustomLabel: domain
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identity.usageplanname.5.1716958635375
+                            CustomLabel: Usage Plan Name
+                          - FieldId: b7efa945-8bf7-47fa-94e3-f8d90135f93f.5.1716959974692
+                            CustomLabel: First Seen
+                          - FieldId: 7b2895d6-eda5-43f3-b920-68769e8d7149.6.1716960057452
+                            CustomLabel: Last Seen
+                        Order: []
+                    ConditionalFormatting:
+                      ConditionalFormattingOptions:
+                        - Cell:
+                            FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.10.1717179879099
+                            TextFormat:
+                              BackgroundColor:
+                                Solid:
+                                  Expression: '{status} = "401"'
+                                  Color: '#F7E65A'
+                        - Cell:
+                            FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.10.1717179879099
+                            TextFormat:
+                              BackgroundColor:
+                                Solid:
+                                  Expression: '{status} = "403"'
+                                  Color: '#863CFF'
+                    Actions: []
+                - TableVisual:
+                    VisualId: 6bc0f099-2a22-41d0-b13c-dbfd067dd5b4
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: "<visual-title>\n  <inline font-size=\"20px\">Cognito based access control\_</inline>\n</visual-title>"
+                    Subtitle:
+                      Visibility: VISIBLE
+                    ChartConfiguration:
+                      FieldWells:
+                        TableAggregatedFieldWells:
+                          GroupBy:
+                            - DateDimensionField:
+                                FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716957746063
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: parse_date
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identity.usageplanname.1.1716957751227
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: identity.usageplanname
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.4.1716957809242
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: domainname
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.path.3.1716957760906
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: path
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.3.1716957785210
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: status
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.sub.6.1717172129501
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: sub
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.clientid.7.1717172144979
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: clientid
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.aud.8.1717172146427
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: aud
+                          Values:
+                            - CategoricalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.5.1717171925342
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: requestid
+                                AggregationFunction: DISTINCT_COUNT
+                      SortConfiguration:
+                        RowSort:
+                          - FieldSort:
+                              FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716957746063
+                              Direction: DESC
+                      TableOptions:
+                        HeaderStyle:
+                          TextWrap: WRAP
+                          Height: 25
+                        CellStyle:
+                          Height: 24
+                      FieldOptions:
+                        SelectedFieldOptions:
+                          - FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716957746063
+                            CustomLabel: Date
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identity.usageplanname.1.1716957751227
+                            CustomLabel: Usage Plan
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.4.1716957809242
+                            Width: 166px
+                            CustomLabel: Domain
+                          - FieldId: c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.path.3.1716957760906
+                            Width: 214px
+                            CustomLabel: Path
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.3.1716957785210
+                            CustomLabel: Status
+                          - FieldId: c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.sub.6.1717172129501
+                            Width: 271px
+                            CustomLabel: User ID
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.clientid.7.1717172144979
+                            Width: 395px
+                            CustomLabel: ClientID
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.5.1717171925342
+                            CustomLabel: Request count
+                        Order: []
+                    ConditionalFormatting:
+                      ConditionalFormattingOptions:
+                        - Cell:
+                            FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.3.1716957785210
+                            TextFormat:
+                              BackgroundColor:
+                                Solid:
+                                  Expression: '{status} = "200"'
+                                  Color: '#2CAD00'
+                        - Cell:
+                            FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.3.1716957785210
+                            TextFormat:
+                              BackgroundColor:
+                                Solid:
+                                  Expression: '{status} = "500"'
+                                  Color: '#DE3B00'
+                        - Cell:
+                            FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.3.1716957785210
+                            TextFormat:
+                              BackgroundColor:
+                                Solid:
+                                  Expression: '{status} = "401"'
+                                  Color: '#FF8700'
+                        - Cell:
+                            FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.3.1716957785210
+                            TextFormat:
+                              BackgroundColor:
+                                Solid:
+                                  Expression: '{status} = "429"'
+                                  Color: '#F7E65A'
+                    Actions: []
+                - KPIVisual:
+                    VisualId: 778b0460-189d-4e56-b104-ae25691ca8cd
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">5xx Errors</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: VISIBLE
+                    ChartConfiguration:
+                      FieldWells:
+                        Values:
+                          - CategoricalMeasureField:
+                              FieldId: >-
+                                c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.0.1716960616971
+                              Column:
+                                DataSetIdentifier: logs
+                                ColumnName: requestid
+                              AggregationFunction: DISTINCT_COUNT
+                              FormatConfiguration:
+                                NumericFormatConfiguration:
+                                  NumberDisplayFormatConfiguration:
+                                    NumberScale: AUTO
+                                    NullValueFormatConfiguration:
+                                      NullString: 'null'
+                        TargetValues: []
+                        TrendGroups: []
+                      SortConfiguration: {}
+                      KPIOptions:
+                        Comparison:
+                          ComparisonMethod: PERCENT_DIFFERENCE
+                        PrimaryValueDisplayType: ACTUAL
+                        PrimaryValueFontConfiguration:
+                          FontSize:
+                            Relative: MEDIUM
+                        SecondaryValueFontConfiguration:
+                          FontSize:
+                            Relative: EXTRA_LARGE
+                        Sparkline:
+                          Visibility: VISIBLE
+                          Type: AREA
+                          TooltipVisibility: HIDDEN
+                        VisualLayoutOptions:
+                          StandardLayout:
+                            Type: VERTICAL
+                    Actions: []
+                    ColumnHierarchies: []
+                - KPIVisual:
+                    VisualId: e70cc0b2-ce19-4a75-94d6-8bd9880e76fe
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">4xx Errors</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: VISIBLE
+                    ChartConfiguration:
+                      FieldWells:
+                        Values:
+                          - CategoricalMeasureField:
+                              FieldId: >-
+                                c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.0.1716960616971
+                              Column:
+                                DataSetIdentifier: logs
+                                ColumnName: requestid
+                              AggregationFunction: DISTINCT_COUNT
+                              FormatConfiguration:
+                                NumericFormatConfiguration:
+                                  NumberDisplayFormatConfiguration:
+                                    NumberScale: AUTO
+                                    NullValueFormatConfiguration:
+                                      NullString: 'null'
+                        TargetValues: []
+                        TrendGroups: []
+                      SortConfiguration: {}
+                      KPIOptions:
+                        Comparison:
+                          ComparisonMethod: PERCENT_DIFFERENCE
+                        PrimaryValueDisplayType: ACTUAL
+                        PrimaryValueFontConfiguration:
+                          FontSize:
+                            Relative: MEDIUM
+                        SecondaryValueFontConfiguration:
+                          FontSize:
+                            Relative: EXTRA_LARGE
+                        Sparkline:
+                          Visibility: VISIBLE
+                          Type: AREA
+                          TooltipVisibility: HIDDEN
+                        VisualLayoutOptions:
+                          StandardLayout:
+                            Type: VERTICAL
+                    Actions: []
+                    ColumnHierarchies: []
+                - TableVisual:
+                    VisualId: f7924f76-0dfd-4c32-adec-41fd34401e7c
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">Quota limits reached for APIs</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: VISIBLE
+                    ChartConfiguration:
+                      FieldWells:
+                        TableAggregatedFieldWells:
+                          GroupBy:
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.1.1716958571565
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: domainname
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identity.usageplanname.5.1716958635375
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: identity.usageplanname
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.errormessage.2.1716958590427
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: errormessage
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.path.8.1716958673975
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: path
+                          Values:
+                            - DateMeasureField:
+                                FieldId: b7efa945-8bf7-47fa-94e3-f8d90135f93f.5.1716959974692
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: first_seen
+                            - DateMeasureField:
+                                FieldId: 7b2895d6-eda5-43f3-b920-68769e8d7149.6.1716960057452
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: last_seen
+                      SortConfiguration: {}
+                      TableOptions:
+                        HeaderStyle:
+                          TextWrap: WRAP
+                          Height: 25
+                        RowAlternateColorOptions:
+                          Status: DISABLED
+                          UsePrimaryBackgroundColor: ENABLED
+                      FieldOptions:
+                        SelectedFieldOptions:
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.1.1716958571565
+                            Width: 180px
+                            CustomLabel: Domain
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identity.usageplanname.5.1716958635375
+                            CustomLabel: Usage Plan Name
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.errormessage.2.1716958590427
+                            Width: 102px
+                            CustomLabel: Error
+                          - FieldId: c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.path.8.1716958673975
+                            Width: 147px
+                            CustomLabel: Path
+                          - FieldId: b7efa945-8bf7-47fa-94e3-f8d90135f93f.5.1716959974692
+                            CustomLabel: First Seen
+                          - FieldId: 7b2895d6-eda5-43f3-b920-68769e8d7149.6.1716960057452
+                            CustomLabel: Last Seen
+                        Order: []
+                    ConditionalFormatting:
+                      ConditionalFormattingOptions:
+                        - Cell:
+                            FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.errormessage.2.1716958590427
+                            TextFormat:
+                              BackgroundColor:
+                                Solid:
+                                  Expression: '{errormessage} = "Limit Exceeded"'
+                                  Color: '#DE3B00'
+                    Actions: []
+                - LineChartVisual:
+                    VisualId: 79e89278-0b94-4dfc-9dfa-01d099c3dc0b
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">API Usage By API Key</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: VISIBLE
+                    ChartConfiguration:
+                      FieldWells:
+                        LineChartAggregatedFieldWells:
+                          Category:
+                            - DateDimensionField:
+                                FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: parse_date
+                                DateGranularity: MINUTE
+                                HierarchyId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                          Values:
+                            - CategoricalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.2.1716957661429
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: requestid
+                                AggregationFunction: DISTINCT_COUNT
+                          Colors:
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identity.apikeyname.2.1716958209041
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: identity.apikeyname
+                      SortConfiguration:
+                        CategorySort:
+                          - FieldSort:
+                              FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                              Direction: DESC
+                        CategoryItemsLimitConfiguration:
+                          OtherCategories: INCLUDE
+                        ColorItemsLimitConfiguration:
+                          OtherCategories: INCLUDE
+                        SmallMultiplesLimitConfiguration:
+                          OtherCategories: INCLUDE
+                      Type: LINE
+                      XAxisDisplayOptions:
+                        AxisLineVisibility: VISIBLE
+                        ScrollbarOptions:
+                          Visibility: HIDDEN
+                      XAxisLabelOptions:
+                        Visibility: HIDDEN
+                      PrimaryYAxisDisplayOptions:
+                        AxisOptions:
+                          TickLabelOptions:
+                            LabelOptions:
+                              Visibility: VISIBLE
+                              FontConfiguration:
+                                FontSize:
+                                  Relative: LARGE
+                      PrimaryYAxisLabelOptions:
+                        Visibility: HIDDEN
+                      DefaultSeriesSettings:
+                        AxisBinding: PRIMARY_YAXIS
+                        LineStyleSettings:
+                          LineInterpolation: SMOOTH
+                      Legend:
+                        Visibility: VISIBLE
+                        Title:
+                          Visibility: HIDDEN
+                        Position: BOTTOM
+                      DataLabels:
+                        Visibility: HIDDEN
+                        Overlap: DISABLE_OVERLAP
+                      Tooltip:
+                        TooltipVisibility: VISIBLE
+                        SelectedTooltipType: DETAILED
+                        FieldBasedTooltip:
+                          AggregationVisibility: HIDDEN
+                          TooltipTitleType: PRIMARY_VALUE
+                          TooltipFields:
+                            - FieldTooltipItem:
+                                FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                                Visibility: VISIBLE
+                            - FieldTooltipItem:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.2.1716957661429
+                                Visibility: VISIBLE
+                            - FieldTooltipItem:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identity.apikeyname.2.1716958209041
+                                Visibility: VISIBLE
+                    Actions: []
+                    ColumnHierarchies:
+                      - DateTimeHierarchy:
+                          HierarchyId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                          DrillDownFilters: []
+                - LineChartVisual:
+                    VisualId: b1e76221-4bd7-409e-bcd4-5290f8af24c2
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">API call by user agent</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: HIDDEN
+                    ChartConfiguration:
+                      FieldWells:
+                        LineChartAggregatedFieldWells:
+                          Category:
+                            - DateDimensionField:
+                                FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: parse_date
+                                DateGranularity: MINUTE
+                                HierarchyId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                          Values: []
+                          Colors:
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identityuseragent.1.1716957183340
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: identityuseragent
+                      SortConfiguration:
+                        CategorySort:
+                          - FieldSort:
+                              FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                              Direction: DESC
+                        CategoryItemsLimitConfiguration:
+                          OtherCategories: INCLUDE
+                        ColorItemsLimitConfiguration:
+                          OtherCategories: INCLUDE
+                        SmallMultiplesLimitConfiguration:
+                          OtherCategories: INCLUDE
+                      Type: LINE
+                      XAxisDisplayOptions:
+                        ScrollbarOptions:
+                          Visibility: HIDDEN
+                      XAxisLabelOptions:
+                        Visibility: HIDDEN
+                      PrimaryYAxisDisplayOptions:
+                        AxisOptions:
+                          TickLabelOptions:
+                            LabelOptions:
+                              FontConfiguration:
+                                FontSize:
+                                  Relative: LARGE
+                      Legend:
+                        Visibility: VISIBLE
+                        Title:
+                          Visibility: HIDDEN
+                        Position: BOTTOM
+                        Height: 73px
+                      DataLabels:
+                        Visibility: HIDDEN
+                        Overlap: DISABLE_OVERLAP
+                      Tooltip:
+                        TooltipVisibility: VISIBLE
+                        SelectedTooltipType: DETAILED
+                        FieldBasedTooltip:
+                          AggregationVisibility: HIDDEN
+                          TooltipTitleType: PRIMARY_VALUE
+                          TooltipFields:
+                            - FieldTooltipItem:
+                                FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                                Visibility: VISIBLE
+                            - FieldTooltipItem:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identityuseragent.1.1716957183340
+                                Visibility: VISIBLE
+                    Actions: []
+                    ColumnHierarchies:
+                      - DateTimeHierarchy:
+                          HierarchyId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                          DrillDownFilters: []
+                - TableVisual:
+                    VisualId: bda614ce-02d8-482b-ab4a-e52d010b5399
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">4xx Errors</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: VISIBLE
+                    ChartConfiguration:
+                      FieldWells:
+                        TableAggregatedFieldWells:
+                          GroupBy:
+                            - DateDimensionField:
+                                FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: parse_date
+                                DateGranularity: HOUR
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.2.1716956991907
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: status
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.4.1716960268740
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: domainname
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.httpmethod.3.1716957013724
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: httpmethod
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.path.1.1716956955078
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: path
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.errorresponsetype.6.1717438345744
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: errorresponsetype
+                          Values: []
+                      SortConfiguration:
+                        RowSort:
+                          - FieldSort:
+                              FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                              Direction: DESC
+                      TableOptions:
+                        HeaderStyle:
+                          TextWrap: WRAP
+                          Height: 25
+                        CellStyle:
+                          Height: 25
+                        RowAlternateColorOptions:
+                          Status: DISABLED
+                          UsePrimaryBackgroundColor: ENABLED
+                      FieldOptions:
+                        SelectedFieldOptions:
+                          - FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                            CustomLabel: Date
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.2.1716956991907
+                            CustomLabel: Status
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.4.1716960268740
+                            Width: 174px
+                            CustomLabel: Domain
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.httpmethod.3.1716957013724
+                            Width: 92px
+                            CustomLabel: HTTP Method
+                          - FieldId: c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.path.1.1716956955078
+                            Width: 165px
+                            CustomLabel: Path
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.errorresponsetype.6.1717438345744
+                            CustomLabel: Error
+                        Order: []
+                    ConditionalFormatting:
+                      ConditionalFormattingOptions:
+                        - Cell:
+                            FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.2.1716956991907
+                            TextFormat:
+                              BackgroundColor:
+                                Solid:
+                                  Expression: '{status} = "401"'
+                                  Color: '#F6AA54'
+                        - Cell:
+                            FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.2.1716956991907
+                            TextFormat:
+                              BackgroundColor:
+                                Solid:
+                                  Expression: '{status} = "429"'
+                                  Color: '#F7E65A'
+                        - Cell:
+                            FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.2.1716956991907
+                            TextFormat:
+                              BackgroundColor:
+                                Solid:
+                                  Expression: '{status} = "403"'
+                                  Color: '#863CFF'
+                    Actions: []
+                - LineChartVisual:
+                    VisualId: 4419cba3-04ef-4e2b-b016-6ec926e57b28
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">API Route</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: HIDDEN
+                    ChartConfiguration:
+                      FieldWells:
+                        LineChartAggregatedFieldWells:
+                          Category:
+                            - DateDimensionField:
+                                FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: parse_date
+                                DateGranularity: MINUTE
+                                HierarchyId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                          Values:
+                            - CategoricalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.2.1716957661429
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: requestid
+                                AggregationFunction: DISTINCT_COUNT
+                          Colors:
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.path.1.1716956955078
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: path
+                      SortConfiguration:
+                        CategorySort:
+                          - FieldSort:
+                              FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                              Direction: DESC
+                        CategoryItemsLimitConfiguration:
+                          OtherCategories: INCLUDE
+                        ColorItemsLimitConfiguration:
+                          OtherCategories: INCLUDE
+                        SmallMultiplesLimitConfiguration:
+                          OtherCategories: INCLUDE
+                      Type: LINE
+                      XAxisDisplayOptions:
+                        AxisLineVisibility: VISIBLE
+                        ScrollbarOptions:
+                          Visibility: HIDDEN
+                      XAxisLabelOptions:
+                        Visibility: HIDDEN
+                      PrimaryYAxisDisplayOptions:
+                        AxisOptions:
+                          TickLabelOptions:
+                            LabelOptions:
+                              FontConfiguration:
+                                FontSize:
+                                  Relative: LARGE
+                          AxisOffset: 62px
+                      PrimaryYAxisLabelOptions:
+                        Visibility: HIDDEN
+                      Legend:
+                        Visibility: VISIBLE
+                        Position: BOTTOM
+                      DataLabels:
+                        Visibility: HIDDEN
+                        Overlap: DISABLE_OVERLAP
+                      Tooltip:
+                        TooltipVisibility: VISIBLE
+                        SelectedTooltipType: DETAILED
+                        FieldBasedTooltip:
+                          AggregationVisibility: HIDDEN
+                          TooltipTitleType: PRIMARY_VALUE
+                          TooltipFields:
+                            - FieldTooltipItem:
+                                FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                                Visibility: VISIBLE
+                            - FieldTooltipItem:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.path.1.1716956955078
+                                Visibility: VISIBLE
+                            - FieldTooltipItem:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.2.1716957661429
+                                Visibility: VISIBLE
+                    Actions: []
+                    ColumnHierarchies:
+                      - DateTimeHierarchy:
+                          HierarchyId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                          DrillDownFilters: []
+                - LineChartVisual:
+                    VisualId: 1dec300f-5376-455c-9a89-62b3609e642c
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">30 days API usage by domain</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: HIDDEN
+                    ChartConfiguration:
+                      FieldWells:
+                        LineChartAggregatedFieldWells:
+                          Category:
+                            - DateDimensionField:
+                                FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: parse_date
+                                DateGranularity: MINUTE
+                                HierarchyId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                          Values:
+                            - CategoricalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.2.1721929067913
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: requestid
+                                AggregationFunction: DISTINCT_COUNT
+                          Colors:
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.1.1716956846680
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: domainname
+                      SortConfiguration:
+                        CategorySort:
+                          - FieldSort:
+                              FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                              Direction: DESC
+                        CategoryItemsLimitConfiguration:
+                          OtherCategories: INCLUDE
+                        ColorItemsLimitConfiguration:
+                          OtherCategories: INCLUDE
+                        SmallMultiplesLimitConfiguration:
+                          OtherCategories: INCLUDE
+                      Type: LINE
+                      XAxisDisplayOptions:
+                        AxisLineVisibility: VISIBLE
+                        DataOptions:
+                          DateAxisOptions:
+                            MissingDateVisibility: HIDDEN
+                        ScrollbarOptions:
+                          Visibility: HIDDEN
+                      XAxisLabelOptions:
+                        Visibility: HIDDEN
+                      PrimaryYAxisDisplayOptions:
+                        AxisOptions:
+                          TickLabelOptions:
+                            LabelOptions:
+                              Visibility: VISIBLE
+                              FontConfiguration:
+                                FontSize:
+                                  Relative: LARGE
+                      PrimaryYAxisLabelOptions:
+                        Visibility: HIDDEN
+                      DefaultSeriesSettings:
+                        AxisBinding: PRIMARY_YAXIS
+                        LineStyleSettings:
+                          LineVisibility: VISIBLE
+                          LineInterpolation: SMOOTH
+                        MarkerStyleSettings:
+                          MarkerVisibility: HIDDEN
+                      Legend:
+                        Visibility: VISIBLE
+                        Title:
+                          Visibility: HIDDEN
+                          CustomLabel: Customer
+                        Position: BOTTOM
+                        Height: 82px
+                      DataLabels:
+                        Visibility: HIDDEN
+                        Overlap: DISABLE_OVERLAP
+                      Tooltip:
+                        TooltipVisibility: VISIBLE
+                        SelectedTooltipType: DETAILED
+                        FieldBasedTooltip:
+                          AggregationVisibility: HIDDEN
+                          TooltipTitleType: PRIMARY_VALUE
+                          TooltipFields:
+                            - FieldTooltipItem:
+                                FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                                Visibility: VISIBLE
+                            - FieldTooltipItem:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.1.1716956846680
+                                Visibility: VISIBLE
+                            - FieldTooltipItem:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.2.1721929067913
+                                Visibility: VISIBLE
+                    Actions: []
+                    ColumnHierarchies:
+                      - DateTimeHierarchy:
+                          HierarchyId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716956644003
+                          DrillDownFilters: []
+                - PieChartVisual:
+                    VisualId: 5732798d-526b-4955-ae4e-d5841adfa75d
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">By Response Status Code</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: VISIBLE
+                    ChartConfiguration:
+                      FieldWells:
+                        PieChartAggregatedFieldWells:
+                          Category:
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.0.1716957209890
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: status
+                          Values: []
+                      SortConfiguration:
+                        CategoryItemsLimit:
+                          OtherCategories: INCLUDE
+                        SmallMultiplesLimitConfiguration:
+                          OtherCategories: INCLUDE
+                      DonutOptions:
+                        ArcOptions:
+                          ArcThickness: WHOLE
+                      DataLabels:
+                        Visibility: VISIBLE
+                        Overlap: DISABLE_OVERLAP
+                      Tooltip:
+                        TooltipVisibility: VISIBLE
+                        SelectedTooltipType: DETAILED
+                        FieldBasedTooltip:
+                          AggregationVisibility: HIDDEN
+                          TooltipTitleType: PRIMARY_VALUE
+                          TooltipFields:
+                            - FieldTooltipItem:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.0.1716957209890
+                                Visibility: VISIBLE
+                      VisualPalette:
+                        ColorMap:
+                          - Element:
+                              FieldId: >-
+                                c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.0.1716957209890
+                              FieldValue: '200'
+                            Color: '#2B5E19'
+                          - Element:
+                              FieldId: >-
+                                c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.0.1716957209890
+                              FieldValue: '500'
+                            Color: '#DE3B00'
+                          - Element:
+                              FieldId: >-
+                                c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.0.1716957209890
+                              FieldValue: '429'
+                            Color: '#FF8700'
+                          - Element:
+                              FieldId: >-
+                                c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.0.1716957209890
+                              FieldValue: '401'
+                            Color: '#F7E65A'
+                    Actions: []
+                    ColumnHierarchies: []
+                - BarChartVisual:
+                    VisualId: 616898c5-fdf5-4493-ac8f-72eae7df0bea
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">4xx Errors By Endpoint</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: VISIBLE
+                    ChartConfiguration:
+                      FieldWells:
+                        BarChartAggregatedFieldWells:
+                          Category:
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.path.1.1716957383970
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: path
+                          Values:
+                            - CategoricalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.2.1716957623929
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: requestid
+                                AggregationFunction: DISTINCT_COUNT
+                          Colors:
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.0.1716957341276
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: status
+                      SortConfiguration:
+                        CategorySort:
+                          - FieldSort:
+                              FieldId: >-
+                                c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.path.1.1716957383970
+                              Direction: DESC
+                        CategoryItemsLimit:
+                          OtherCategories: INCLUDE
+                        ColorItemsLimit:
+                          OtherCategories: INCLUDE
+                        SmallMultiplesLimitConfiguration:
+                          OtherCategories: INCLUDE
+                      Orientation: VERTICAL
+                      BarsArrangement: STACKED
+                      VisualPalette:
+                        ColorMap:
+                          - Element:
+                              FieldId: >-
+                                c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.0.1716957341276
+                              FieldValue: '403'
+                            Color: '#863CFF'
+                          - Element:
+                              FieldId: >-
+                                c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.0.1716957341276
+                              FieldValue: '429'
+                            Color: '#F7E65A'
+                      CategoryAxis:
+                        TickLabelOptions:
+                          LabelOptions:
+                            Visibility: VISIBLE
+                            FontConfiguration:
+                              FontSize:
+                                Relative: LARGE
+                          RotationAngle: 0
+                        ScrollbarOptions:
+                          Visibility: HIDDEN
+                      CategoryLabelOptions:
+                        Visibility: HIDDEN
+                        SortIconVisibility: HIDDEN
+                      ValueAxis:
+                        TickLabelOptions:
+                          LabelOptions:
+                            Visibility: VISIBLE
+                            FontConfiguration:
+                              FontSize:
+                                Relative: LARGE
+                      ValueLabelOptions:
+                        Visibility: HIDDEN
+                      DataLabels:
+                        Visibility: HIDDEN
+                        LabelFontConfiguration:
+                          FontSize:
+                            Relative: LARGE
+                        Overlap: DISABLE_OVERLAP
+                      Tooltip:
+                        TooltipVisibility: VISIBLE
+                        SelectedTooltipType: DETAILED
+                        FieldBasedTooltip:
+                          AggregationVisibility: HIDDEN
+                          TooltipTitleType: PRIMARY_VALUE
+                          TooltipFields:
+                            - FieldTooltipItem:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.0.1716957341276
+                                Visibility: VISIBLE
+                            - FieldTooltipItem:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.path.1.1716957383970
+                                Visibility: VISIBLE
+                            - FieldTooltipItem:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.2.1716957623929
+                                Visibility: VISIBLE
+                    Actions: []
+                    ColumnHierarchies: []
+                - TableVisual:
+                    VisualId: 2311f90c-3758-44ca-97d2-40d4982c33d8
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">API By Usage Plan</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: VISIBLE
+                    ChartConfiguration:
+                      FieldWells:
+                        TableAggregatedFieldWells:
+                          GroupBy:
+                            - DateDimensionField:
+                                FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716957746063
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: parse_date
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identity.usageplanname.1.1716957751227
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: identity.usageplanname
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.4.1716957809242
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: domainname
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.path.3.1716957760906
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: path
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.3.1716957785210
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: status
+                          Values:
+                            - CategoricalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.5.1717171925342
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: requestid
+                                AggregationFunction: DISTINCT_COUNT
+                      SortConfiguration:
+                        RowSort:
+                          - FieldSort:
+                              FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716957746063
+                              Direction: DESC
+                      TableOptions:
+                        HeaderStyle:
+                          TextWrap: WRAP
+                          Height: 25
+                      FieldOptions:
+                        SelectedFieldOptions:
+                          - FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.0.1716957746063
+                            CustomLabel: Date
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identity.usageplanname.1.1716957751227
+                            CustomLabel: Usage Plan
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.4.1716957809242
+                            Width: 201px
+                            CustomLabel: Domain
+                          - FieldId: c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.path.3.1716957760906
+                            CustomLabel: Path
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.3.1716957785210
+                            CustomLabel: Status
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.5.1717171925342
+                            CustomLabel: Request count
+                        Order: []
+                    Actions: []
+                - TableVisual:
+                    VisualId: 846055d5-a8fa-4939-a942-3ae6474055e5
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">Authenticated with IAM</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: VISIBLE
+                    ChartConfiguration:
+                      FieldWells:
+                        TableAggregatedFieldWells:
+                          GroupBy:
+                            - DateDimensionField:
+                                FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.7.1716958671126
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: parse_date
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.1.1716958571565
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: domainname
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.errorresponsetype.17.1717179275677
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: errorresponsetype
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.10.1716958689764
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: status
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.httpmethod.3.1716958625390
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: httpmethod
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identity.apikeyname.4.1716958629676
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: identity.apikeyname
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identity.usageplanname.5.1716958635375
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: identity.usageplanname
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.ip.6.1716958662923
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: ip
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.path.8.1716958673975
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: path
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.protocol.9.1716958680489
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: protocol
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identityuser.13.1717178900064
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: identityuser
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identityuseragent.14.1717178900601
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: identityuseragent
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identityuserarn.15.1717178900995
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: identityuserarn
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identityprincipalorgid.14.1717178985312
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: identityprincipalorgid
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identityaccountid.15.1717179070052
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: identityaccountid
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identitycaller.17.1717179070857
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: identitycaller
+                          Values:
+                            - CategoricalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.16.1717179199479
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: requestid
+                                AggregationFunction: DISTINCT_COUNT
+                      SortConfiguration:
+                        RowSort:
+                          - FieldSort:
+                              FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.7.1716958671126
+                              Direction: DESC
+                      TableOptions:
+                        HeaderStyle:
+                          TextWrap: WRAP
+                          Height: 25
+                        RowAlternateColorOptions:
+                          Status: DISABLED
+                          UsePrimaryBackgroundColor: ENABLED
+                      FieldOptions:
+                        SelectedFieldOptions:
+                          - FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.7.1716958671126
+                            CustomLabel: Date
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.1.1716958571565
+                            Width: 311px
+                            CustomLabel: Domain
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.errorresponsetype.17.1717179275677
+                            CustomLabel: Error
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.10.1716958689764
+                            CustomLabel: Status
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.httpmethod.3.1716958625390
+                            CustomLabel: Method
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identity.apikeyname.4.1716958629676
+                            CustomLabel: API Key Name
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identity.usageplanname.5.1716958635375
+                            CustomLabel: Usage Plan
+                          - FieldId: c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.ip.6.1716958662923
+                            CustomLabel: IP
+                          - FieldId: c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.path.8.1716958673975
+                            CustomLabel: Path
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.protocol.9.1716958680489
+                            CustomLabel: Protocol
+                          - FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.identityuserarn.15.1717178900995
+                            Width: 550px
+                        Order: []
+                    ConditionalFormatting:
+                      ConditionalFormattingOptions:
+                        - Cell:
+                            FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.10.1716958689764
+                            TextFormat:
+                              BackgroundColor:
+                                Solid:
+                                  Expression: '{status} = "200"'
+                                  Color: '#2B5E19'
+                        - Cell:
+                            FieldId: >-
+                              c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.status.10.1716958689764
+                            TextFormat:
+                              BackgroundColor:
+                                Solid:
+                                  Expression: '{status} = "403"'
+                                  Color: '#863CFF'
+                    Actions: []
+                - BarChartVisual:
+                    VisualId: 39cf3003-73b2-403e-9e15-bc9f20f7fd53
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">Top domains</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: VISIBLE
+                    ChartConfiguration:
+                      FieldWells:
+                        BarChartAggregatedFieldWells:
+                          Category:
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.0.1716959192145
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: domainname
+                          Values:
+                            - CategoricalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.1.1717439110508
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: requestid
+                                AggregationFunction: DISTINCT_COUNT
+                          Colors: []
+                      SortConfiguration:
+                        CategorySort:
+                          - FieldSort:
+                              FieldId: >-
+                                c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.1.1717439110508
+                              Direction: DESC
+                        CategoryItemsLimit:
+                          OtherCategories: INCLUDE
+                        ColorItemsLimit:
+                          OtherCategories: INCLUDE
+                        SmallMultiplesLimitConfiguration:
+                          OtherCategories: INCLUDE
+                      Orientation: HORIZONTAL
+                      BarsArrangement: CLUSTERED
+                      CategoryAxis:
+                        TickLabelOptions:
+                          LabelOptions:
+                            FontConfiguration:
+                              FontSize:
+                                Relative: LARGE
+                      ValueAxis:
+                        TickLabelOptions:
+                          LabelOptions:
+                            FontConfiguration:
+                              FontSize:
+                                Relative: LARGE
+                        AxisOffset: 360px
+                      DataLabels:
+                        Visibility: VISIBLE
+                        LabelFontConfiguration:
+                          FontSize:
+                            Relative: EXTRA_LARGE
+                        Overlap: DISABLE_OVERLAP
+                      Tooltip:
+                        TooltipVisibility: VISIBLE
+                        SelectedTooltipType: DETAILED
+                        FieldBasedTooltip:
+                          AggregationVisibility: HIDDEN
+                          TooltipTitleType: PRIMARY_VALUE
+                          TooltipFields:
+                            - FieldTooltipItem:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.0.1716959192145
+                                Visibility: VISIBLE
+                            - FieldTooltipItem:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.1.1717439110508
+                                Visibility: VISIBLE
+                    Actions: []
+                    ColumnHierarchies: []
+                - KPIVisual:
+                    VisualId: 76791a29-0a23-4a36-82c2-7faa65407a49
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">API Requests</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: VISIBLE
+                    ChartConfiguration:
+                      FieldWells:
+                        Values:
+                          - CategoricalMeasureField:
+                              FieldId: >-
+                                c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.0.1716960616971
+                              Column:
+                                DataSetIdentifier: logs
+                                ColumnName: requestid
+                              AggregationFunction: DISTINCT_COUNT
+                              FormatConfiguration:
+                                NumericFormatConfiguration:
+                                  NumberDisplayFormatConfiguration:
+                                    NumberScale: AUTO
+                                    NullValueFormatConfiguration:
+                                      NullString: 'null'
+                        TargetValues: []
+                        TrendGroups: []
+                      SortConfiguration: {}
+                      KPIOptions:
+                        Comparison:
+                          ComparisonMethod: PERCENT_DIFFERENCE
+                        PrimaryValueDisplayType: ACTUAL
+                        PrimaryValueFontConfiguration:
+                          FontSize:
+                            Relative: MEDIUM
+                        SecondaryValueFontConfiguration:
+                          FontSize:
+                            Relative: EXTRA_LARGE
+                        Sparkline:
+                          Visibility: VISIBLE
+                          Type: AREA
+                          TooltipVisibility: HIDDEN
+                        VisualLayoutOptions:
+                          StandardLayout:
+                            Type: VERTICAL
+                    Actions: []
+                    ColumnHierarchies: []
+                - LineChartVisual:
+                    VisualId: d1217044-ed1d-4171-8ac0-6d5657e833f9
+                    Title:
+                      Visibility: VISIBLE
+                      FormatText:
+                        RichText: |-
+                          <visual-title>
+                            <inline font-size="20px">Quota Usage By Domain</inline>
+                          </visual-title>
+                    Subtitle:
+                      Visibility: VISIBLE
+                    ChartConfiguration:
+                      FieldWells:
+                        LineChartAggregatedFieldWells:
+                          Category:
+                            - DateDimensionField:
+                                FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.1.1717437320951
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: parse_date
+                                DateGranularity: MINUTE
+                                HierarchyId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.1.1717437320951
+                          Values:
+                            - CategoricalMeasureField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.1.1717436871777
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: requestid
+                                AggregationFunction: DISTINCT_COUNT
+                          Colors:
+                            - CategoricalDimensionField:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.2.1717437352594
+                                Column:
+                                  DataSetIdentifier: logs
+                                  ColumnName: domainname
+                      SortConfiguration:
+                        CategorySort:
+                          - FieldSort:
+                              FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.1.1717437320951
+                              Direction: DESC
+                        CategoryItemsLimitConfiguration:
+                          OtherCategories: INCLUDE
+                        ColorItemsLimitConfiguration:
+                          OtherCategories: INCLUDE
+                        SmallMultiplesLimitConfiguration:
+                          OtherCategories: INCLUDE
+                      Type: LINE
+                      XAxisDisplayOptions:
+                        ScrollbarOptions:
+                          Visibility: HIDDEN
+                      XAxisLabelOptions:
+                        Visibility: HIDDEN
+                      PrimaryYAxisLabelOptions:
+                        Visibility: HIDDEN
+                      DefaultSeriesSettings:
+                        AxisBinding: PRIMARY_YAXIS
+                        LineStyleSettings:
+                          LineInterpolation: SMOOTH
+                      Legend:
+                        Visibility: VISIBLE
+                        Position: BOTTOM
+                      DataLabels:
+                        Visibility: HIDDEN
+                        Overlap: DISABLE_OVERLAP
+                      Tooltip:
+                        TooltipVisibility: VISIBLE
+                        SelectedTooltipType: DETAILED
+                        FieldBasedTooltip:
+                          AggregationVisibility: HIDDEN
+                          TooltipTitleType: PRIMARY_VALUE
+                          TooltipFields:
+                            - FieldTooltipItem:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.requestid.1.1717436871777
+                                Visibility: VISIBLE
+                            - FieldTooltipItem:
+                                FieldId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.1.1717437320951
+                                Visibility: VISIBLE
+                            - FieldTooltipItem:
+                                FieldId: >-
+                                  c002e3c1-f63c-4f4b-b51e-f0cd21bc553e.domainname.2.1717437352594
+                                Visibility: VISIBLE
+                    Actions: []
+                    ColumnHierarchies:
+                      - DateTimeHierarchy:
+                          HierarchyId: 123f99ce-3cc9-47fc-aabc-f02d4ae4f4ea.1.1717437320951
+                          DrillDownFilters: []
+              Layouts:
+                - Configuration:
+                    GridLayout:
+                      Elements:
+                        - ElementId: 76791a29-0a23-4a36-82c2-7faa65407a49
+                          ElementType: VISUAL
+                          ColumnIndex: 0
+                          ColumnSpan: 5
+                          RowIndex: 0
+                          RowSpan: 3
+                        - ElementId: 28e812a6-39c0-46d2-89ea-2259cf4d12ab
+                          ElementType: VISUAL
+                          ColumnIndex: 5
+                          ColumnSpan: 5
+                          RowIndex: 0
+                          RowSpan: 3
+                        - ElementId: 778b0460-189d-4e56-b104-ae25691ca8cd
+                          ElementType: VISUAL
+                          ColumnIndex: 10
+                          ColumnSpan: 5
+                          RowIndex: 0
+                          RowSpan: 3
+                        - ElementId: e70cc0b2-ce19-4a75-94d6-8bd9880e76fe
+                          ElementType: VISUAL
+                          ColumnIndex: 15
+                          ColumnSpan: 5
+                          RowIndex: 0
+                          RowSpan: 3
+                        - ElementId: a4ea5045-4476-47e6-a4d4-026656829165
+                          ElementType: VISUAL
+                          ColumnIndex: 20
+                          ColumnSpan: 5
+                          RowIndex: 0
+                          RowSpan: 3
+                        - ElementId: 770ebcae-29b2-46fb-ae55-278742b58a86
+                          ElementType: VISUAL
+                          ColumnIndex: 25
+                          ColumnSpan: 5
+                          RowIndex: 0
+                          RowSpan: 3
+                        - ElementId: 79b9ba02-d149-47c0-95f5-aeed49fd80f9
+                          ElementType: VISUAL
+                          ColumnIndex: 30
+                          ColumnSpan: 5
+                          RowIndex: 0
+                          RowSpan: 3
+                        - ElementId: 5732798d-526b-4955-ae4e-d5841adfa75d
+                          ElementType: VISUAL
+                          ColumnIndex: 0
+                          ColumnSpan: 7
+                          RowIndex: 3
+                          RowSpan: 7
+                        - ElementId: 39cf3003-73b2-403e-9e15-bc9f20f7fd53
+                          ElementType: VISUAL
+                          ColumnIndex: 7
+                          ColumnSpan: 20
+                          RowIndex: 3
+                          RowSpan: 7
+                        - ElementId: 1dec300f-5376-455c-9a89-62b3609e642c
+                          ElementType: VISUAL
+                          ColumnIndex: 0
+                          ColumnSpan: 36
+                          RowIndex: 10
+                          RowSpan: 12
+                        - ElementId: 4419cba3-04ef-4e2b-b016-6ec926e57b28
+                          ElementType: VISUAL
+                          ColumnIndex: 0
+                          ColumnSpan: 36
+                          RowIndex: 22
+                          RowSpan: 12
+                        - ElementId: bda614ce-02d8-482b-ab4a-e52d010b5399
+                          ElementType: VISUAL
+                          ColumnIndex: 0
+                          ColumnSpan: 18
+                          RowIndex: 34
+                          RowSpan: 9
+                        - ElementId: 616898c5-fdf5-4493-ac8f-72eae7df0bea
+                          ElementType: VISUAL
+                          ColumnIndex: 18
+                          ColumnSpan: 18
+                          RowIndex: 34
+                          RowSpan: 9
+                        - ElementId: 2311f90c-3758-44ca-97d2-40d4982c33d8
+                          ElementType: VISUAL
+                          ColumnIndex: 0
+                          ColumnSpan: 18
+                          RowIndex: 43
+                          RowSpan: 12
+                        - ElementId: 79e89278-0b94-4dfc-9dfa-01d099c3dc0b
+                          ElementType: VISUAL
+                          ColumnIndex: 18
+                          ColumnSpan: 18
+                          RowIndex: 43
+                          RowSpan: 12
+                        - ElementId: f7924f76-0dfd-4c32-adec-41fd34401e7c
+                          ElementType: VISUAL
+                          ColumnIndex: 0
+                          ColumnSpan: 21
+                          RowIndex: 55
+                          RowSpan: 12
+                        - ElementId: d1217044-ed1d-4171-8ac0-6d5657e833f9
+                          ElementType: VISUAL
+                          ColumnIndex: 21
+                          ColumnSpan: 15
+                          RowIndex: 55
+                          RowSpan: 12
+                        - ElementId: b1e76221-4bd7-409e-bcd4-5290f8af24c2
+                          ElementType: VISUAL
+                          ColumnIndex: 0
+                          ColumnSpan: 36
+                          RowIndex: 67
+                          RowSpan: 12
+                        - ElementId: 6bc0f099-2a22-41d0-b13c-dbfd067dd5b4
+                          ElementType: VISUAL
+                          ColumnIndex: 0
+                          ColumnSpan: 36
+                          RowIndex: 79
+                          RowSpan: 7
+                        - ElementId: 846055d5-a8fa-4939-a942-3ae6474055e5
+                          ElementType: VISUAL
+                          ColumnIndex: 0
+                          ColumnSpan: 36
+                          RowIndex: 86
+                          RowSpan: 6
+                        - ElementId: d08e8b1b-4e49-497a-af4c-21f8f11900c8
+                          ElementType: VISUAL
+                          ColumnIndex: 0
+                          ColumnSpan: 36
+                          RowIndex: 92
+                          RowSpan: 6
+                        - ElementId: e67999e9-2bb9-454a-a607-6de02c414b3f
+                          ElementType: VISUAL
+                          ColumnIndex: 0
+                          ColumnSpan: 18
+                          RowIndex: 98
+                          RowSpan: 12
+                        - ElementId: 45d3c91a-b739-435e-b411-bc3598ba6c4d
+                          ElementType: VISUAL
+                          ColumnIndex: 18
+                          ColumnSpan: 18
+                          RowIndex: 98
+                          RowSpan: 12
+                        - ElementId: 6c6cfb11-9d57-496c-8010-b8867a369802
+                          ElementType: VISUAL
+                          ColumnIndex: 0
+                          ColumnSpan: 36
+                          RowIndex: 110
+                          RowSpan: 9
+                        - ElementId: dfffca24-a266-4729-8a52-cd15aae3bcef
+                          ElementType: VISUAL
+                          ColumnIndex: 0
+                          ColumnSpan: 36
+                          RowIndex: 119
+                          RowSpan: 12
+                      CanvasSizeOptions:
+                        ScreenCanvasSizeOptions:
+                          ResizeOption: FIXED
+                          OptimizedViewPortWidth: 1600px
+              SheetControlLayouts:
+                - Configuration:
+                    GridLayout:
+                      Elements:
+                        - ElementId: 5cd135bf-4b3d-407a-ba0c-845282d0a2af
+                          ElementType: FILTER_CONTROL
+                          ColumnIndex: 0
+                          ColumnSpan: 3
+                          RowIndex: 0
+                          RowSpan: 1
+                        - ElementId: 84aec283-3f23-4f3d-8b00-a5fb21b2458c
+                          ElementType: FILTER_CONTROL
+                          ColumnSpan: 2
+                          RowSpan: 1
+                        - ElementId: c599b1d8-740c-4e3b-8bce-7dfc8496cbbb
+                          ElementType: FILTER_CONTROL
+                          ColumnSpan: 2
+                          RowSpan: 1
+                        - ElementId: 8e5f1a95-0e27-46bc-a728-ef4ccbf449b2
+                          ElementType: FILTER_CONTROL
+                          ColumnSpan: 2
+                          RowSpan: 1
+                        - ElementId: b6b6a36b-a467-4842-aad1-a9fa2b1a9613
+                          ElementType: FILTER_CONTROL
+                          ColumnSpan: 2
+                          RowSpan: 1
+                        - ElementId: 1cae1983-1374-41ad-a58c-a246809afcb7
+                          ElementType: FILTER_CONTROL
+                          ColumnSpan: 2
+                          RowSpan: 1
+                        - ElementId: f1d92e8f-8628-44b7-91d5-1e48909fba94
+                          ElementType: FILTER_CONTROL
+                          ColumnSpan: 2
+                          RowSpan: 1
+                        - ElementId: 031d9f83-b3fa-4b29-bf9e-0fe1dc09935b
+                          ElementType: FILTER_CONTROL
+                          ColumnSpan: 2
+                          RowSpan: 1
+                        - ElementId: 4399a6ab-b7a7-4d59-8cdb-7f1b385612d4
+                          ElementType: FILTER_CONTROL
+                          ColumnSpan: 2
+                          RowSpan: 1
+              ContentType: INTERACTIVE
+          CalculatedFields:
+            - DataSetIdentifier: logs
+              Name: first_seen
+              Expression: 'min({parse_date})'
+            - DataSetIdentifier: logs
+              Name: last_seen
+              Expression: 'max({parse_date})'
+          ParameterDeclarations: []
+          FilterGroups:
+            - FilterGroupId: 8d4e4c42-a0fe-4709-a228-d692f34b5619
+              Filters:
+                - CategoryFilter:
+                    FilterId: 8496115a-8637-412f-8cca-07066037ddb0
+                    Column:
+                      DataSetIdentifier: logs
+                      ColumnName: status
+                    Configuration:
+                      CustomFilterConfiguration:
+                        MatchOperator: CONTAINS
+                        CategoryValue: '4'
+                        NullOption: NON_NULLS_ONLY
+              ScopeConfiguration:
+                SelectedSheets:
+                  SheetVisualScopingConfigurations:
+                    - SheetId: 9b348200-9f40-4cc3-87a7-0cff574178e7
+                      Scope: SELECTED_VISUALS
+                      VisualIds:
+                        - bda614ce-02d8-482b-ab4a-e52d010b5399
+                        - 616898c5-fdf5-4493-ac8f-72eae7df0bea
+              Status: ENABLED
+              CrossDataset: SINGLE_DATASET
+            - FilterGroupId: 59a7da30-2665-41ae-9691-74ee2c4949f5
+              Filters:
+                - CategoryFilter:
+                    FilterId: 2e1728c7-a1f3-4fc5-a34c-d83a0fcaf4e8
+                    Column:
+                      DataSetIdentifier: logs
+                      ColumnName: identity.apikeyname
+                    Configuration:
+                      CustomFilterConfiguration:
+                        MatchOperator: DOES_NOT_EQUAL
+                        CategoryValue: '-'
+                        NullOption: ALL_VALUES
+              ScopeConfiguration:
+                SelectedSheets:
+                  SheetVisualScopingConfigurations:
+                    - SheetId: 9b348200-9f40-4cc3-87a7-0cff574178e7
+                      Scope: SELECTED_VISUALS
+                      VisualIds:
+                        - 79e89278-0b94-4dfc-9dfa-01d099c3dc0b
+              Status: ENABLED
+              CrossDataset: SINGLE_DATASET
+            - FilterGroupId: b2a8bf45-4e7f-43fa-8d2f-f6f59d8360db
+              Filters:
+                - CategoryFilter:
+                    FilterId: 2cdd6919-ca22-48d3-8b15-a0271c1c04d7
+                    Column:
+                      DataSetIdentifier: logs
+                      ColumnName: errormessage
+                    Configuration:
+                      CustomFilterConfiguration:
+                        MatchOperator: EQUALS
+                        CategoryValue: Limit Exceeded
+                        NullOption: NON_NULLS_ONLY
+              ScopeConfiguration:
+                SelectedSheets:
+                  SheetVisualScopingConfigurations:
+                    - SheetId: 9b348200-9f40-4cc3-87a7-0cff574178e7
+                      Scope: SELECTED_VISUALS
+                      VisualIds:
+                        - f7924f76-0dfd-4c32-adec-41fd34401e7c
+                        - d1217044-ed1d-4171-8ac0-6d5657e833f9
+              Status: ENABLED
+              CrossDataset: SINGLE_DATASET
+            - FilterGroupId: dc945eab-e28f-4d56-92ad-f24c07328a72
+              Filters:
+                - RelativeDatesFilter:
+                    FilterId: 9707953f-0355-4691-97dd-ac5f6a22fb00
+                    Column:
+                      DataSetIdentifier: logs
+                      ColumnName: parse_date
+                    AnchorDateConfiguration:
+                      AnchorOption: NOW
+                    MinimumGranularity: DAY
+                    TimeGranularity: DAY
+                    RelativeDateType: LAST
+                    RelativeDateValue: 30
+                    NullOption: NON_NULLS_ONLY
+              ScopeConfiguration:
+                SelectedSheets:
+                  SheetVisualScopingConfigurations:
+                    - SheetId: 9b348200-9f40-4cc3-87a7-0cff574178e7
+                      Scope: SELECTED_VISUALS
+                      VisualIds:
+                        - 778b0460-189d-4e56-b104-ae25691ca8cd
+                        - e70cc0b2-ce19-4a75-94d6-8bd9880e76fe
+                        - f7924f76-0dfd-4c32-adec-41fd34401e7c
+                        - 79e89278-0b94-4dfc-9dfa-01d099c3dc0b
+                        - b1e76221-4bd7-409e-bcd4-5290f8af24c2
+                        - bda614ce-02d8-482b-ab4a-e52d010b5399
+                        - 4419cba3-04ef-4e2b-b016-6ec926e57b28
+                        - 1dec300f-5376-455c-9a89-62b3609e642c
+                        - 5732798d-526b-4955-ae4e-d5841adfa75d
+                        - 616898c5-fdf5-4493-ac8f-72eae7df0bea
+                        - 2311f90c-3758-44ca-97d2-40d4982c33d8
+                        - 846055d5-a8fa-4939-a942-3ae6474055e5
+                        - 39cf3003-73b2-403e-9e15-bc9f20f7fd53
+                        - 76791a29-0a23-4a36-82c2-7faa65407a49
+                        - 6bc0f099-2a22-41d0-b13c-dbfd067dd5b4
+                        - d08e8b1b-4e49-497a-af4c-21f8f11900c8
+                        - 28e812a6-39c0-46d2-89ea-2259cf4d12ab
+                        - dfffca24-a266-4729-8a52-cd15aae3bcef
+                        - e67999e9-2bb9-454a-a607-6de02c414b3f
+                        - a4ea5045-4476-47e6-a4d4-026656829165
+                        - 770ebcae-29b2-46fb-ae55-278742b58a86
+                        - 79b9ba02-d149-47c0-95f5-aeed49fd80f9
+                        - 6c6cfb11-9d57-496c-8010-b8867a369802
+                        - 45d3c91a-b739-435e-b411-bc3598ba6c4d
+              Status: ENABLED
+              CrossDataset: ALL_DATASETS
+            - FilterGroupId: 323fb9a5-01b4-4a99-b070-bef131c6a752
+              Filters:
+                - CategoryFilter:
+                    FilterId: dd89f5ef-815b-43aa-8183-b956addc779f
+                    Column:
+                      DataSetIdentifier: logs
+                      ColumnName: domainname
+                    Configuration:
+                      FilterListConfiguration:
+                        MatchOperator: CONTAINS
+                        SelectAllOptions: FILTER_ALL_VALUES
+                        NullOption: NON_NULLS_ONLY
+              ScopeConfiguration:
+                SelectedSheets:
+                  SheetVisualScopingConfigurations:
+                    - SheetId: 9b348200-9f40-4cc3-87a7-0cff574178e7
+                      Scope: SELECTED_VISUALS
+                      VisualIds:
+                        - 778b0460-189d-4e56-b104-ae25691ca8cd
+                        - e70cc0b2-ce19-4a75-94d6-8bd9880e76fe
+                        - f7924f76-0dfd-4c32-adec-41fd34401e7c
+                        - 79e89278-0b94-4dfc-9dfa-01d099c3dc0b
+                        - b1e76221-4bd7-409e-bcd4-5290f8af24c2
+                        - bda614ce-02d8-482b-ab4a-e52d010b5399
+                        - 4419cba3-04ef-4e2b-b016-6ec926e57b28
+                        - 1dec300f-5376-455c-9a89-62b3609e642c
+                        - 5732798d-526b-4955-ae4e-d5841adfa75d
+                        - 616898c5-fdf5-4493-ac8f-72eae7df0bea
+                        - 2311f90c-3758-44ca-97d2-40d4982c33d8
+                        - 846055d5-a8fa-4939-a942-3ae6474055e5
+                        - 39cf3003-73b2-403e-9e15-bc9f20f7fd53
+                        - 76791a29-0a23-4a36-82c2-7faa65407a49
+                        - 6bc0f099-2a22-41d0-b13c-dbfd067dd5b4
+                        - d08e8b1b-4e49-497a-af4c-21f8f11900c8
+                        - 28e812a6-39c0-46d2-89ea-2259cf4d12ab
+                        - dfffca24-a266-4729-8a52-cd15aae3bcef
+                        - e67999e9-2bb9-454a-a607-6de02c414b3f
+                        - a4ea5045-4476-47e6-a4d4-026656829165
+                        - 770ebcae-29b2-46fb-ae55-278742b58a86
+                        - 79b9ba02-d149-47c0-95f5-aeed49fd80f9
+                        - 6c6cfb11-9d57-496c-8010-b8867a369802
+                        - 45d3c91a-b739-435e-b411-bc3598ba6c4d
+              Status: ENABLED
+              CrossDataset: SINGLE_DATASET
+            - FilterGroupId: c901fcb8-82eb-46e9-97e9-b37fbafe800a
+              Filters:
+                - CategoryFilter:
+                    FilterId: 9acbe87c-6fb8-417a-a280-82c00cadf639
+                    Column:
+                      DataSetIdentifier: logs
+                      ColumnName: status
+                    Configuration:
+                      FilterListConfiguration:
+                        MatchOperator: CONTAINS
+                        SelectAllOptions: FILTER_ALL_VALUES
+                        NullOption: NON_NULLS_ONLY
+              ScopeConfiguration:
+                SelectedSheets:
+                  SheetVisualScopingConfigurations:
+                    - SheetId: 9b348200-9f40-4cc3-87a7-0cff574178e7
+                      Scope: SELECTED_VISUALS
+                      VisualIds:
+                        - d08e8b1b-4e49-497a-af4c-21f8f11900c8
+                        - 6bc0f099-2a22-41d0-b13c-dbfd067dd5b4
+                        - 778b0460-189d-4e56-b104-ae25691ca8cd
+                        - e70cc0b2-ce19-4a75-94d6-8bd9880e76fe
+                        - f7924f76-0dfd-4c32-adec-41fd34401e7c
+                        - 79e89278-0b94-4dfc-9dfa-01d099c3dc0b
+                        - b1e76221-4bd7-409e-bcd4-5290f8af24c2
+                        - bda614ce-02d8-482b-ab4a-e52d010b5399
+                        - 4419cba3-04ef-4e2b-b016-6ec926e57b28
+                        - 1dec300f-5376-455c-9a89-62b3609e642c
+                        - 5732798d-526b-4955-ae4e-d5841adfa75d
+                        - 616898c5-fdf5-4493-ac8f-72eae7df0bea
+                        - 2311f90c-3758-44ca-97d2-40d4982c33d8
+                        - 846055d5-a8fa-4939-a942-3ae6474055e5
+                        - 39cf3003-73b2-403e-9e15-bc9f20f7fd53
+                        - 76791a29-0a23-4a36-82c2-7faa65407a49
+                        - 28e812a6-39c0-46d2-89ea-2259cf4d12ab
+                        - dfffca24-a266-4729-8a52-cd15aae3bcef
+                        - e67999e9-2bb9-454a-a607-6de02c414b3f
+                        - a4ea5045-4476-47e6-a4d4-026656829165
+                        - 770ebcae-29b2-46fb-ae55-278742b58a86
+                        - 79b9ba02-d149-47c0-95f5-aeed49fd80f9
+                        - 6c6cfb11-9d57-496c-8010-b8867a369802
+                        - 45d3c91a-b739-435e-b411-bc3598ba6c4d
+              Status: ENABLED
+              CrossDataset: ALL_DATASETS
+            - FilterGroupId: 96b7d8b4-2a09-400b-a088-cc2f7c10901d
+              Filters:
+                - CategoryFilter:
+                    FilterId: 366b5eee-549e-4131-995c-812db28abc3b
+                    Column:
+                      DataSetIdentifier: logs
+                      ColumnName: path
+                    Configuration:
+                      FilterListConfiguration:
+                        MatchOperator: CONTAINS
+                        SelectAllOptions: FILTER_ALL_VALUES
+                        NullOption: NON_NULLS_ONLY
+              ScopeConfiguration:
+                SelectedSheets:
+                  SheetVisualScopingConfigurations:
+                    - SheetId: 9b348200-9f40-4cc3-87a7-0cff574178e7
+                      Scope: SELECTED_VISUALS
+                      VisualIds:
+                        - 28e812a6-39c0-46d2-89ea-2259cf4d12ab
+                        - d08e8b1b-4e49-497a-af4c-21f8f11900c8
+                        - 6bc0f099-2a22-41d0-b13c-dbfd067dd5b4
+                        - 778b0460-189d-4e56-b104-ae25691ca8cd
+                        - e70cc0b2-ce19-4a75-94d6-8bd9880e76fe
+                        - f7924f76-0dfd-4c32-adec-41fd34401e7c
+                        - 79e89278-0b94-4dfc-9dfa-01d099c3dc0b
+                        - b1e76221-4bd7-409e-bcd4-5290f8af24c2
+                        - bda614ce-02d8-482b-ab4a-e52d010b5399
+                        - 4419cba3-04ef-4e2b-b016-6ec926e57b28
+                        - 1dec300f-5376-455c-9a89-62b3609e642c
+                        - 5732798d-526b-4955-ae4e-d5841adfa75d
+                        - 616898c5-fdf5-4493-ac8f-72eae7df0bea
+                        - 2311f90c-3758-44ca-97d2-40d4982c33d8
+                        - 846055d5-a8fa-4939-a942-3ae6474055e5
+                        - 39cf3003-73b2-403e-9e15-bc9f20f7fd53
+                        - 76791a29-0a23-4a36-82c2-7faa65407a49
+                        - d1217044-ed1d-4171-8ac0-6d5657e833f9
+                        - dfffca24-a266-4729-8a52-cd15aae3bcef
+                        - e67999e9-2bb9-454a-a607-6de02c414b3f
+                        - a4ea5045-4476-47e6-a4d4-026656829165
+                        - 770ebcae-29b2-46fb-ae55-278742b58a86
+                        - 79b9ba02-d149-47c0-95f5-aeed49fd80f9
+                        - 6c6cfb11-9d57-496c-8010-b8867a369802
+                        - 45d3c91a-b739-435e-b411-bc3598ba6c4d
+              Status: ENABLED
+              CrossDataset: SINGLE_DATASET
+            - FilterGroupId: e9bccce2-ae39-45ef-9467-3fed9be05a2d
+              Filters:
+                - CategoryFilter:
+                    FilterId: 20910447-e8eb-483b-bc84-808e19f39bbc
+                    Column:
+                      DataSetIdentifier: logs
+                      ColumnName: identity.usageplanname
+                    Configuration:
+                      FilterListConfiguration:
+                        MatchOperator: CONTAINS
+                        SelectAllOptions: FILTER_ALL_VALUES
+                        NullOption: NON_NULLS_ONLY
+              ScopeConfiguration:
+                SelectedSheets:
+                  SheetVisualScopingConfigurations:
+                    - SheetId: 9b348200-9f40-4cc3-87a7-0cff574178e7
+                      Scope: ALL_VISUALS
+              Status: ENABLED
+              CrossDataset: ALL_DATASETS
+            - FilterGroupId: 73164bc7-218a-4df0-ae78-1cf4add62042
+              Filters:
+                - CategoryFilter:
+                    FilterId: 3c909cdb-871c-42bd-8046-e29357e918b1
+                    Column:
+                      DataSetIdentifier: logs
+                      ColumnName: status
+                    Configuration:
+                      CustomFilterConfiguration:
+                        MatchOperator: STARTS_WITH
+                        CategoryValue: '4'
+                        NullOption: NON_NULLS_ONLY
+              ScopeConfiguration:
+                SelectedSheets:
+                  SheetVisualScopingConfigurations:
+                    - SheetId: 9b348200-9f40-4cc3-87a7-0cff574178e7
+                      Scope: SELECTED_VISUALS
+                      VisualIds:
+                        - e70cc0b2-ce19-4a75-94d6-8bd9880e76fe
+              Status: ENABLED
+              CrossDataset: SINGLE_DATASET
+            - FilterGroupId: d972e1d2-02f5-4289-8f22-ff5d255abbc5
+              Filters:
+                - CategoryFilter:
+                    FilterId: 490bc549-9c57-458b-8307-06dfb541e2e9
+                    Column:
+                      DataSetIdentifier: logs
+                      ColumnName: status
+                    Configuration:
+                      CustomFilterConfiguration:
+                        MatchOperator: STARTS_WITH
+                        CategoryValue: '5'
+                        NullOption: NON_NULLS_ONLY
+              ScopeConfiguration:
+                SelectedSheets:
+                  SheetVisualScopingConfigurations:
+                    - SheetId: 9b348200-9f40-4cc3-87a7-0cff574178e7
+                      Scope: SELECTED_VISUALS
+                      VisualIds:
+                        - 778b0460-189d-4e56-b104-ae25691ca8cd
+              Status: ENABLED
+              CrossDataset: SINGLE_DATASET
+            - FilterGroupId: f73518c6-e838-4162-bb23-bd763282ce6c
+              Filters:
+                - CategoryFilter:
+                    FilterId: 8439aba4-e6d6-4246-8a8a-89ad5ee690e0
+                    Column:
+                      DataSetIdentifier: logs
+                      ColumnName: errormessage
+                    Configuration:
+                      CustomFilterConfiguration:
+                        MatchOperator: EQUALS
+                        CategoryValue: Limit Exceeded
+                        NullOption: NON_NULLS_ONLY
+              ScopeConfiguration:
+                SelectedSheets:
+                  SheetVisualScopingConfigurations:
+                    - SheetId: 9b348200-9f40-4cc3-87a7-0cff574178e7
+                      Scope: SELECTED_VISUALS
+                      VisualIds:
+                        - d08e8b1b-4e49-497a-af4c-21f8f11900c8
+              Status: DISABLED
+              CrossDataset: SINGLE_DATASET
+            - FilterGroupId: 9d22ff19-c949-4252-9962-804d362b0f5d
+              Filters:
+                - CategoryFilter:
+                    FilterId: 3df1382e-35e6-4887-b56c-88ebc63dc695
+                    Column:
+                      DataSetIdentifier: logs
+                      ColumnName: errormessage
+                    Configuration:
+                      CustomFilterConfiguration:
+                        MatchOperator: EQUALS
+                        CategoryValue: The incoming token has expired
+                        NullOption: NON_NULLS_ONLY
+              ScopeConfiguration:
+                SelectedSheets:
+                  SheetVisualScopingConfigurations:
+                    - SheetId: 9b348200-9f40-4cc3-87a7-0cff574178e7
+                      Scope: SELECTED_VISUALS
+                      VisualIds:
+                        - d08e8b1b-4e49-497a-af4c-21f8f11900c8
+              Status: DISABLED
+              CrossDataset: SINGLE_DATASET
+            - FilterGroupId: 25cdbcc4-6d66-41fd-90cc-a0c8f8641583
+              Filters:
+                - CategoryFilter:
+                    FilterId: 70748909-53a0-42dc-80e6-9f54f5ad3f1c
+                    Column:
+                      DataSetIdentifier: logs
+                      ColumnName: clientid
+                    Configuration:
+                      CustomFilterConfiguration:
+                        MatchOperator: DOES_NOT_EQUAL
+                        CategoryValue: '-'
+                        NullOption: ALL_VALUES
+              ScopeConfiguration:
+                SelectedSheets:
+                  SheetVisualScopingConfigurations:
+                    - SheetId: 9b348200-9f40-4cc3-87a7-0cff574178e7
+                      Scope: SELECTED_VISUALS
+                      VisualIds:
+                        - 6bc0f099-2a22-41d0-b13c-dbfd067dd5b4
+              Status: ENABLED
+              CrossDataset: SINGLE_DATASET
+            - FilterGroupId: 9c748c8e-679e-49fc-9a80-49802a84d5de
+              Filters:
+                - CategoryFilter:
+                    FilterId: 3b521113-16a9-4be3-a8d8-0e9d73cb892f
+                    Column:
+                      DataSetIdentifier: logs
+                      ColumnName: domainname
+                    Configuration:
+                      CustomFilterConfiguration:
+                        MatchOperator: EQUALS
+                        CategoryValue: uu3yi0in3f.execute-api.us-east-1.amazonaws.com
+                        NullOption: NON_NULLS_ONLY
+              ScopeConfiguration:
+                SelectedSheets:
+                  SheetVisualScopingConfigurations:
+                    - SheetId: 9b348200-9f40-4cc3-87a7-0cff574178e7
+                      Scope: SELECTED_VISUALS
+                      VisualIds:
+                        - 846055d5-a8fa-4939-a942-3ae6474055e5
+              Status: ENABLED
+              CrossDataset: SINGLE_DATASET
+            - FilterGroupId: c008422d-f13d-46c0-89da-636c0cf79118
+              Filters:
+                - CategoryFilter:
+                    FilterId: 6ea050f6-806c-4913-aba5-624e9fafd9eb
+                    Column:
+                      DataSetIdentifier: logs
+                      ColumnName: status
+                    Configuration:
+                      CustomFilterListConfiguration:
+                        MatchOperator: CONTAINS
+                        CategoryValues:
+                          - '401'
+                          - '402'
+                          - '403'
+                        NullOption: NON_NULLS_ONLY
+              ScopeConfiguration:
+                SelectedSheets:
+                  SheetVisualScopingConfigurations:
+                    - SheetId: 9b348200-9f40-4cc3-87a7-0cff574178e7
+                      Scope: SELECTED_VISUALS
+                      VisualIds:
+                        - d08e8b1b-4e49-497a-af4c-21f8f11900c8
+              Status: ENABLED
+              CrossDataset: SINGLE_DATASET
+            - FilterGroupId: a44489bc-cf92-4453-93c7-640c6e71cd57
+              Filters:
+                - CategoryFilter:
+                    FilterId: 65e8bf39-b2d5-4bed-ac04-59337d1868df
+                    Column:
+                      DataSetIdentifier: logs
+                      ColumnName: status
+                    Configuration:
+                      CustomFilterConfiguration:
+                        MatchOperator: STARTS_WITH
+                        CategoryValue: '2'
+                        NullOption: NON_NULLS_ONLY
+              ScopeConfiguration:
+                SelectedSheets:
+                  SheetVisualScopingConfigurations:
+                    - SheetId: 9b348200-9f40-4cc3-87a7-0cff574178e7
+                      Scope: SELECTED_VISUALS
+                      VisualIds:
+                        - 28e812a6-39c0-46d2-89ea-2259cf4d12ab
+              Status: ENABLED
+              CrossDataset: SINGLE_DATASET
+            - FilterGroupId: 264040fb-a189-4fb7-b63c-34812c75d357
+              Filters:
+                - CategoryFilter:
+                    FilterId: c28a9453-c8bb-416f-bab1-de72f64ee35a
+                    Column:
+                      DataSetIdentifier: logs
+                      ColumnName: ip
+                    Configuration:
+                      FilterListConfiguration:
+                        MatchOperator: CONTAINS
+                        SelectAllOptions: FILTER_ALL_VALUES
+                        NullOption: NON_NULLS_ONLY
+              ScopeConfiguration:
+                SelectedSheets:
+                  SheetVisualScopingConfigurations:
+                    - SheetId: 9b348200-9f40-4cc3-87a7-0cff574178e7
+                      Scope: SELECTED_VISUALS
+                      VisualIds:
+                        - 28e812a6-39c0-46d2-89ea-2259cf4d12ab
+                        - d08e8b1b-4e49-497a-af4c-21f8f11900c8
+                        - 6bc0f099-2a22-41d0-b13c-dbfd067dd5b4
+                        - 778b0460-189d-4e56-b104-ae25691ca8cd
+                        - e70cc0b2-ce19-4a75-94d6-8bd9880e76fe
+                        - f7924f76-0dfd-4c32-adec-41fd34401e7c
+                        - 79e89278-0b94-4dfc-9dfa-01d099c3dc0b
+                        - b1e76221-4bd7-409e-bcd4-5290f8af24c2
+                        - bda614ce-02d8-482b-ab4a-e52d010b5399
+                        - 4419cba3-04ef-4e2b-b016-6ec926e57b28
+                        - 1dec300f-5376-455c-9a89-62b3609e642c
+                        - 5732798d-526b-4955-ae4e-d5841adfa75d
+                        - 616898c5-fdf5-4493-ac8f-72eae7df0bea
+                        - 2311f90c-3758-44ca-97d2-40d4982c33d8
+                        - 846055d5-a8fa-4939-a942-3ae6474055e5
+                        - 39cf3003-73b2-403e-9e15-bc9f20f7fd53
+                        - 76791a29-0a23-4a36-82c2-7faa65407a49
+                        - d1217044-ed1d-4171-8ac0-6d5657e833f9
+                        - dfffca24-a266-4729-8a52-cd15aae3bcef
+                        - e67999e9-2bb9-454a-a607-6de02c414b3f
+                        - a4ea5045-4476-47e6-a4d4-026656829165
+                        - 770ebcae-29b2-46fb-ae55-278742b58a86
+                        - 79b9ba02-d149-47c0-95f5-aeed49fd80f9
+                        - 6c6cfb11-9d57-496c-8010-b8867a369802
+                        - 45d3c91a-b739-435e-b411-bc3598ba6c4d
+              Status: ENABLED
+              CrossDataset: SINGLE_DATASET
+            - FilterGroupId: df5953db-4924-46a4-bb79-a79ecd9f4e8f
+              Filters:
+                - CategoryFilter:
+                    FilterId: 46cc874c-a5ed-4ca3-bc75-62e788a2bd3e
+                    Column:
+                      DataSetIdentifier: logs
+                      ColumnName: identityuser
+                    Configuration:
+                      FilterListConfiguration:
+                        MatchOperator: CONTAINS
+                        SelectAllOptions: FILTER_ALL_VALUES
+                        NullOption: NON_NULLS_ONLY
+              ScopeConfiguration:
+                SelectedSheets:
+                  SheetVisualScopingConfigurations:
+                    - SheetId: 9b348200-9f40-4cc3-87a7-0cff574178e7
+                      Scope: SELECTED_VISUALS
+                      VisualIds:
+                        - 28e812a6-39c0-46d2-89ea-2259cf4d12ab
+                        - d08e8b1b-4e49-497a-af4c-21f8f11900c8
+                        - 6bc0f099-2a22-41d0-b13c-dbfd067dd5b4
+                        - 778b0460-189d-4e56-b104-ae25691ca8cd
+                        - e70cc0b2-ce19-4a75-94d6-8bd9880e76fe
+                        - f7924f76-0dfd-4c32-adec-41fd34401e7c
+                        - 79e89278-0b94-4dfc-9dfa-01d099c3dc0b
+                        - b1e76221-4bd7-409e-bcd4-5290f8af24c2
+                        - bda614ce-02d8-482b-ab4a-e52d010b5399
+                        - 4419cba3-04ef-4e2b-b016-6ec926e57b28
+                        - 1dec300f-5376-455c-9a89-62b3609e642c
+                        - 5732798d-526b-4955-ae4e-d5841adfa75d
+                        - 616898c5-fdf5-4493-ac8f-72eae7df0bea
+                        - 2311f90c-3758-44ca-97d2-40d4982c33d8
+                        - 846055d5-a8fa-4939-a942-3ae6474055e5
+                        - 39cf3003-73b2-403e-9e15-bc9f20f7fd53
+                        - 76791a29-0a23-4a36-82c2-7faa65407a49
+                        - d1217044-ed1d-4171-8ac0-6d5657e833f9
+                        - dfffca24-a266-4729-8a52-cd15aae3bcef
+                        - e67999e9-2bb9-454a-a607-6de02c414b3f
+                        - a4ea5045-4476-47e6-a4d4-026656829165
+                        - 770ebcae-29b2-46fb-ae55-278742b58a86
+                        - 79b9ba02-d149-47c0-95f5-aeed49fd80f9
+                        - 6c6cfb11-9d57-496c-8010-b8867a369802
+                        - 45d3c91a-b739-435e-b411-bc3598ba6c4d
+              Status: ENABLED
+              CrossDataset: SINGLE_DATASET
+            - FilterGroupId: c9b61537-d88d-493e-b4cc-016f7a9dfd32
+              Filters:
+                - CategoryFilter:
+                    FilterId: e3bfde4b-0bf7-4641-9c81-80101fdc9b54
+                    Column:
+                      DataSetIdentifier: logs
+                      ColumnName: sub
+                    Configuration:
+                      FilterListConfiguration:
+                        MatchOperator: CONTAINS
+                        SelectAllOptions: FILTER_ALL_VALUES
+                        NullOption: NON_NULLS_ONLY
+              ScopeConfiguration:
+                SelectedSheets:
+                  SheetVisualScopingConfigurations:
+                    - SheetId: 9b348200-9f40-4cc3-87a7-0cff574178e7
+                      Scope: SELECTED_VISUALS
+                      VisualIds:
+                        - 28e812a6-39c0-46d2-89ea-2259cf4d12ab
+                        - d08e8b1b-4e49-497a-af4c-21f8f11900c8
+                        - 6bc0f099-2a22-41d0-b13c-dbfd067dd5b4
+                        - 778b0460-189d-4e56-b104-ae25691ca8cd
+                        - e70cc0b2-ce19-4a75-94d6-8bd9880e76fe
+                        - f7924f76-0dfd-4c32-adec-41fd34401e7c
+                        - 79e89278-0b94-4dfc-9dfa-01d099c3dc0b
+                        - b1e76221-4bd7-409e-bcd4-5290f8af24c2
+                        - bda614ce-02d8-482b-ab4a-e52d010b5399
+                        - 4419cba3-04ef-4e2b-b016-6ec926e57b28
+                        - 1dec300f-5376-455c-9a89-62b3609e642c
+                        - 5732798d-526b-4955-ae4e-d5841adfa75d
+                        - 616898c5-fdf5-4493-ac8f-72eae7df0bea
+                        - 2311f90c-3758-44ca-97d2-40d4982c33d8
+                        - 846055d5-a8fa-4939-a942-3ae6474055e5
+                        - 39cf3003-73b2-403e-9e15-bc9f20f7fd53
+                        - 76791a29-0a23-4a36-82c2-7faa65407a49
+                        - d1217044-ed1d-4171-8ac0-6d5657e833f9
+                        - dfffca24-a266-4729-8a52-cd15aae3bcef
+                        - e67999e9-2bb9-454a-a607-6de02c414b3f
+                        - a4ea5045-4476-47e6-a4d4-026656829165
+                        - 770ebcae-29b2-46fb-ae55-278742b58a86
+                        - 79b9ba02-d149-47c0-95f5-aeed49fd80f9
+                        - 6c6cfb11-9d57-496c-8010-b8867a369802
+                        - 45d3c91a-b739-435e-b411-bc3598ba6c4d
+              Status: ENABLED
+              CrossDataset: SINGLE_DATASET
+            - FilterGroupId: 81b20657-c6a9-4084-ad29-10bba8894e8e
+              Filters:
+                - CategoryFilter:
+                    FilterId: 8daf68de-f2e6-40ba-88b1-14a075ce2d5b
+                    Column:
+                      DataSetIdentifier: logs
+                      ColumnName: requestid
+                    Configuration:
+                      FilterListConfiguration:
+                        MatchOperator: CONTAINS
+                        SelectAllOptions: FILTER_ALL_VALUES
+                        NullOption: NON_NULLS_ONLY
+              ScopeConfiguration:
+                SelectedSheets:
+                  SheetVisualScopingConfigurations:
+                    - SheetId: 9b348200-9f40-4cc3-87a7-0cff574178e7
+                      Scope: SELECTED_VISUALS
+                      VisualIds:
+                        - dfffca24-a266-4729-8a52-cd15aae3bcef
+                        - 28e812a6-39c0-46d2-89ea-2259cf4d12ab
+                        - d08e8b1b-4e49-497a-af4c-21f8f11900c8
+                        - 6bc0f099-2a22-41d0-b13c-dbfd067dd5b4
+                        - 778b0460-189d-4e56-b104-ae25691ca8cd
+                        - e70cc0b2-ce19-4a75-94d6-8bd9880e76fe
+                        - f7924f76-0dfd-4c32-adec-41fd34401e7c
+                        - 79e89278-0b94-4dfc-9dfa-01d099c3dc0b
+                        - b1e76221-4bd7-409e-bcd4-5290f8af24c2
+                        - bda614ce-02d8-482b-ab4a-e52d010b5399
+                        - 4419cba3-04ef-4e2b-b016-6ec926e57b28
+                        - 1dec300f-5376-455c-9a89-62b3609e642c
+                        - 5732798d-526b-4955-ae4e-d5841adfa75d
+                        - 616898c5-fdf5-4493-ac8f-72eae7df0bea
+                        - 2311f90c-3758-44ca-97d2-40d4982c33d8
+                        - 846055d5-a8fa-4939-a942-3ae6474055e5
+                        - 39cf3003-73b2-403e-9e15-bc9f20f7fd53
+                        - 76791a29-0a23-4a36-82c2-7faa65407a49
+                        - d1217044-ed1d-4171-8ac0-6d5657e833f9
+                        - e67999e9-2bb9-454a-a607-6de02c414b3f
+                        - a4ea5045-4476-47e6-a4d4-026656829165
+                        - 770ebcae-29b2-46fb-ae55-278742b58a86
+                        - 79b9ba02-d149-47c0-95f5-aeed49fd80f9
+                        - 6c6cfb11-9d57-496c-8010-b8867a369802
+                        - 45d3c91a-b739-435e-b411-bc3598ba6c4d
+              Status: ENABLED
+              CrossDataset: SINGLE_DATASET
+          AnalysisDefaults:
+            DefaultNewSheetConfiguration:
+              InteractiveLayoutConfiguration:
+                Grid:
+                  CanvasSizeOptions:
+                    ScreenCanvasSizeOptions:
+                      ResizeOption: FIXED
+                      OptimizedViewPortWidth: 1600px
+              SheetContentType: INTERACTIVE
+          Options:
+            WeekStart: SUNDAY
+            
+  QuickSightTemplateAPIGWlogs:
+      Type: "AWS::QuickSight::Template"
+      Properties:
+          TemplateId: !Sub "${ProjectName}-template"
+          Name: !Sub "${ProjectName}-template"
+          AwsAccountId: !Ref AWS::AccountId
+          VersionDescription: "1"
+          SourceEntity:
+              SourceAnalysis:
+                  DataSetReferences:
+                    - 
+                      DataSetArn: !GetAtt ApiAccessLogsDataSet.Arn
+                      DataSetPlaceholder: "API Access Logs"
+                      
+                  Arn: !GetAtt ApiGwAnalysis.Arn
+          Permissions:
+            - 
+              Principal: !Sub "arn:aws:quicksight:${AWS::Region}:${AWS::AccountId}:group/default/${ProjectName}-Admins"
+              Actions:
+                - "quicksight:DescribeTemplate"
+                
+  QuickSightDashboardAPIGWlog:
+      Type: "AWS::QuickSight::Dashboard"
+     
+      Properties:
+          DashboardId: !Sub "${ProjectName}-APIGWlogDashboard"
+          Name: !Sub "${ProjectName}-APIGWlogDashboard"
+          AwsAccountId: !Ref AWS::AccountId
+          Permissions:
+            - 
+              Principal: !Sub "arn:aws:quicksight:${AWS::Region}:${AWS::AccountId}:group/default/${ProjectName}-Admins"
+              Actions:
+                - "quicksight:DescribeDashboard"
+                - "quicksight:ListDashboardVersions"
+                - "quicksight:UpdateDashboardPermissions"
+                - "quicksight:QueryDashboard"
+                - "quicksight:UpdateDashboard"
+                - "quicksight:DeleteDashboard"
+                - "quicksight:DescribeDashboardPermissions"
+                - "quicksight:UpdateDashboardPublishedVersion"
+         
+          VersionDescription: "1"
+          DashboardPublishOptions:
+              AdHocFilteringOption:
+                  AvailabilityStatus: "ENABLED"
+              ExportToCSVOption:
+                  AvailabilityStatus: "ENABLED"
+              SheetControlsOption:
+                  VisibilityState: "EXPANDED"
+          SourceEntity:
+              SourceTemplate:
+                  DataSetReferences:
+                    - 
+                      DataSetArn: !GetAtt ApiAccessLogsDataSet.Arn
+                      DataSetPlaceholder: "API Access Logs"
+                   
+                  Arn: !GetAtt QuickSightTemplateAPIGWlogs.Arn 
+  
+  
+  GlueDatabasAPIGWlog:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: !Sub "${ProjectName}" 
+        Description: Database for storing API Gateway access logs
+  
+  
+  GlueTableAPIGWlog:
+    Type: AWS::Glue::Table
+    Properties: 
+      DatabaseName: !Ref GlueDatabasAPIGWlog
+      CatalogId: !Ref "AWS::AccountId"
+      TableInput: 
+        Name: logs
+        Description: API Gateway access logs
+        TableType: EXTERNAL_TABLE
+        Parameters:
+          classification: json
+        PartitionKeys:
+        # Data is partitioned by month
+        - Name: year
+          Type: string
+        - Name: month
+          Type: string
+        - Name: day
+          Type: string
+        StorageDescriptor: 
+          Columns:
+            - Name: requestid
+              Type: string
+            - Name: ip
+              Type: string
+            - Name: requesttime
+              Type: string
+            - Name: httpmethod
+              Type: string
+            - Name: routekey
+              Type: string
+            - Name: status
+              Type: string
+            - Name: protocol
+              Type: string
+            - Name: responselength
+              Type: string
+            - Name: extendedrequestid
+              Type: string
+            - Name: accountid
+              Type: string
+            - Name: apiid
+              Type: string
+            - Name: authorizerclaimsproperty
+              Type: string
+            - Name: authorizerprincipalid
+              Type: string
+            - Name: authorizerproperty
+              Type: string
+            - Name: deploymentid
+              Type: string
+            - Name: domainname
+              Type: string
+            - Name: domainprefix
+              Type: string
+            - Name: errormessage
+              Type: string
+            - Name: errorresponsetype
+              Type: string
+            - Name: errorvalidationerrorstring
+              Type: string
+            - Name: identityaccountid
+              Type: string
+            - Name: identityapikeyid
+              Type: string
+            - Name: identitycaller
+              Type: string
+            - Name: identitycognitoauthenticationprovider
+              Type: string
+            - Name: identitycognitoauthenticationtype
+              Type: string
+            - Name: identitycognitoidentityid
+              Type: string
+            - Name: identitycognitoidentitypoolid
+              Type: string
+            - Name: identityprincipalorgid
+              Type: string
+            - Name: identityuser
+              Type: string
+            - Name: identityuseragent
+              Type: string
+            - Name: identityuserarn
+              Type: string
+            - Name: path
+              Type: string
+            - Name: requestoverrideheader
+              Type: string
+            - Name: requestoverridepath
+              Type: string
+            - Name: requestoverridequerystring
+              Type: string
+            - Name: responseoverrideheader
+              Type: string
+            - Name: responseoverridestatus
+              Type: string
+            - Name: requesttimeepoch
+              Type: string
+            - Name: resourcepath
+              Type: string
+            - Name: stage
+              Type: string
+            - Name: wafresponsecode
+              Type: string
+            - Name: webaclarn
+              Type: string
+            - Name: sub
+              Type: string
+            - Name: clientid
+              Type: string
+            - Name: aud
+              Type: string
+            - Name: identity.apikeyname
+              Type: string
+            - Name: identity.usageplanname
+              Type: string
+            - Name: authorizeError
+              Type: string
+            - Name: authorizeLatency
+              Type: int
+            - Name: authorizeStatus
+              Type: string
+            - Name: authorizerError
+              Type: string
+            - Name: authorizerIntegrationLatency
+              Type: int
+            - Name: authorizerIntegrationStatus
+              Type: string
+            - Name: authorizerLatency
+              Type: int
+            - Name: authorizerStatus
+              Type: string
+            - Name: integrationLatency
+              Type: int
+            - Name: responseLatency
+              Type: int
+            - Name: date
+              Type: string
+          Location: !Sub "s3://${AccessLogsBucket}/logs/"
+          InputFormat: org.apache.hadoop.mapred.TextInputFormat
+          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          SerdeInfo: 
+            SerializationLibrary: org.openx.data.jsonserde.JsonSerDe
+  GlueCrawlerRoleAPIGWlog:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "glue.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole'
+      Policies:
+        -
+          PolicyName: "S3BucketAccessPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action: 
+                  - "s3:GetObject"
+                  - "s3:PutObject"
+                Resource:
+                  - !GetAtt AccessLogsBucket.Arn
+                  - !Join 
+                    - ''
+                    - - 'arn:aws:s3:::'
+                      - !Ref AccessLogsBucket
+                      - '*'
+  GlueCrawlerAPIGWlog:
+    Type: AWS::Glue::Crawler
+    DependsOn: GlueTableAPIGWlog
+    Properties:
+      Name: !Sub "${ProjectName}" 
+      Role: !GetAtt GlueCrawlerRoleAPIGWlog.Arn
+      Description: AWS Glue crawler to crawl API Gateway Access Logs
+      DatabaseName: !Ref GlueDatabasAPIGWlog
+      Targets:
+        CatalogTargets:
+          - DatabaseName: !Ref GlueDatabasAPIGWlog
+            Tables:
+              - logs
+      RecrawlPolicy:
+        RecrawlBehavior: CRAWL_EVERYTHING
+      SchemaChangePolicy:
+        UpdateBehavior: LOG
+        DeleteBehavior: LOG
+      Schedule: 
+        ScheduleExpression: !Ref DataRefreshFrequency      
+Outputs:
+  AccessLogsS3bucket:
+    Description: "S3 Access Logs bucket"
+    Value: !Ref AccessLogsBucket
+  DeliveryStream:
+    Description: "Kinesis Firehose Stream Delivery to S3"
+    Value: !GetAtt DeliveryStream.Arn
