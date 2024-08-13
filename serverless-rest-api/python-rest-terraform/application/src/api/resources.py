@@ -87,7 +87,7 @@ def lambda_handler(event, context, metrics):
         if route_key == 'PUT /locations/{locationid}/resources':
             request_json = json.loads(event['body'])
             request_json['locationid'] = event['pathParameters']['locationid']
-            request_json['timestamp'] = datetime.now().isoformat()
+            request_json['timestamp'] = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
             # generate unique id if it isn't present in the request
             if 'resourceid' not in request_json:
                 request_json['resourceid'] = str(uuid.uuid1())

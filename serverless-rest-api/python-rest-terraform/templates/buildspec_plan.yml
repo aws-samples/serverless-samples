@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
 version: 0.2
 
 env:
@@ -18,8 +21,8 @@ phases:
     commands:
       - cd ${CODEBUILD_SRC_DIR}/${CODE_SRC_DIR}
       - echo ## TERRAFORM INIT : Initialize the Terraform Workspace
-      - echo terraform init -reconfigure -backend-config "bucket=${tf_state_bucket}" -backend-config "dynamodb_table=${tf_state_table}" -backend-config "region=${TF_VAR_region}" -backend-config "key=${TF_VAR_serverless_application_name}/${TF_VAR_environment}"
-      - terraform init -reconfigure -backend-config "bucket=${tf_state_bucket}" -backend-config "dynamodb_table=${tf_state_table}" -backend-config "region=${TF_VAR_region}" -backend-config "key=${TF_VAR_serverless_application_name}/${TF_VAR_environment}"
+      - echo terraform init -reconfigure -backend-config "bucket=${tf_state_bucket}" -backend-config "dynamodb_table=${tf_state_table}" -backend-config "region=${TF_VAR_region}" -backend-config "key=${TF_VAR_serverless_application_name}"
+      - terraform init -reconfigure -backend-config "bucket=${tf_state_bucket}" -backend-config "dynamodb_table=${tf_state_table}" -backend-config "region=${TF_VAR_region}" -backend-config "key=${TF_VAR_serverless_application_name}"
       - terraform workspace new ${TF_VAR_environment} || true
       - terraform workspace select ${TF_VAR_environment}
       - echo Current workspace:$(terraform workspace show)

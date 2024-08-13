@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
 resource "aws_codebuild_project" "terraform_codebuild_project" {
 
   count = length(var.build_projects)

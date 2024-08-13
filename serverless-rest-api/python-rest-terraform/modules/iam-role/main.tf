@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
 resource "aws_iam_role" "codepipeline_role" {
   count              = var.create_new_role ? 1 : 0
   name               = var.codepipeline_iam_role_name

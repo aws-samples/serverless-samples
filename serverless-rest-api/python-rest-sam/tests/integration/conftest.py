@@ -6,6 +6,7 @@ import os
 import pytest
 import time
 
+APPLICATION_STACK_NAME = os.getenv('TEST_APPLICATION_STACK_NAME', None)
 COGNITO_STACK_NAME = os.getenv('TEST_COGNITO_STACK_NAME', None)
 globalConfig = {}
 
@@ -19,13 +20,6 @@ def get_stack_outputs(stack_name):
         result[output["OutputKey"]] = output["OutputValue"]
     return result
 
-def get_tf_outputs():
-    result = {}
-    for key, value in os.environ.items():
-        if key.startswith("TF_OUTPUT_"):
-            output_key = key[10:]  # Remove the "TF_OUTPUT_" prefix
-            result[output_key] = value
-    return result
 
 def create_cognito_accounts():
     result = {}
@@ -120,7 +114,7 @@ def create_api_key():
     api_key_id = response["id"]
     api_key_value = response["value"]
     response = apigw_client.create_usage_plan_key(
-        usagePlanId=globalConfig['api_enterprise_usage_plan'],
+        usagePlanId=globalConfig['ApiEnterpriseUsagePlan'],
         keyId=api_key_id,
         keyType='API_KEY'
     )
@@ -134,30 +128,30 @@ def clear_dynamo_tables():
     # clear all data from the tables that will be used for testing
     dbd_client = boto3.client('dynamodb')
     db_response = dbd_client.scan(
-        TableName=globalConfig['locations_table'],
+        TableName=globalConfig['LocationsTable'],
         AttributesToGet=['locationid']
     )
     for item in db_response["Items"]:
         dbd_client.delete_item(
-            TableName=globalConfig['locations_table'],
+            TableName=globalConfig['LocationsTable'],
             Key={'locationid': {'S': item['locationid']["S"]}}
         )
     db_response = dbd_client.scan(
-        TableName=globalConfig['resources_table'],
+        TableName=globalConfig['ResourcesTable'],
         AttributesToGet=['resourceid']
     )
     for item in db_response["Items"]:
         dbd_client.delete_item(
-            TableName=globalConfig['resources_table'],
+            TableName=globalConfig['ResourcesTable'],
             Key={'resourceid': {'S': item['resourceid']["S"]}}
         )
     db_response = dbd_client.scan(
-        TableName=globalConfig['bookings_table'],
+        TableName=globalConfig['BookingsTable'],
         AttributesToGet=['bookingid']
     )
     for item in db_response["Items"]:
         dbd_client.delete_item(
-            TableName=globalConfig['bookings_table'],
+            TableName=globalConfig['BookingsTable'],
             Key={'bookingid': {'S': item['bookingid']["S"]}}
         )
     return
@@ -167,8 +161,8 @@ def clear_dynamo_tables():
 def global_config(request):
     global globalConfig
     # load outputs of the stacks to test
+    globalConfig.update(get_stack_outputs(APPLICATION_STACK_NAME))
     globalConfig.update(get_stack_outputs(COGNITO_STACK_NAME))
-    globalConfig.update(get_tf_outputs())
     globalConfig.update(create_cognito_accounts())
     globalConfig.update(create_api_key())
     clear_dynamo_tables()

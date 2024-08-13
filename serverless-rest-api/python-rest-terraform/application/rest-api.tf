@@ -1,5 +1,9 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
 locals {
   account_id           = data.aws_caller_identity.current.account_id
+  region               = data.aws_region.current.name
   lambda_functions_set = toset(["locations", "bookings", "resources", "authorizer"])
   resource_name_prefix = "${var.serverless_application_name}-${random_pet.this.id}"
   dynamodb_details = tomap({
@@ -165,9 +169,10 @@ module "lambda_functions" {
   allowed_triggers = {
     APIGatewayAny = {
       service    = "apigateway"
-      source_arn = "arn:aws:execute-api:${var.region}:${local.account_id}:${aws_api_gateway_rest_api.application_api.id}/*/*/*"
+      source_arn = "arn:aws:execute-api:${local.region}:${local.account_id}:${aws_api_gateway_rest_api.application_api.id}/*/*/*"
     }
   }
+  create_sam_metadata = true
 }
 
 
@@ -277,7 +282,7 @@ resource "aws_cloudwatch_log_group" "rest_api_access_logs" {
 
 resource "aws_api_gateway_rest_api" "application_api" {
   body = templatefile("${path.module}/src/api/openapi.tftpl", {
-    AwsRegion            = var.region,
+    AwsRegion            = local.region,
     LocationsFunction    = module.lambda_functions["locations"].lambda_function_arn,
     ResourcesFunction    = module.lambda_functions["resources"].lambda_function_arn,
     BookingsFunction     = module.lambda_functions["bookings"].lambda_function_arn,
@@ -387,7 +392,7 @@ resource "aws_kms_key" "sns_key" {
         Sid    = "Allow usage of the key"
         Effect = "Allow"
         Principal = {
-          Service = ["logs.${var.region}.amazonaws.com", "sns.amazonaws.com"]
+          Service = ["logs.${local.region}.amazonaws.com", "sns.amazonaws.com"]
         },
         Action = [
           "kms:Encrypt*",
@@ -498,7 +503,7 @@ resource "aws_cloudwatch_metric_alarm" "dynamodb_write_alarms" {
 resource "aws_cloudwatch_dashboard" "dashbaord" {
   dashboard_name = "${local.resource_name_prefix}-dashboard"
   dashboard_body = templatefile("${path.module}/dashboard.tftpl", {
-    AwsRegion          = var.region,
+    AwsRegion          = local.region,
     LocationsFunction  = module.lambda_functions["locations"].lambda_function_name,
     ResourcesFunction  = module.lambda_functions["resources"].lambda_function_name,
     BookingsFunction   = module.lambda_functions["bookings"].lambda_function_name,

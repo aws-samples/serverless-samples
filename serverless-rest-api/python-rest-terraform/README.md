@@ -54,6 +54,7 @@ aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id <cognit
 
 ## Manually deploy the sample application
 ***Note:** Before deploying application manually first time you will need to deploy shared Cognito stack, see previous section for details.*
+***Note:** This method of deployment is prefrable when you want to make changes to this sample application and develope your application using this template.*
 
 This project is set up like a standard Python project.  
 You may need manually create a virtualenv:
@@ -79,14 +80,13 @@ pip install -r ./src/lambda_layer/requirements.txt
 pip install -r ./tests/requirements.txt
 ```
 
-To deploy your application for the first time, few terraform variables needed to be configured once. Open the `applications/variables.tf` file and update the default value of following variables as per the guidence. 
+If you want to change default variables, Modify the `default` value of following variables in `applications/variables.tf`.
 
 * **serverless_application_name**: The name of the terraform application resources to deploy. This should be unique to your account and region, and a good starting point would be something matching your project name.
-* **region**: The AWS region you want to deploy your app to.
-* **cognito_stack_name**: The shared Cognito stack name 
+* **cognito_stack_name**: The shared Cognito stack name. ***If you changed Cognito stack name, make sure to update here***
 
 
-Run the following in your shell to deploy the infrastructure manually:
+Comment `terraform` block (line 14 to 16) from `applications/provider.tf` to configure local terraform backend. Run the following in your shell to deploy the infrastructure manually:
 
 ```bash
 terraform init
@@ -98,6 +98,25 @@ The first command will download the required providers and terraform modules. Th
 * **Do you want to perform these actions**: If set to yes, terraform plan displayed above will be executed. If set to no, terraform will automatically cancel changes.
 
 The API Gateway endpoint API and ID will be displayed in the outputs when the deployment is complete.
+
+## Use the AWS SAM CLI to build and test locally
+
+Comment line 15 to 17 from `applications/provider.tf` to configure local terraform backend. Build your application by using the `sam build` command. 
+
+```bash
+sam build
+```
+
+The AWS SAM CLI installs dependencies that are defined in `requirements.txt`, creates a deployment package, and saves it in the `.aws-sam/build` folder. AWS SAM CLI also uses Lambda Layers configured in your terraform defination automatically. 
+
+Test a single function by invoking it directly with a test event. An event is a JSON document that represents the input that the function receives from the event source. Test events are included in the `events` folder in this project.
+
+Run functions locally and invoke them with the `sam local invoke` command. 
+
+```bash
+sam local invoke 'module.lambda_functions["locations"].aws_lambda_function.this[0]' --event events/event-get-location-by-id.json
+sam local invoke 'module.lambda_functions["locations"].aws_lambda_function.this[0]' --event events/event-get-all-locations.json
+```
 
 ### Usage plans
 
@@ -149,7 +168,7 @@ git pull ../serverless-samples serverless-rest-api
 cd python-rest-terraform
 ```
 
-To deploy the cicd pipeline infrastructure, Update the variables in `terraform.tfvars` in newly created folder based on your requirement. Make sure to change the `source_repo_name` as per your GitHub Repository owner.
+To deploy the cicd pipeline infrastructure, Update the variables in `terraform.tfvars` in newly created `serverless-rest-api-cicd` repository based on your requirement. Make sure to change the `source_repo_name` as per your GitHub Repository owner.
 
 Update remote backend configuration as required, by default it will take it as local-backend. 
 
@@ -167,11 +186,11 @@ git remote add origin <URL to GitHub repository>
 git push origin main
 ```
 
-![CodePipeline](./assets/CodePipeline.png)
+![CodePipeline](./assets/TFCodePipeline.png)
 
 Note that same Amazon Cognito stack is used in both testing and production deployment stages, same user credentials can be used for testing and API access.
 
-## Cleanup #TODO
+## Cleanup
 
 To delete the sample application that you created manually, use the below commands:
 
@@ -180,12 +199,21 @@ cd serverless-samples/serverless-rest-api/python-rest-terraform/application
 terraform destroy
 ```
 
-If you created CI/CD pipeline you will need to delete it as well, including all testing and deployment stacks created by the pipeline. Please note that actual stack names may differ in your case, depending on the pipeline stack name you used. 
+If you created CI/CD pipeline you will need to delete it as well, including all testing and deployment infrastructure created by the pipeline. You can destroy the infrastructure created by pipeline by Manual approval of Destroy stage as shown below image.  
 
-CI/CD pipeline stack deletion may fail if build artifact S3 bucket is not empty. In such case get bucket name from the error message, open AWS Management Console, navigate to S3 bucket with build artifacts and empty it. 
+![CodePipeline-Destroy](./assets/TFCodePipelineDestroy.png)
+
+Once the serverless application infrastructre is removed, you can remove CI/CD pipeline resources. Run below commands:
+
+```bash
+cd serverless-rest-api-cicd/python-rest-terraform/
+terraform destroy --auto-approve
+```
+
+CICD stack deletion may fail if build artifact S3 bucket is not empty. In such case get bucket name from the error message, open AWS Management Console, navigate to S3 bucket with build artifacts and empty it. 
 
 Re-run below command to remove s3 bucket after emptying it. 
 
 ```bash
-terraform destroy
+terraform destroy --auto-approve
 ```

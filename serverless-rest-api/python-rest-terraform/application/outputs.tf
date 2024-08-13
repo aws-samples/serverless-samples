@@ -1,3 +1,6 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
 output "api_endpoint" {
   description = "API Gateway endpoint URL"
   value       = "https://${aws_api_gateway_rest_api.application_api.id}.execute-api.${data.aws_region.current.name}.amazonaws.com/Prod"
