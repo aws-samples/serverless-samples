@@ -30,7 +30,7 @@ Another automated option is to control these changes through your CI CD pipeline
 
 ## Stages of Event Evolution
 
-To apply the right level of validation, it's helpful to understand how events evolve.  You can think of events going through three major stages of refinement.  You can find a reference to these stages in a talk by Sam Dengler during the [:goto conference](https://youtu.be/-Pv_kYflEEg?si=a7CDRdnGPtSH1agk&t=808))
+To apply the right level of validation, it's helpful to understand how events evolve.  You can think of events going through three major stages of refinement.  You can find a reference to these stages in a talk by Sam Dengler during the [:goto conference](https://youtu.be/-Pv_kYflEEg?si=a7CDRdnGPtSH1agk&t=808)
 
 In the first stage, events start as raw information, a skeleton of what the event will eventually look like.  This allows developers to rapidly build, test and refine event structures without dependence on the event.  In the second stage, events are exposed to consumers within the bounded context.  This enables consumers to test events within a limited scope, ensuring they meet requirements within their context.  Finally, the third stage is where events are expanded to include other business and technical related metadata.  This may involve adding required fields and any additional refinement required by consumers to effectively process the event.
 

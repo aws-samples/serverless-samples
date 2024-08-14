@@ -1,3 +1,6 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: MIT-0
+
 import { SchemasClient, ExportSchemaCommand } from "@aws-sdk/client-schemas";
 
 import Ajv from 'ajv-draft-04';
