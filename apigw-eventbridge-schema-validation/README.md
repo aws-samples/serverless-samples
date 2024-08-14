@@ -155,11 +155,11 @@ Important: this application uses various AWS services and there are costs associ
 
 1. Create a new directory, navigate to that directory in a terminal and clone the GitHub repository:
     ``` 
-    git clone https://github.com/aws-samples/serverless-patterns
+    git clone https://github.com/aws-samples/serverless-samples
     ```
 1. Change directory to the pattern directory:
     ```
-    cd serverless-patterns/apigw-eventbridge-schema-validation
+    cd serverless-samples/apigw-eventbridge-schema-validation
     ```
 1. From the command line, use NPM to install dependencies and AWS SAM to deploy the AWS resources for the pattern as specified in the template.yml file:
     ```
@@ -213,7 +213,7 @@ Here's an example output, if successful:
 {
     "SchemaVersions": [
         {
-            "SchemaArn": "arn:aws:schemas:us-west-2:294626376751:schema/discovered-schemas/scheduling.event@Surgical",
+            "SchemaArn": "arn:aws:schemas:us-west-2:<account id>:schema/discovered-schemas/scheduling.event@Surgical",
             "SchemaName": "scheduling.event@Surgical",
             "SchemaVersion": "1",
             "Type": "OpenApi3"
@@ -265,13 +265,13 @@ Here's an example output with version 2 now available:
 {
     "SchemaVersions": [
         {
-            "SchemaArn": "arn:aws:schemas:us-west-2:294626376751:schema/discovered-schemas/scheduling.event@Surgical",
+            "SchemaArn": "arn:aws:schemas:us-west-2:<account id>:schema/discovered-schemas/scheduling.event@Surgical",
             "SchemaName": "scheduling.event@Surgical",
             "SchemaVersion": "2",
             "Type": "OpenApi3"
         },
         {
-            "SchemaArn": "arn:aws:schemas:us-west-2:294626376751:schema/discovered-schemas/scheduling.event@Surgical",
+            "SchemaArn": "arn:aws:schemas:us-west-2:<account id>:schema/discovered-schemas/scheduling.event@Surgical",
             "SchemaName": "scheduling.event@Surgical",
             "SchemaVersion": "1",
             "Type": "OpenApi3"
