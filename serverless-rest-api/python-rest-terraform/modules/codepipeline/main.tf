@@ -110,7 +110,7 @@ resource "aws_codepipeline" "terraform_pipeline" {
         ProjectName = "${var.project_name}-validate"
       }
     }
-    
+
   }
 
   stage {
@@ -325,12 +325,12 @@ resource "aws_codepipeline" "terraform_pipeline" {
       }
     }
     action {
-      name            = "Destroy-Cognito-ChangeSet"
-      category        = "Deploy"
-      owner           = "AWS"
-      version         = "1"
-      provider        = "CloudFormation"
-      run_order       = 13
+      name      = "Destroy-Cognito-ChangeSet"
+      category  = "Deploy"
+      owner     = "AWS"
+      version   = "1"
+      provider  = "CloudFormation"
+      run_order = 13
 
       configuration = {
         ActionMode = "DELETE_ONLY",

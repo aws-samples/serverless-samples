@@ -7,7 +7,7 @@ import boto3
 import uuid
 import pytest
 import pytest_freezegun
-from moto import mock_dynamodb
+from moto import mock_aws
 from contextlib import contextmanager
 from unittest.mock import patch
 
@@ -20,7 +20,7 @@ def mock_uuid():
 
 @contextmanager
 def setup_test_environment():
-    with mock_dynamodb():
+    with mock_aws():
         set_up_dynamodb()
         put_data_dynamodb()
         yield
@@ -81,16 +81,16 @@ def test_get_list_of_locations():
             apigw_get_all_locations_event = json.load(f)
         expected_response = [
             {
-                'locationid': 'f8216640-91a2-11eb-8ab9-57aa454facef',
-                'description': 'Las Vegas',
-                'name': 'The Venetian',
-                'timestamp': '2021-03-30T21:57:49.860Z'
-            },
-            {
                 'locationid': '31a9f940-917b-11eb-9054-67837e2c40b0',
                 'description': 'Las Vegas',
                 'name': 'Encore',
                 'timestamp': '2021-03-30T17:13:06.516Z'
+            },
+            {
+                'locationid': 'f8216640-91a2-11eb-8ab9-57aa454facef',
+                'description': 'Las Vegas',
+                'name': 'The Venetian',
+                'timestamp': '2021-03-30T21:57:49.860Z'
             }
         ]
         ret = locations.lambda_handler(apigw_get_all_locations_event, '')

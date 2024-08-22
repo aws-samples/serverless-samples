@@ -277,7 +277,7 @@ resource "aws_dynamodb_table" "bookings_table" {
 resource "aws_cloudwatch_log_group" "rest_api_access_logs" {
   name              = "${local.resource_name_prefix}/api/${aws_api_gateway_rest_api.application_api.id}"
   retention_in_days = 7
-  kms_key_id = aws_kms_key.sns_key.arn
+  kms_key_id        = aws_kms_key.sns_key.arn
 }
 
 resource "aws_api_gateway_rest_api" "application_api" {

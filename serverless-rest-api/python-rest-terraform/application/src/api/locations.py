@@ -75,7 +75,7 @@ def lambda_handler(event, context, metrics):
             status_code = 200
         if route_key == 'PUT /locations':
             request_json = json.loads(event['body'])
-            request_json['timestamp'] = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
+            request_json['timestamp'] = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
             # generate unique id if it isn't present in the request
             if 'locationid' not in request_json:
                 request_json['locationid'] = str(uuid.uuid1())

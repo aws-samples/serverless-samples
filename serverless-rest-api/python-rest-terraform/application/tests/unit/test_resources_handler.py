@@ -7,7 +7,7 @@ import boto3
 import uuid
 import pytest
 import pytest_freezegun
-from moto import mock_dynamodb
+from moto import mock_aws
 from contextlib import contextmanager
 from unittest.mock import patch
 
@@ -21,7 +21,7 @@ def mock_uuid():
 
 @contextmanager
 def setup_test_environment():
-    with mock_dynamodb():
+    with mock_aws():
         set_up_dynamodb()
         put_data_dynamodb()
         yield
@@ -106,17 +106,17 @@ def test_get_resources_by_location():
         expected_response = [
             {
                 'locationid': '6db6cd70-9bd8-11eb-a21c-434bdc25fe66',
-                'resourceid': '86f0b180-9be1-11eb-a305-35487c0301a7',
-                'description': 'Venetian Level 2',
-                'name': 'Titian 2205',
+                'resourceid': '246396e0-9308-11eb-87e3-8f538c287bfc',
+                'description': 'Venetian Level 3',
+                'name': 'Toscana 3606, Room',
                 'type': 'room',
                 'timestamp': '2021-03-30T21:57:49.860Z',
             },
             {
                 'locationid': '6db6cd70-9bd8-11eb-a21c-434bdc25fe66',
-                'resourceid': '246396e0-9308-11eb-87e3-8f538c287bfc',
-                'description': 'Venetian Level 3',
-                'name': 'Toscana 3606, Room',
+                'resourceid': '86f0b180-9be1-11eb-a305-35487c0301a7',
+                'description': 'Venetian Level 2',
+                'name': 'Titian 2205',
                 'type': 'room',
                 'timestamp': '2021-03-30T21:57:49.860Z',
             }
