@@ -1,0 +1,302 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Serverless patterns - automated request validation of events
+
+Parameters:
+  SchemaName:
+    Type: String
+    Default: scheduling.event@Surgical
+  ApiModelName:
+    Type: String
+    Default: surgical
+  SchemaEnforcementEnabledOrDisabled:
+    Type: String
+    Default: DISABLED
+  SchemaRegistryName:
+    Type: String
+    Default: discovered-schemas
+
+Resources:
+
+##########################################################################
+# Permissions to allow lambda to create logs, download and upload schema
+##########################################################################
+  EventSchemaValidationLogPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: LogPolicy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'logs:CreateLogGroup'
+              - 'logs:CreateLogStream'
+              - 'logs:PutLogEvents'
+            Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
+      Roles:
+        - !Ref EventSchemaValidationLambdaFunctionRole
+
+  EventSchemaValidationLogPolicyUpdateModelPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: UpdateModelPolicy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - apigateway:PATCH
+              - apigateway:GET
+              - apigateway:POST
+            Resource:
+              - !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis/${Api}/models/*'
+              - !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis/${Api}/*'
+      Roles:
+        - !Ref EventSchemaValidationLambdaFunctionRole
+
+  EventSchemaValidationExportSchemaPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: ExportSchemaPolicy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - schemas:ExportSchema
+            Resource: "*"
+      Roles:
+        - !Ref EventSchemaValidationLambdaFunctionRole
+
+  EventSchemaValidationLambdaFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+
+##########################################################################
+#  Lambda function triggered from event schema version creation
+##########################################################################
+  EventSchemaValidationLogPolicyLambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Timeout:  5
+      CodeUri: lambda/
+      Handler: index.handler
+      Runtime: nodejs20.x
+      ReservedConcurrentExecutions: 10
+      Environment:
+        Variables:
+          SchemaName: !Sub '${SchemaName}'
+          ApiModelName: !Sub '${ApiModelName}'
+          ApiId: !Ref Api
+          SchemaRegistry: !Sub '${SchemaRegistryName}'
+      Role: !GetAtt EventSchemaValidationLambdaFunctionRole.Arn
+      Events:
+        Trigger:
+          Type: CloudWatchEvent
+          Properties:
+            #Enabled: false
+            State: !Sub '${SchemaEnforcementEnabledOrDisabled}'
+            Pattern:
+              source:
+                - aws.schemas
+              detail-type:
+                - Schema Version Created
+
+##########################################################################
+#  EventBus, Schema Registry and Schema Discoverer
+##########################################################################
+  EventSchemaValidationSchedulingEventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Sub '${AWS::StackName}-healthcare-scheduling'
+
+  EventSchemaValidationSchedulingSchemaDiscoverer:
+    Type: AWS::EventSchemas::Discoverer
+    Properties:
+      SourceArn: !GetAtt EventSchemaValidationSchedulingEventBus.Arn
+      Description: 'schema discovery for scheduling event bus'
+
+
+  ##########################################################################
+  # Define role for eventbridge rule to send events to cloudwatch log group
+  ##########################################################################
+  EventSchemaValidationEventBridgeToCloudWatchRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  SchedulingEventBridgeRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventBusName: !Ref EventSchemaValidationSchedulingEventBus
+      EventPattern:
+        source:
+          - "scheduling.event"
+      RoleArn: !GetAtt EventSchemaValidationEventBridgeToCloudWatchRole.Arn
+      Targets:
+        - Arn: !GetAtt EventSchemaValidationSchedulingLogGroup.Arn
+          Id: SendToCloudWatchLogs
+
+##########################################################################
+# Rule to log events to CloudWatch Logs
+##########################################################################
+  EventSchemaValidationSchedulingLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/events/scheduling-events-source-catch-all
+      RetentionInDays: 7
+
+##########################################################################
+#   API GATEWAY ROLE WITH PERMISSIONS TO PUT EVENTS
+##########################################################################
+  EventSchemaValidationApiGatewayEventBridgeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: !Join ["", ["/", !Ref "AWS::StackName", "/"]]
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: AllowApiGatewayServiceToAssumeRole
+            Effect: Allow
+            Action:
+              - 'sts:AssumeRole'
+            Principal:
+              Service:
+                - apigateway.amazonaws.com
+      Policies:
+        - PolicyName: EBPutEvents
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'events:PutEvents'
+                Resource: !GetAtt EventSchemaValidationSchedulingEventBus.Arn
+        # add another policy to allow access to CloudWatch Logs
+        - PolicyName: CloudWatchLogs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                  - 'logs:DescribeLogStreams'
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*'
+
+
+##########################################################################
+# REST API with request mapping and validator
+##########################################################################
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub
+        - ${ResourceName} From Stack ${AWS::StackName}
+        - ResourceName: Api
+      StageName: dev
+      GatewayResponses:
+        BAD_REQUEST_BODY:
+          ResponseTemplates:
+            "application/json": '{ "message": "$context.error.validationErrorString"}'
+      DefinitionBody:
+        openapi: '3.0'
+        info: {}
+        x-amazon-apigateway-request-validators:
+          body:
+            validateRequestBody: true
+            validateRequestParameters: false
+        paths:
+          /:
+            post:
+              x-amazon-apigateway-request-validator: body
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      {
+                        "$schema": "http://json-schema.org/draft-04/schema#",
+                        "title": "surgical",
+                        "detail-type": {
+                          "type": "string"
+                        },
+                        "source": {
+                          "type": "string"
+                        },
+                        "required": [
+                          "detail-type",
+                          "source"
+                        ],
+                        "type": "object"
+                      }
+              responses:
+                "200":
+                  description: "200 response"
+
+              x-amazon-apigateway-integration:
+                type: "aws"
+                uri:
+                  Fn::Sub: "arn:aws:apigateway:${AWS::Region}:events:action/PutEvents"
+                credentials: !GetAtt  EventSchemaValidationApiGatewayEventBridgeRole.Arn
+                httpMethod: "POST"
+                responses:
+                  default:
+                    statusCode: "200"
+                requestTemplates:
+                  application/json: !Sub
+                    - |-
+                      #set($context.requestOverride.header.X-Amz-Target = "AWSEvents.PutEvents")
+                      #set($context.requestOverride.header.Content-Type = "application/x-amz-json-1.1")
+                      #set($inputRoot = $input.path('$'))
+                      #set($detailKeys = $inputRoot.detail.keySet())
+                      
+                      {
+                          "Entries": [
+                            {
+                              "Detail": "$util.escapeJavaScript($input.json("$.detail")).replaceAll("\\'","'")",
+                              "DetailType": "$inputRoot.detail-type",
+                              "EventBusName": "${AWS::StackName}-healthcare-scheduling",
+                              "Source": "$inputRoot.source"
+                            }
+                          ]
+                      }
+
+                    - { EventBusName: !Ref EventSchemaValidationSchedulingEventBus }
+
+      EndpointConfiguration: REGIONAL
+
+##########################################################################
+#   OUTPUTS                                                              #
+##########################################################################
+Outputs:
+  ApiURL:
+    Description: "API Gateway endpoint URL for dev stage"
+    Value: !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/dev/"
+
+
+
+
