@@ -1,0 +1,5 @@
+pytest>=8
+moto==5.0.12
+pytest-freezegun 
+requests
+

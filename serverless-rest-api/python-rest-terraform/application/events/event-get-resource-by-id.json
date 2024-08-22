@@ -1,0 +1,19 @@
+{
+    "resource": "/locations/{locationid}/resources/{resourceid}",
+    "path": "/locations/6db6cd70-9bd8-11eb-a21c-434bdc25fe66/resources/86f0b180-9be1-11eb-a305-35487c0301a7",
+    "httpMethod": "GET",
+    "headers": null,
+    "multiValueHeaders": null,
+    "queryStringParameters": null,
+    "multiValueQueryStringParameters": null,
+    "pathParameters": {
+        "resourceid": "86f0b180-9be1-11eb-a305-35487c0301a7",
+        "locationid": "6db6cd70-9bd8-11eb-a21c-434bdc25fe66"
+    },
+    "stageVariables": null,
+    "requestContext": {
+        "requestId": "8f1c7643-9c67-4c34-83bd-da35aad37f56"
+    },
+    "body": null,
+    "isBase64Encoded": false
+}

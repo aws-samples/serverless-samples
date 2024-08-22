@@ -7,3 +7,21 @@
 *.venv*
 *__pycache__*
 queue-based-ingestion/python-cdk/cdk.out/cdk.out
+
+# Local .terraform directories
+**/.terraform/*
+
+# Terraform lockfile
+.terraform.lock.hcl
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# Ignore CLI configuration files
+.terraformrc
+terraform.rc
+downloaded_package_*
+
+# Ignore lambda build files
+*/python-rest-terraform/application/builds/*

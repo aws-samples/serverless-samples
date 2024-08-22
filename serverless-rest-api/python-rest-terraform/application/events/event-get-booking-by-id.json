@@ -1,0 +1,19 @@
+{
+    "resource": "/users/{userid}/bookings/{bookingid}",
+    "path": "/users/bf6dbddc-db2e-4f70-a892-1b165556dede/bookings/1f290bf0-9be2-11eb-9326-b188c945553f",
+    "httpMethod": "GET",
+    "headers": null,
+    "multiValueHeaders": null,
+    "queryStringParameters": null,
+    "multiValueQueryStringParameters": null,
+    "pathParameters": {
+        "userid": "bf6dbddc-db2e-4f70-a892-1b165556dede",
+        "bookingid": "1f290bf0-9be2-11eb-9326-b188c945553f"
+    },
+    "stageVariables": null,
+    "requestContext": {
+        "requestId": "68dcc45b-187d-4944-b4f2-3fc328b7d60c"
+    },
+    "body": null,
+    "isBase64Encoded": false
+}

@@ -1,0 +1,18 @@
+{
+    "resource": "/locations/{locationid}",
+    "path": "/locations/ba714640-91a1-11eb-871a-714954ad3529",
+    "httpMethod": "DELETE",
+    "headers": null,
+    "multiValueHeaders": null,
+    "queryStringParameters": null,
+    "multiValueQueryStringParameters": null,
+    "pathParameters": {
+        "locationid": "ba714640-91a1-11eb-871a-714954ad3529"
+    },
+    "stageVariables": null,
+    "requestContext": {
+        "requestId": "c586f29b-9c27-4a5a-86c1-f15182b31ba7"
+    },
+    "body": null,
+    "isBase64Encoded": false
+}
