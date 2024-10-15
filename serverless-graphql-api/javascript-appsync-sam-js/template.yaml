@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT-0
 
 
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: 2010-09-09
 Transform:
   - AWS::Serverless-2016-10-31
 
@@ -23,23 +23,354 @@ Parameters:
 Resources:
 
   GraphQLApi:
-    Type: "AWS::AppSync::GraphQLApi"
+    Type: AWS::Serverless::GraphQLApi
     Properties:
       Name: !Sub "GraphQLBackendAPI-${AWS::StackName}"
-      AuthenticationType: "AMAZON_COGNITO_USER_POOLS"
-      UserPoolConfig:
-        UserPoolId: 
-          Fn::ImportValue: !Sub "${CognitoStackName}-UserPool"
-        AwsRegion: !Ref "AWS::Region"
-        DefaultAction: "ALLOW"
+      Auth:
+        Type: AMAZON_COGNITO_USER_POOLS
+        UserPool:
+          UserPoolId: 
+            Fn::ImportValue: !Sub "${CognitoStackName}-UserPool"
+          AwsRegion: !Ref "AWS::Region"
+          DefaultAction: ALLOW
+        AdminGroupName: 
+            !Sub "${UserPoolAdminGroupName}
       XrayEnabled: true
-      LogConfig:
+      Logging:
+        Level: ALL
         ExcludeVerboseContent: false
-        FieldLogLevel: "ALL"
         CloudWatchLogsRoleArn: !GetAtt PushToCloudWatchLogsRole.Arn
       Tags:
-        - Key: "Stack" 
-          Value: !Sub "${AWS::StackName}"
+        Stack: !Sub "${AWS::StackName}"
+      SchemaInline :  
+        schema {
+          query: Query
+          mutation: Mutation
+          subscription: Subscription
+        }
+        type Location {
+          locationid: ID!
+          name: String!
+          description: String
+          imageUrl: String
+          resources: [Resource]
+          timestamp: String
+        }
+
+        type Resource {
+          resourceid: ID!
+          locationid: ID!
+          name: String!
+          description: String
+          type: String
+          bookings: [Booking]
+          timestamp: String
+        }
+
+        type Booking {
+          bookingid: ID!
+          resourceid: ID!
+          userid: ID!
+          starttimeepochtime: Float
+          timestamp: String
+        }
+
+        type Mutation {
+          createLocation(locationid: ID, name: String!, description: String, imageUrl: String): Location
+          @aws_auth(cognito_groups: ["${AdminGroupName}"])
+          deleteLocation(locationid: ID!): ID
+          @aws_auth(cognito_groups: ["${AdminGroupName}"])
+          createResource(resourceid: ID, locationid: ID!, name: String!, description: String, type: String): Resource
+          @aws_auth(cognito_groups: ["${AdminGroupName}"])
+          deleteResource(resourceid: ID!): ID
+          @aws_auth(cognito_groups: ["${AdminGroupName}"])
+          createBooking(bookingid: ID, resourceid: ID!, starttimeepochtime: Float): Booking
+          deleteBooking(bookingid: ID!): ID
+        }
+
+        type Query {
+          getAllLocations: [Location]
+          getLocation(locationid: ID!): Location
+          getResource(resourceid: ID!): Resource
+          getBooking(bookingid: ID!): Booking
+          getMyBookings: [Booking]
+        }
+
+        type Subscription {
+          locationCreated: Location
+          @aws_subscribe(mutations: ["createLocation"])
+          resourceCreated(resourceid: ID): Resource
+          @aws_subscribe(mutations: ["createResource"])
+          bookingCreated(resourceid: ID): Booking
+          @aws_subscribe(mutations: ["createBooking"])
+        }
+      DataSources:
+        - Type: AMAZON_DYNAMODB
+          Name: LocationsDataSource
+          TableName: !Ref LocationsTable
+          ServiceRoleArn: !GetAtt AppSyncServiceRole.Arn
+          Region: !Ref "AWS::Region"
+        - Type: AMAZON_DYNAMODB
+          Name: ResourcesDataSource
+          TableName: !Ref ResourcesTable
+          ServiceRoleArn: !GetAtt AppSyncServiceRole.Arn
+          Region: !Ref "AWS::Region"
+        - Type: AMAZON_DYNAMODB
+          Name: BookingsDataSource
+          TableName: !Ref BookingsTable
+          ServiceRoleArn: !GetAtt AppSyncServiceRole.Arn
+          Region: !Ref "AWS::Region" 
+      Functions:
+        CreateLocationFunction:
+            DataSourceName: LocationsDataSource
+            Description: Function to create a location
+            Name: CreateLocation
+            Runtime:
+              Name: APPSYNC_JS
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/create_location_function.js
+        DeleteLocationFunction:
+            DataSourceName: LocationsDataSource
+            Description: Function to delete a location
+            Name: DeleteLocation
+            Runtime:
+              Name: APPSYNC_JS
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/delete_location_function.js               
+        GetLocationFunction:
+            DataSourceName: LocationsDataSource
+            Description: Function to get location details
+            Name: GetLocation
+            Runtime:
+              Name: APPSYNC_JS
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/get_location_function.js
+        GetAllLocationsFunction:
+            DataSourceName: LocationsDataSource
+            Description: Function to get all locations
+            Name: GetAllLocations
+            Runtime:
+              Name: APPSYNC_JS
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/get_locations_function.js
+        CreateResourceFunction:
+            DataSourceName: ResourcesDataSource
+            Description: Function to create a resource
+            Name: CreateResource
+            Runtime:
+              Name: APPSYNC_JS
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/create_resource_function.js
+        DeleteResourceFunction:
+            DataSourceName: ResourcesDataSource
+            Description: Function to delete a resource
+            Name: DeleteResource
+            Runtime:
+              Name: APPSYNC_JS
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/delete_resource_function.js
+        GetResourceFunction:
+            DataSourceName: ResourcesDataSource
+            Description: Function to get resource details
+            Name: GetResource
+            Runtime:
+              Name: APPSYNC_JS
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/get_resource_function.js
+        GetResourcesForLocationFunction:
+            DataSourceName: ResourcesDataSource
+            Description: Function to get resource details
+            Name: GetResourcesForLocation
+            Runtime:
+              Name: APPSYNC_JS
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/get_resources_for_location_function.js
+        CreateBookingFunction:
+            DataSourceName: BookingsDataSource
+            Description: Function to create a new booking
+            Name: CreateBooking
+            Runtime:
+              Name: APPSYNC_JS
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/create_booking_function.js
+        DeleteBookingFunction:
+            DataSourceName: BookingsDataSource
+            Description: Function to delete a booking
+            Name: DeleteBooking
+            Runtime:
+              Name: APPSYNC_JS
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/delete_booking_function.js
+        GetBookingFunction:
+            DataSourceName: BookingsDataSource
+            Description: Function to get booking details
+            Name: GetBooking
+            Runtime:
+              Name: APPSYNC_JS
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/get_booking_function.js
+        GetBookingsForResourceFunction:          
+            DataSourceName: BookingsDataSource
+            Name: GetBookingsForResource
+            Runtime:
+              Name: 'APPSYNC_JS'
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/get_bookings_for_resource_function.js
+        GetBookingsForUserFunction:         
+            DataSourceName: BookingsDataSource
+            Name: GetBookingsForUser
+            Runtime:
+              Name: 'APPSYNC_JS'
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/get_bookings_for_user_function.js
+
+      Resolvers:
+        Mutation.createLocation:
+          TypeName: Mutation
+          FieldName: createLocation
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - CreateLocationFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js 
+        Mutation.deleteLocation:
+          TypeName: Mutation
+          FieldName: deleteLocation
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - DeleteLocationFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js
+        Query.getLocation:
+          TypeName: Query
+          FieldName: getLocation
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - GetLocationFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js    
+        Query.allLocations:
+          TypeName: Query
+          FieldName: getAllLocations
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - GetAllLocationsFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js    
+        Mutation.createResource:
+          TypeName: Mutation
+          FieldName: createResource
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - CreateResourceFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js
+        Mutation.deleteResource:
+          TypeName: Mutation
+          FieldName: deleteResource
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - DeleteResourceFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js
+        Query.singleResource:
+          TypeName: Query
+          FieldName: getResource
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - GetResourceFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js    
+        Location.resourcesForLocation:
+          TypeName: Location
+          FieldName: resources
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - GetResourcesForLocationFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js
+        Mutation.createBooking:
+          TypeName: Mutation
+          FieldName: createBooking
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - CreateBookingFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js
+        Mutation.deleteBooking:
+          TypeName: Mutation
+          FieldName: deleteBooking
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - DeleteBookingFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js
+        Query.singleBooking:
+          TypeName: Query
+          FieldName: getBooking
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - GetBookingFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js  
+        Resource.bookings:
+          TypeName: Resource
+          FieldName: bookings
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - GetBookingsForResourceFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js
+        Query.bookingsForUser:
+          TypeName: Query
+          FieldName: getMyBookings
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - GetBookingsForUserFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js   
+        
+                       
+    
 
   AppSyncLogsKMSKey:
     Type: AWS::KMS::Key
@@ -120,442 +451,7 @@ Resources:
             Resource: !GetAtt GraphQLApiLogGroup.Arn
       Roles: 
         - Ref: PushToCloudWatchLogsRole
-
-  GraphQLSchema:
-    Type: "AWS::AppSync::GraphQLSchema"
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      Definition: !Sub 
-        - |
-          schema {
-            query: Query
-            mutation: Mutation
-            subscription: Subscription
-          }
-
-          type Location {
-            locationid: ID!
-            name: String!
-            description: String
-            imageUrl: String
-            resources: [Resource]
-            timestamp: String
-          }
-
-          type Resource {
-            resourceid: ID!
-            locationid: ID!
-            name: String!
-            description: String
-            type: String
-            bookings: [Booking]
-            timestamp: String
-          }
-
-          type Booking {
-            bookingid: ID!
-            resourceid: ID!
-            userid: ID!
-            starttimeepochtime: Float
-            timestamp: String
-          }
-
-          type Mutation {
-            createLocation(locationid: ID, name: String!, description: String, imageUrl: String): Location
-            @aws_auth(cognito_groups: ["${AdminGroupName}"])
-            deleteLocation(locationid: ID!): ID
-            @aws_auth(cognito_groups: ["${AdminGroupName}"])
-            createResource(resourceid: ID, locationid: ID!, name: String!, description: String, type: String): Resource
-            @aws_auth(cognito_groups: ["${AdminGroupName}"])
-            deleteResource(resourceid: ID!): ID
-            @aws_auth(cognito_groups: ["${AdminGroupName}"])
-            createBooking(bookingid: ID, resourceid: ID!, starttimeepochtime: Float): Booking
-            deleteBooking(bookingid: ID!): ID
-          }
-
-          type Query {
-            getAllLocations: [Location]
-            getLocation(locationid: ID!): Location
-            getResource(resourceid: ID!): Resource
-            getBooking(bookingid: ID!): Booking
-            getMyBookings: [Booking]
-          }
-
-          type Subscription {
-            locationCreated: Location
-            @aws_subscribe(mutations: ["createLocation"])
-            resourceCreated(resourceid: ID): Resource
-            @aws_subscribe(mutations: ["createResource"])
-            bookingCreated(resourceid: ID): Booking
-            @aws_subscribe(mutations: ["createBooking"])
-          }
-        - AdminGroupName: 
-            !Sub "${UserPoolAdminGroupName}" 
-
-  CreateLocationFunction:
-    Type: AWS::AppSync::FunctionConfiguration
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      DataSourceName: !GetAtt LocationsDataSource.Name
-      Name: CreateLocation
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/create_location_function.js
-
-  CreateLocationMutationResolver:
-    Type: "AWS::AppSync::Resolver"
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      TypeName: "Mutation"
-      FieldName: "createLocation"
-      Kind: PIPELINE
-      PipelineConfig:
-        Functions:
-          - !GetAtt CreateLocationFunction.FunctionId
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/generic_pipeline_resolver.js
-    DependsOn:
-      - GraphQLSchema
-
-  DeleteLocationFunction:
-    Type: AWS::AppSync::FunctionConfiguration
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      DataSourceName: !GetAtt LocationsDataSource.Name
-      Name: DeleteLocation
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/delete_location_function.js
-
-  DeleteLocationMutationResolver:
-    Type: "AWS::AppSync::Resolver"
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      TypeName: "Mutation"
-      FieldName: "deleteLocation"
-      Kind: PIPELINE
-      PipelineConfig:
-        Functions:
-          - !GetAtt DeleteLocationFunction.FunctionId
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/generic_pipeline_resolver.js
-    DependsOn:
-      - GraphQLSchema
-
-  GetLocationFunction:
-    Type: AWS::AppSync::FunctionConfiguration
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      DataSourceName: !GetAtt LocationsDataSource.Name
-      Name: GetLocation
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/get_location_function.js
-
-  GetLocationResolver:
-    Type: "AWS::AppSync::Resolver"
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      TypeName: "Query"
-      FieldName: "getLocation"
-      Kind: PIPELINE
-      PipelineConfig:
-        Functions:
-          - !GetAtt GetLocationFunction.FunctionId
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/generic_pipeline_resolver.js
-    DependsOn:
-      - GraphQLSchema
-
-  GetAllLocationsFunction:
-    Type: AWS::AppSync::FunctionConfiguration
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      DataSourceName: !GetAtt LocationsDataSource.Name
-      Name: GetAllLocations
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/get_locations_function.js
-
-  AllLocationsResolver:
-    Type: "AWS::AppSync::Resolver"
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      TypeName: "Query"
-      FieldName: "getAllLocations"
-      Kind: PIPELINE
-      PipelineConfig:
-        Functions:
-          - !GetAtt GetAllLocationsFunction.FunctionId
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/generic_pipeline_resolver.js
-    DependsOn:
-      - GraphQLSchema
-
-  CreateResourceFunction:
-    Type: AWS::AppSync::FunctionConfiguration
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      DataSourceName: !GetAtt ResourcesDataSource.Name
-      Name: CreateResource
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/create_resource_function.js
-
-  CreateResourceMutationResolver:
-    Type: "AWS::AppSync::Resolver"
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      TypeName: "Mutation"
-      FieldName: "createResource"
-      Kind: PIPELINE
-      PipelineConfig:
-        Functions:
-          - !GetAtt CreateResourceFunction.FunctionId
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/generic_pipeline_resolver.js
-    DependsOn:
-      - GraphQLSchema
-
-  DeleteResourceFunction:
-    Type: AWS::AppSync::FunctionConfiguration
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      DataSourceName: !GetAtt ResourcesDataSource.Name
-      Name: DeleteResource
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/delete_resource_function.js
-
-  DeleteResourceMutationResolver:
-    Type: "AWS::AppSync::Resolver"
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      TypeName: "Mutation"
-      FieldName: "deleteResource"
-      Kind: PIPELINE
-      PipelineConfig:
-        Functions:
-          - !GetAtt DeleteResourceFunction.FunctionId
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/generic_pipeline_resolver.js
-    DependsOn:
-      - GraphQLSchema
-
-  GetResourceFunction:
-    Type: AWS::AppSync::FunctionConfiguration
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      DataSourceName: !GetAtt ResourcesDataSource.Name
-      Name: GetResource
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/get_resource_function.js
-
-  SingleResourceResolver:
-    Type: "AWS::AppSync::Resolver"
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      TypeName: "Query"
-      FieldName: "getResource"
-      Kind: PIPELINE
-      PipelineConfig:
-        Functions:
-          - !GetAtt GetResourceFunction.FunctionId
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/generic_pipeline_resolver.js
-    DependsOn:
-      - GraphQLSchema
-
-  GetResourcesForLocationFunction:
-    Type: AWS::AppSync::FunctionConfiguration
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      DataSourceName: !GetAtt ResourcesDataSource.Name
-      Name: GetResourcesForLocation
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/get_resources_for_location_function.js
-
-  ResourcesForLocationResolver:
-    Type: "AWS::AppSync::Resolver"
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      TypeName: "Location"
-      FieldName: "resources"
-      Kind: PIPELINE
-      PipelineConfig:
-        Functions:
-          - !GetAtt GetResourcesForLocationFunction.FunctionId
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/generic_pipeline_resolver.js
-    DependsOn:
-      - GraphQLSchema
-
-  CreateBookingFunction:
-    Type: AWS::AppSync::FunctionConfiguration
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      DataSourceName: !GetAtt BookingsDataSource.Name
-      Name: CreateBooking
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/create_booking_function.js
-
-  CreateBookingMutationResolver:
-    Type: "AWS::AppSync::Resolver"
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      TypeName: "Mutation"
-      FieldName: "createBooking"
-      Kind: PIPELINE
-      PipelineConfig:
-        Functions:
-          - !GetAtt CreateBookingFunction.FunctionId
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/generic_pipeline_resolver.js
-    DependsOn:
-      - GraphQLSchema
-
-  DeleteBookingFunction:
-    Type: AWS::AppSync::FunctionConfiguration
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      DataSourceName: !GetAtt BookingsDataSource.Name
-      Name: DeleteBooking
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/delete_booking_function.js
-
-  DeleteBookingMutationResolver:
-    Type: "AWS::AppSync::Resolver"
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      TypeName: "Mutation"
-      FieldName: "deleteBooking"
-      Kind: PIPELINE
-      PipelineConfig:
-        Functions:
-          - !GetAtt DeleteBookingFunction.FunctionId
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/generic_pipeline_resolver.js
-    DependsOn:
-      - GraphQLSchema
-
-  GetBookingFunction:
-    Type: AWS::AppSync::FunctionConfiguration
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      DataSourceName: !GetAtt BookingsDataSource.Name
-      Name: GetBooking
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/get_booking_function.js
-
-  SingleBookingResolver:
-    Type: "AWS::AppSync::Resolver"
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      TypeName: "Query"
-      FieldName: "getBooking"
-      Kind: PIPELINE
-      PipelineConfig:
-        Functions:
-          - !GetAtt GetBookingFunction.FunctionId
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/generic_pipeline_resolver.js
-    DependsOn:
-      - GraphQLSchema
-
-  GetBookingsForResourceFunction:
-    Type: AWS::AppSync::FunctionConfiguration
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      DataSourceName: !GetAtt BookingsDataSource.Name
-      Name: GetBookingsForResource
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/get_bookings_for_resource_function.js
-
-  BookingsForResourceResolver:
-    Type: "AWS::AppSync::Resolver"
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      TypeName: "Resource"
-      FieldName: "bookings"
-      Kind: PIPELINE
-      PipelineConfig:
-        Functions:
-          - !GetAtt GetBookingsForResourceFunction.FunctionId
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/generic_pipeline_resolver.js
-    DependsOn:
-      - GraphQLSchema
-
-  GetBookingsForUserFunction:
-    Type: AWS::AppSync::FunctionConfiguration
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      DataSourceName: !GetAtt BookingsDataSource.Name
-      Name: GetBookingsForUser
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/get_bookings_for_user_function.js
-
-  BookingsForUserResolver:
-    Type: "AWS::AppSync::Resolver"
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      TypeName: "Query"
-      FieldName: "getMyBookings"
-      Kind: PIPELINE
-      PipelineConfig:
-        Functions:
-          - !GetAtt GetBookingsForUserFunction.FunctionId
-      Runtime:
-        Name: 'APPSYNC_JS'
-        RuntimeVersion: '1.0.0'
-      CodeS3Location: ./src/resolvers/generic_pipeline_resolver.js
-    DependsOn:
-      - GraphQLSchema
-
+  
   AppSyncServiceRole:
     Type: "AWS::IAM::Role"
     Properties:
@@ -573,39 +469,7 @@ Resources:
       Tags:
         - Key: "Stack" 
           Value: !Sub "${AWS::StackName}"
-
-  LocationsDataSource:
-    Type: "AWS::AppSync::DataSource"
-    Properties:
-      Type: "AMAZON_DYNAMODB"
-      ApiId: !GetAtt GraphQLApi.ApiId
-      Name: "LocationsDataSource"
-      ServiceRoleArn: !GetAtt AppSyncServiceRole.Arn
-      DynamoDBConfig:
-        TableName: !Ref LocationsTable
-        AwsRegion: !Ref "AWS::Region"
-
-  ResourcesDataSource:
-    Type: "AWS::AppSync::DataSource"
-    Properties:
-      Type: "AMAZON_DYNAMODB"
-      ApiId: !GetAtt GraphQLApi.ApiId
-      Name: "ResourcesDataSource"
-      ServiceRoleArn: !GetAtt AppSyncServiceRole.Arn
-      DynamoDBConfig:
-        TableName: !Ref ResourcesTable
-        AwsRegion: !Ref "AWS::Region"
-
-  BookingsDataSource:
-    Type: "AWS::AppSync::DataSource"
-    Properties:
-      Type: "AMAZON_DYNAMODB"
-      ApiId: !GetAtt GraphQLApi.ApiId
-      Name: "BookingsDataSource"
-      ServiceRoleArn: !GetAtt AppSyncServiceRole.Arn
-      DynamoDBConfig:
-        TableName: !Ref BookingsTable
-        AwsRegion: !Ref "AWS::Region"
+ 
 
   DynamoDBAccessPolicy:
     Type: "AWS::IAM::Policy"
