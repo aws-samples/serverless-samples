@@ -1,5 +1,9 @@
 # Custom Domain Names for Private API Gateway Endpoints
-This repository implements a workaround solution as described in the [blog post](https://georgemao.medium.com/enabling-private-apis-with-custom-domain-names-aws-api-gateway-df1b62b0ba7c) titled "Enabling Private APIs with Custom Domain Names (AWS API Gateway)" by George Mao. Multiregional implementation of this solution is available [here](https://github.com/aws-samples/serverless-samples/tree/main/multiregional-private-api/README.md).
+
+**Update: Custom domain names for private Amzon API Gateway endpoints now are available as a feature in the service. Check out [this blog post](https://aws.amazon.com/blogs/compute/implementing-custom-domain-names-for-private-endpoints-with-amazon-api-gateway/) and [documentation](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-private-custom-domains.html) for more details**
+
+
+This repository implements a legacy workaround solution as described in the [blog post](https://georgemao.medium.com/enabling-private-apis-with-custom-domain-names-aws-api-gateway-df1b62b0ba7c) titled "Enabling Private APIs with Custom Domain Names (AWS API Gateway)" by George Mao. Multiregional implementation of this solution is available [here](https://github.com/aws-samples/serverless-samples/tree/main/multiregional-private-api/README.md).
 
 **Note that [multi-level API mappings](https://docs.aws.amazon.com/apigateway/latest/developerguide/rest-api-mappings.html), that allow you to control which API receives a request according to mappings between an API and any segment of the request path, do not work with this workaround** 
 
