@@ -1,11 +1,11 @@
 # Automating Event Validation Through Schema Discovery - CI CD Driven Solution
 
 > [!NOTE]  
-> For background information on event validation and deployment instructions for this solution, see [parent README](../README.MD).  This solution shares the same deployment instructions as the Lambda Schema Driven Updater, but has separate testing steps in this README.
+> For background information on event validation and deployment instructions for this solution, see [parent README](../README.MD).  This solution shares the same deployment instructions as the Lambda Schema Driven Updater, but has separate [testing steps](#testing).
 
-This CI CD driven solution to automating schema validation through API Gateway, provides more control over the schema update process.  The Lambda function does not apply the new schema directly to an API Gateway model.  Instead, it uses a CI CD pipeline to retrieve new schemas from the EventBridge registry, apply them to API Gateway and run integration tests.  If tests fail, the newly applied schema will be rolled back to a previous version.  This allows for additional testing and checks before schemas are promoted and enforced.  This approach provides more control to the schema update process in exchange for some complexity. 
+This CI CD driven solution to automating schema validation through API Gateway provides more control over the schema update process.  The Lambda function does not apply the new schema directly to an API Gateway model.  Instead, it uses a CI CD pipeline to retrieve new schemas from the EventBridge registry, apply them to API Gateway and run integration tests.  If tests fail, the newly applied schema will be rolled back to a previous version.  This allows for additional testing and checks before schemas are promoted and enforced.  The approach provides more control to the schema update process in exchange for some complexity. 
 
-The following solution uses a GitHub Actions workflow 
+The following solution uses a GitHub Actions workflow as shown in the diagram below.  
 
 ![CI CD driven schema updater](../assets/CI_CD_Updater.png)
 <p style="text-align:center; font-style: italic"> Figure 1: Architecture that uses a CI CD pipeline to update API Gateway model when a new schema is detected in EventBridge </p>
@@ -15,7 +15,7 @@ The following solution uses a GitHub Actions workflow
 ## GitHub Actions Pipeline 
 [GitHub Actions](https://docs.github.com/en/actions/about-github-actions/understanding-github-actions) is a CI CD platform that allows you to automate your build, test, and deployment pipeline.  You will use GitHub Actions to demonstrate how to automatically update and rollback event schemas from Amazon EventBridge.  This solution builds on the [Lambda Driven Schema Updater](https://github.com/aws-samples/serverless-samples/tree/main/apigw-eventbridge-schema-validation#lambda-driven-schema-updater), using a GitHub Actions workflow to check for new schema versions, update the API Gateway model, run integration tests and rollback the schema if tests are unsuccessful.  
 
-You can find the YAML definition for the pipeline at .github/workflows/updateSchema.yml.  This workflow is configured to run on Ubuntu Linux with a supported version of Node.js to run our schema update logic.  Several environment variables are required to run effectively and are covered in more detail in the next section.  The integration test step runs a specific test file, allowing us to configure one test per workflow run to more easily test the different event stages separately.  Each integration test is labeled according to the event stage (i.e. stage1-integration.test.mjs) and stored under the \_\_tests__ directory.  If an integration test fails, the current schema applied to API Gateway will be rolled back to the previous version.  If tests pass, the newly applied schema version will remain.    
+You can find the YAML definition for the pipeline at .github/workflows/updateSchema.yml.  This workflow is configured to run on Ubuntu Linux with a supported version of Node.js to run our schema update logic.  Several environment variables are required to run effectively and are covered in more detail in the next section.  The integration test step runs a specific test file, allowing you to configure one test per workflow run to more easily test different event stages.  Each integration test is labeled according to the event stage (i.e. stage1-integration.test.mjs) and stored under the \_\_tests__ directory.  If an integration test fails, the current schema applied to API Gateway will be rolled back to the previous version.  If tests pass, the newly applied schema version will remain.    
 
 
 <!-- *********************************** TODO: Add visual here of the workflow 
@@ -24,11 +24,24 @@ You can find the YAML definition for the pipeline at .github/workflows/updateSch
 ## PreRequisites
 
 > [!NOTE]
-For this solution, you'll need to [fork the repository](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo) so you can configure your AWS credentials and run your own GitHub Actions workflow.
+For this solution, you'll need to [fork the repository](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo) so you can configure your AWS credentials and run your own GitHub Actions workflow.  If you're new to GitHub Actions, you may want to review [documentation](https://docs.github.com/en/actions/about-github-actions/understanding-github-actions) before proceeding. 
 
-1. Deploy the solution as specified in the [parent README](.https://github.com/aws-samples/serverless-samples/tree/main/apigw-eventbridge-schema-validation#deployment)
-2. Setup AWS Credentials in GitHub
-3. Update the environment variables from the deployment output
+1. [Fork the repository](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo)
+2. Create a new directory, navigate to that directory in a terminal and clone the GitHub repository that you forked previously:
+``` 
+git clone https://github.com/<your forked repo path>
+```
+3. From the command line, change to the pattern directory:
+```
+cd apigw-eventbridge-schema-validation/cicd-driven-solution
+```
+4. Copy the .github/ directory to the root of the repository.  GitHub Actions requires workflow files be present in the .github/workflows/ directory. 
+```
+cp -r ./github ../../
+```
+4. Deploy the solution as specified in the [parent README](.https://github.com/aws-samples/serverless-samples/tree/main/apigw-eventbridge-schema-validation#deployment) Return back to the next step after successful deployment.
+4. Setup AWS Credentials in GitHub
+5. Update the environment variables from the deployment output
 
 You are responsible for any resources and billing for GitHub Actions.  Please see [GitHub Actions Billing and Payments](https://docs.github.com/en/billing/managing-billing-for-your-products/managing-billing-for-github-actions/about-billing-for-github-actions) for details on GitHub Actions pricing.  
 
