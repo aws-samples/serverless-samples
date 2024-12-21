@@ -15,12 +15,12 @@ on:
   workflow_dispatch:
 
 env:
-  AWS_REGION: "us-west-2"
+  AWS_REGION: "us-east-1"
   REGISTRY_NAME: "discovered-schemas"
   SCHEMA_NAME: "scheduling.event@Surgical"
-  API_ID: "hejobc1qv0"   # Replace with your API Gateway ID
+  API_ID: "<your api id>"   # Replace with your API Gateway ID
   API_MODEL_NAME: "surgical"
-  TEST_FILE_PREFIX: "stage2"
+  TEST_FILE_PREFIX: "stage1"
 
 permissions:
   contents: read

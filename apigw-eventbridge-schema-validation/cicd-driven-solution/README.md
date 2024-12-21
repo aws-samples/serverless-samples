@@ -40,12 +40,37 @@ cd apigw-eventbridge-schema-validation/cicd-driven-solution
 cp -r ./github ../../
 ```
 4. Deploy the solution as specified in the [parent README](.https://github.com/aws-samples/serverless-samples/tree/main/apigw-eventbridge-schema-validation#deployment) Return back to the next step after successful deployment.
-4. Setup AWS Credentials in GitHub
-5. Update the environment variables from the deployment output
 
-You are responsible for any resources and billing for GitHub Actions.  Please see [GitHub Actions Billing and Payments](https://docs.github.com/en/billing/managing-billing-for-your-products/managing-billing-for-github-actions/about-billing-for-github-actions) for details on GitHub Actions pricing.  
+Configure AWS credentials for GitHub Actions.  The GitHub Action workflow uses the ["Configure AWS Credentials V2"](https://github.com/marketplace/actions/configure-aws-credentials-v2-action-for-github-actions#credentials) action.  This uses an AWS access key ID and secret access key stored as secrets.  This sample solution uses [repository level secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-a-repository); however, you can configure them at the [environment or organization level](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#about-secrets).  
+
+> [!NOTE]  
+> GitHub Actions requires AWS credentials with appropriate permissions to perform actions within your AWS environment.  This sample should only be used in non-production, sandbox environments.
+
+For this sample, you'll need a user with permissions to administer API Gateway to update the model and deploy changes, and EventBridge read only access to list and download schemas.
+
+5. [Create the user in IAM](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) and add required permissions.  If you don't have access to perform this operation, you may need to work with your AWS engineering team. 
+
+```
+aws iam create-user --user-name <user name>
+aws iam attach-user-policy --user-name <user name> --policy-arn arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator
+aws iam attach-user-policy --user-name <user name> --policy-arn arn:aws:iam::aws:policy/AmazonEventBridgeReadOnlyAccess
+```
+
+6. Generate the access key id and secret access key.  Note the output, you'll need it for the next step. 
+
+```
+aws iam create-access-key --user-name <user name>
+```
+
+7. [Create 2 repository secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-a-repository), AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, with the values obtained from the previous commands.
+
+6. In the root directory of the project, open the ./github/workflows/surgical-event-pipeline.yml file that you copied in step 4.  Update the environment variables based on your project deployment.  If you need to view this information again, it can be found in the CloudFormation Output tab for this deployment.  
+
 
 ## Testing
+
+> [!NOTE]  
+> GitHub's free tier is sufficient for running the tests in this solution; however, you are responsible for any costs associated within your account.  Please review [GitHub Actions Billing and Payments](https://docs.github.com/en/billing/managing-billing-for-your-products/managing-billing-for-github-actions/about-billing-for-github-actions) for details on GitHub Actions pricing.
 
 This first test will emulate the first stage of the [event evolution](https://github.com/aws-samples/serverless-samples/tree/main/apigw-eventbridge-schema-validation#stages-of-event-evolution).  There is no validation set, so the first event will pass through API Gateway to EventBridge and produce a new schema version.   
 
