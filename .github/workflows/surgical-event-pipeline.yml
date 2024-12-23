@@ -21,7 +21,7 @@ env:
   API_ID: "ol14wnus22"   # Replace with your API Gateway ID
   API_MODEL_NAME: "surgical"
   TEST_FILE_PREFIX: "stage1"
-  WORKING_DIR: "apigw-eventbridge-schema-validation/cicd-driven-solution/"
+  WORKING_DIR: "apigw-eventbridge-schema-validation/cicd-driven-solution"
 
 permissions:
   contents: read
@@ -31,7 +31,7 @@ jobs:
     name: Update API Gateway model with latest schema
     defaults:
       run:
-        working-directory: ${{ secrets.WORKING_DIR }}
+        working-directory: ${{ env.WORKING_DIR }}
     runs-on: ubuntu-latest
     container: node:20
 
