@@ -21,7 +21,7 @@ You can find the YAML definition for the pipeline at .github/workflows/updateSch
 <!-- *********************************** TODO: Add visual here of the workflow 
 ***********************************************************************************--> 
 
-## PreRequisites
+## Deployment
 
 > [!NOTE]
 For this solution, you'll need to [fork the repository](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo) so you can configure your AWS credentials and run your own GitHub Actions workflow.  If you're new to GitHub Actions, you may want to review [documentation](https://docs.github.com/en/actions/about-github-actions/understanding-github-actions) before proceeding. 
@@ -36,19 +36,28 @@ git clone https://github.com/<your forked repo path>
 cd apigw-eventbridge-schema-validation/cicd-driven-solution
 ```
 4. Copy the .github/ directory to the root of the repository.  GitHub Actions requires workflow files be present in the .github/workflows/ directory. 
-```
-cp -r ./github ../../
-```
-4. Deploy the solution as specified in the [parent README](.https://github.com/aws-samples/serverless-samples/tree/main/apigw-eventbridge-schema-validation#deployment) Return back to the next step after successful deployment.
 
-Configure AWS credentials for GitHub Actions.  The GitHub Action workflow uses the ["Configure AWS Credentials V2"](https://github.com/marketplace/actions/configure-aws-credentials-v2-action-for-github-actions#credentials) action.  This uses an AWS access key ID and secret access key stored as secrets.  This sample solution uses [repository level secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-a-repository); however, you can configure them at the [environment or organization level](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#about-secrets).  
+```
+cp -r .github ../../
+```
+
+5. Navigate to the parent directory
+
+```
+cd ..
+```
+
+6. Deploy the solution as specified in the [parent README](../README.md#deployment).  You can skip step 1 and 2 since you've already forked and cloned the repo.  Return back to the next step after successful deployment.
+
+
+The GitHub Action workflow uses the ["Configure AWS Credentials V2"](https://github.com/marketplace/actions/configure-aws-credentials-v2-action-for-github-actions#credentials) action.  This uses an AWS access key ID and secret access key stored as secrets.  This sample solution uses [repository level secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-a-repository); however, you can configure them at the [environment or organization level](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#about-secrets).  
 
 > [!NOTE]  
 > GitHub Actions requires AWS credentials with appropriate permissions to perform actions within your AWS environment.  This sample should only be used in non-production, sandbox environments.
 
 For this sample, you'll need a user with permissions to administer API Gateway to update the model and deploy changes, and EventBridge read only access to list and download schemas.
 
-5. [Create the user in IAM](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) and add required permissions.  If you don't have access to perform this operation, you may need to work with your AWS engineering team. 
+7. [Create the user in IAM](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) and add required permissions.  If you don't have access to perform this operation, you may need to work with your AWS engineering team. 
 
 ```
 aws iam create-user --user-name <user name>
@@ -56,15 +65,17 @@ aws iam attach-user-policy --user-name <user name> --policy-arn arn:aws:iam::aws
 aws iam attach-user-policy --user-name <user name> --policy-arn arn:aws:iam::aws:policy/AmazonEventBridgeReadOnlyAccess
 ```
 
-6. Generate the access key id and secret access key.  Note the output, you'll need it for the next step. 
+8. Generate the access key id and secret access key.  Note the output, you'll need it for the next step. 
 
 ```
 aws iam create-access-key --user-name <user name>
 ```
 
-7. [Create 2 repository secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-a-repository), AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, with the values obtained from the previous commands.
+9. [Create 2 repository secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-a-repository), AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, with the values obtained from the previous commands.
 
-6. In the root directory of the project, open the ./github/workflows/surgical-event-pipeline.yml file that you copied in step 4.  Update the environment variables based on your project deployment.  If you need to view this information again, it can be found in the CloudFormation Output tab for this deployment.  
+10. In the root directory of the project, open the ./github/workflows/surgical-event-pipeline.yml file that you copied in step 4.  Update the environment variables based on your project deployment.  You only need to update the API_ID and AWS_REGION if you left the default settings during deployment.  If you need to view your deployment information again, it can be found in the CloudFormation output tab for your deployment.  
+
+11. Commit changes to your repository
 
 ## Testing
 

@@ -137,7 +137,7 @@ This is the final stage where events grow into the full business context require
 
 ## Deployment
 
-The following deployment can be used for either of the solutions referenced above.  This is intended to be deployed to non-production environments.  You'll deploy the solution and test the three stages covered.  You can modify the SAM template and Lambda function to fit the unique needs of your application.
+The following deployment is used for both the Lambda and CI CD driven solutions; however, the steps are slightly different.  For the CI CD driven solution, [start here](cicd-driven-solution/README.md#deployment); otherwise, continue on.  This is intended to be deployed to non-production environments.  You'll deploy the solution and test the three stages covered.  You can modify the SAM template and Lambda function to fit the unique needs of your application.
 
 ### Pre-Requisites
 
@@ -147,7 +147,8 @@ The following deployment can be used for either of the solutions referenced abov
 * [AWS Serverless Application Model](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html) (AWS SAM) installed
 * [NPM](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm) installed
 
-Important: this application uses various AWS services and there are costs associated with these services after the Free Tier usage - please see the [AWS Pricing page](https://aws.amazon.com/pricing/) for details. You are responsible for any AWS costs incurred. No warranty is implied in this example.
+> [!NOTE] 
+> Important: this application uses various AWS services and there are costs associated with these services after the Free Tier usage - please see the [AWS Pricing page](https://aws.amazon.com/pricing/) for details. You are responsible for any AWS costs incurred. No warranty is implied in this example.
 
 ### Deployment Steps
 
@@ -172,7 +173,7 @@ Important: this application uses various AWS services and there are costs associ
 
 Once you have run `sam deploy --guided` mode once and saved arguments to a configuration file (samconfig.toml), you can use `sam deploy` in future to use these defaults.  
 
-Copy the API URL from the output for later use in the testing section.
+Copy the API URL from the output for later use in the testing section.  If deploying CI CD driven solution, [navigate back to deployment steps](cicd-driven-solution/README.md#deployment).  
 
 ## Testing
 

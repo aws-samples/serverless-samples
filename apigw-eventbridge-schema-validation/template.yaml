@@ -296,7 +296,9 @@ Outputs:
   ApiURL:
     Description: "API Gateway endpoint URL for dev stage"
     Value: !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/dev/"
-
+  ApiId:
+    Description: "API Gateway ID"
+    Value: !Ref Api
 
 
 
