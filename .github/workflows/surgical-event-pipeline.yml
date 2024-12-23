@@ -21,6 +21,7 @@ env:
   API_ID: "ol14wnus22"   # Replace with your API Gateway ID
   API_MODEL_NAME: "surgical"
   TEST_FILE_PREFIX: "stage1"
+  WORKING_DIR: "apigw-eventbridge-schema-validation/cicd-driven-solution/"
 
 permissions:
   contents: read
@@ -34,7 +35,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
@@ -43,10 +43,12 @@ jobs:
         aws-region: ${{ env.AWS_REGION }}
 
     - name: Install dependencies
+      working-directory: ${{ secrets.WORKING_DIR }}
       run: |
         npm install
 
     - name: Update schema
+      working-directory: ${{ secrets.WORKING_DIR }}
       env:
         SchemaName: ${{ env.SCHEMA_NAME }}
         ApiId: ${{ env.API_ID }}
@@ -60,12 +62,14 @@ jobs:
     - name: integration-tests
       continue-on-error: true
       id: integration-tests
+      working-directory: ${{ secrets.WORKING_DIR }}
       run: npm test __tests__/${{ env.TEST_FILE_PREFIX }}-integration.test.mjs
 
       # If any tests fail in previous step, rollback schema
     - name: Rollback Schema
       if: steps.integration-tests.outcome == 'failure'
       continue-on-error: true
+      working-directory: ${{ secrets.WORKING_DIR }}
       env:
         SchemaName: ${{ env.SCHEMA_NAME }}
         ApiId: ${{ env.API_ID }}

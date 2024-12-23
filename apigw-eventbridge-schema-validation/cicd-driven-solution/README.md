@@ -1,7 +1,7 @@
 # Automating Event Validation Through Schema Discovery - CI CD Driven Solution
 
 > [!NOTE]  
-> For background information on event validation and deployment instructions for this solution, see [parent README](../README.MD).  This solution shares the same deployment instructions as the Lambda Schema Driven Updater, but has separate [testing steps](#testing).
+> For background information on event validation and deployment instructions for this solution, see [parent README](../README.MD).  This solution shares the same deployment as the parent Lambda driven solution, but has additional deployment configuration and testing steps.
 
 This CI CD driven solution to automating schema validation through API Gateway provides more control over the schema update process.  The Lambda function does not apply the new schema directly to an API Gateway model.  Instead, it uses a CI CD pipeline to retrieve new schemas from the EventBridge registry, apply them to API Gateway and run integration tests.  If tests fail, the newly applied schema will be rolled back to a previous version.  This allows for additional testing and checks before schemas are promoted and enforced.  The approach provides more control to the schema update process in exchange for some complexity. 
 
@@ -75,7 +75,7 @@ aws iam create-access-key --user-name <user name>
 
 10. In the root directory of the project, open the ./github/workflows/surgical-event-pipeline.yml file that you copied in step 4.  Update the environment variables based on your project deployment.  You only need to update the API_ID and AWS_REGION if you left the default settings during deployment.  If you need to view your deployment information again, it can be found in the CloudFormation output tab for your deployment.  
 
-11. Commit changes to your repository
+11. Commit changes to your forked repository
 
 ## Testing
 
@@ -133,7 +133,7 @@ TEST_FILE_PREFIX: "stage1"
 ...
 ```
 
-The workflow is initiated by either committing a change to the repository main branch or manually through the GitHub UI or CLI by following this [guide](https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/manually-running-a-workflow).  You can now run the workflow, which will download the latest schema version, apply it to the API Gateway model and test sending an event to API Gateway and through to EventBridge.
+The GitHub Actions workflow can be initiated by either committing a change to the repository main branch or manually through the GitHub UI or CLI by following this [guide](https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/manually-running-a-workflow).  To enable the workflow to run on commit, remove the comments for the 2 lines referenced toward the top of the workflow file.  Run the workflow.  This will download the latest schema version, apply it to the API Gateway model and test sending an event to API Gateway and through to EventBridge.
  
 To test the second event stage, run the following command to send another event to the custom event bus. 
 
