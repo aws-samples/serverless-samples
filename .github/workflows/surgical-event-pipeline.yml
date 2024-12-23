@@ -18,9 +18,9 @@ env:
   AWS_REGION: "us-west-2" # update if you are running in a different AWS region
   REGISTRY_NAME: "discovered-schemas"
   SCHEMA_NAME: "scheduling.event@Surgical"
-  API_ID: "ol14wnus22"   # Replace with your API Gateway ID
+  API_ID: "<API ID>"   # Replace with your API Gateway ID
   API_MODEL_NAME: "surgical"
-  TEST_FILE_PREFIX: "stage2"
+  TEST_FILE_PREFIX: "stage1"
   WORKING_DIR: "apigw-eventbridge-schema-validation/cicd-driven-solution"
 
 permissions:

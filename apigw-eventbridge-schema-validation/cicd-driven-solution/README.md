@@ -204,7 +204,10 @@ TEST_FILE_PREFIX: "stage2"
 ...
 ```
 
-Save the workflow file, commit to the repository and this will start another workflow execution.  The workflow will download the latest schema, apply it to API Gateway and verify by running the stage2 integration test.  
+Save the workflow file, commit to the repository and start another workflow execution.  The workflow will download the latest schema, apply it to API Gateway and verify by running the stage2 integration test.  If the tests pass, the new schema was applied successfully. 
+
+![](../assets/integration-test-run.png)
+<p style="text-align:center; font-style: italic"> Figure 4: Successful integration test run for stage 2   </p>
 
 You can test the request validation by sending in an event that does not have all the required fields.  
 
@@ -229,7 +232,7 @@ curl --location --request POST '<YOUR API URL>' \
 Some of the required objects and properties have been removed, which will be caught by the request validator and rejected.  Note: if your event is passed through successfully, you may need to wait for the new schema version to be created and processed.
 
 ```
-{ "message": "[object has missing required properties ([\"schedule\",\"team\"])]"}%  
+{ "message": "[object has missing required properties ([\"medication\",\"procedure\",\"schedule\",\"team\"])]"}%   
 ```
 
 For the final test, you'll send a new event with additional properties, emulating a stage 3 event.  
@@ -268,13 +271,50 @@ curl --location --request POST '<YOUR API URL>' \
 ```
 Wait for the new schema version to be created.  See previous test steps for guidance on checking for new schema versions.  
 
-For the final workflow execution, you will test the rollback capability.  In this scenario, a new schema version was generated from our stage 3 event, but we do not want that schema to be used to validate requests.  The integration test file prefix in the workflow will remain on "stage2."  When the workflow is run, the new schema version is downloaded and applied to API Gateway, but the integration tests will fail causing the schema to be rolled back to the previous version.  This allows you to set and keep a desired schema based on your test results.  
+For the final workflow execution, you will test the rollback capability.  In this scenario, a new schema version was generated from our stage 3 event, but we do not want that schema to be used to validate requests.  The integration test file prefix in the workflow will remain on "stage2."  When the workflow is run, the new schema version is downloaded and applied to API Gateway, but the integration tests will fail causing the schema to be rolled back to the previous version.  This allows you to set and keep a desired schema based on your tests.  
 
 To test this, manually run the GitHub Actions workflow. Make sure TEST_FILE_PREFIX is still set to "stage2"
 
-You've successfully tested all three stages and learned how to automate validation of requests using a CI CD pipeline.   
+![](../assets/rollback-schema.png)
+<p style="text-align:center; font-style: italic"> Figure 5: Failed integration test, rollback schema  </p>
 
-## [Cleanup](https://github.com/aws-samples/serverless-samples/tree/main/apigw-eventbridge-schema-validation#cleanup)
+You've successfully tested all three stages and learned how to automate validation of requests using a GitHub Actions pipeline.  If you prefer other CI CD platforms, you can extend this solution to run on them.     
+
+## Cleanup
+
+1. Delete the stack
+
+```
+sam delete
+```
+
+2.  Delete GitHub Action repository secrets for AWS.  These are under the repository settings --> Secrets and variables --> Actions.  
+
+![](../assets/github-actions-repo-secrets.png)
+
+3. List access keys and delete them from the IAM user
+
+List access keys
+```
+aws iam list-access-keys --user <user_name> 
+```
+
+Delete access key using AccessKeyId from previous command: 
+
+```
+aws iam delete-access-key \
+    --access-key-id <access key id> \
+    --user-name <user name>
+```
+
+4. Remove user policies and delete the IAM user created for GitHub Actions
+
+```
+aws iam detach-user-policy --user-name <user name> --policy-arn arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator
+aws iam detach-user-policy --user-name <user name> --policy-arn arn:aws:iam::aws:policy/AmazonEventBridgeReadOnlyAccess
+aws iam delete-user --user-name <user name>
+```
+5. Delete your forked repository   
 
 ## Next steps
 

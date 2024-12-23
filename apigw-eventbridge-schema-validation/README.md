@@ -357,7 +357,7 @@ You've successfully tested all three stages and learned how to automate validati
 
 ## Cleanup
  
-1. Delete the stack
+1. Delete the stack.  Ensure you are in the apigw-eventbridge-schema-validation directory before running.  
     ```
     sam delete
     ```
