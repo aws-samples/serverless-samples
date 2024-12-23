@@ -66,7 +66,6 @@ aws iam create-access-key --user-name <user name>
 
 6. In the root directory of the project, open the ./github/workflows/surgical-event-pipeline.yml file that you copied in step 4.  Update the environment variables based on your project deployment.  If you need to view this information again, it can be found in the CloudFormation Output tab for this deployment.  
 
-
 ## Testing
 
 > [!NOTE]  
