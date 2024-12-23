@@ -20,7 +20,7 @@ env:
   SCHEMA_NAME: "scheduling.event@Surgical"
   API_ID: "ol14wnus22"   # Replace with your API Gateway ID
   API_MODEL_NAME: "surgical"
-  TEST_FILE_PREFIX: "stage1"
+  TEST_FILE_PREFIX: "stage2"
   WORKING_DIR: "apigw-eventbridge-schema-validation/cicd-driven-solution"
 
 permissions:

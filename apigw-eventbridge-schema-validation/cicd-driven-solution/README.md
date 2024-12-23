@@ -135,6 +135,12 @@ TEST_FILE_PREFIX: "stage1"
 
 The GitHub Actions workflow can be initiated by either committing a change to the repository main branch or manually through the GitHub UI or CLI by following this [guide](https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/manually-running-a-workflow).  To enable the workflow to run on commit, remove the comments for the 2 lines referenced toward the top of the workflow file.  Run the workflow.  This will download the latest schema version, apply it to the API Gateway model and test sending an event to API Gateway and through to EventBridge.
  
+![](../assets/github_workflow_manual_run.png)
+<p style="text-align:center; font-style: italic"> Figure 2: Manual workflow run </p>
+
+![](../assets/github_workflow_success_stage1_run.png)
+<p style="text-align:center; font-style: italic"> Figure 3: Successful workflow run for stage 1    </p>
+
 To test the second event stage, run the following command to send another event to the custom event bus. 
 
 ```
