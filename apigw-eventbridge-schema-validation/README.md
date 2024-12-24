@@ -178,7 +178,7 @@ Copy the API URL from the output for later use in the testing section.  If deplo
 ## Testing
 
 > [!NOTE]  
-> Testing procedures for the CI CD driven solution can be found in the [cicd-driven-solution](cicd-driven-solution/README.md#testing) subdirectory.  
+> Testing for the CI CD driven solution can be found in the [cicd-driven-solution](cicd-driven-solution/README.md#testing) subdirectory.  Ensure you complete all deployment steps first.  
 
 This first test will emulate the first stage of our event evolution.  A schema will be created in EventBridge, but won't be enforced in API Gateway until you enable the rule to trigger the Lambda function.  This will be done in the second test.
 
