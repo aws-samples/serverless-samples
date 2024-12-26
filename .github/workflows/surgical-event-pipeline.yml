@@ -26,11 +26,14 @@ permissions:
   contents: read
 
 jobs:
+  defaults:
+    run:
+      working-directory: apigw-eventbridge-schema-validation/cicd-driven-solution
+
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
     container: node:20
-    working-directory: apigw-eventbridge-schema-validation/cicd-driven-solution
 
     steps:
     - name: Checkout
