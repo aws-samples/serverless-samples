@@ -1,0 +1,78 @@
+
+#  Store an IAM user access key in GitHub Actions secrets named `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
+#    See the documentation for each action used below for the recommended IAM policies for this IAM user,
+#    and best practices on handling the access key credentials.
+
+name: Update API Gateway model with latest schema
+
+on:
+
+# Comment out next two lines to run workflow on commit to main branch
+#  push:
+#    branches: [ "main" ]
+
+  # allows you to run workflow manually - https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/manually-running-a-workflow
+  workflow_dispatch:
+
+env:
+  AWS_REGION: "us-west-2"
+  REGISTRY_NAME: "discovered-schemas"
+  SCHEMA_NAME: "scheduling.event@Surgical"
+  API_ID: "9tc80z9qqf"   # Replace with your API Gateway ID
+  API_MODEL_NAME: "surgical"
+  TEST_FILE_PREFIX: "stage1"
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    container: node:20
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Install dependencies
+      run: |
+        npm install
+
+    - name: Update schema
+      env:
+        SchemaName: ${{ env.SCHEMA_NAME }}
+        ApiId: ${{ env.API_ID }}
+        ApiModelName: ${{ env.API_MODEL_NAME }}
+        SchemaRegistry: ${{ env.REGISTRY_NAME }}
+      run: node src/updateSchema.mjs
+
+    - name: Wait for API Gateway deployment to stage
+      run: sleep 30
+
+    - name: integration-tests
+      continue-on-error: true
+      id: integration-tests
+      run: npm test __tests__/${{ env.TEST_FILE_PREFIX }}-integration.test.mjs
+
+      # If any tests fail in previous step, rollback schema
+    - name: Rollback Schema
+      if: steps.integration-tests.outcome == 'failure'
+      continue-on-error: true
+      env:
+        SchemaName: ${{ env.SCHEMA_NAME }}
+        ApiId: ${{ env.API_ID }}
+        ApiModelName: ${{ env.API_MODEL_NAME }}
+        SchemaRegistry: ${{ env.REGISTRY_NAME }}
+        Rollback: true
+      run: node src/updateSchema.mjs
+
+
+
