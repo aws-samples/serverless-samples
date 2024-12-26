@@ -67,7 +67,7 @@ The GitHub Action workflow uses the ["Configure AWS Credentials V2"](https://git
 
 For this sample, you'll need a user with permissions to administer API Gateway to update the model and deploy changes, and EventBridge read only access to list and download schemas.
 
-7. [Create the user in IAM](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) and add required permissions.  If you don't have access to perform this operation, you may need to work with your AWS engineering team.  Replace <user name> with a descriptive user name of your choice, such as github-actions-schema-validation.  
+7. [Create the user in IAM](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) and add required permissions.  If you don't have access to perform this operation, you may need to work with your AWS engineering team.  Replace \<user name\> with a descriptive user name of your choice, such as github-actions-schema-validation.  
 
 ```
 aws iam create-user --user-name <user name>
