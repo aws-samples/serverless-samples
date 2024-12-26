@@ -1,7 +1,7 @@
 # Automating Event Validation Through Schema Discovery - CI CD Driven Solution
 
 > [!NOTE]  
-> For background information on event validation see the [parent directory](../README.md).  This solution shares the same CloudFormation deployment as the Lambda driven solution, but has additional deployment configuration and testing steps. 
+> For background information on event validation see the [parent directory](../README.md).  This solution shares the same CloudFormation deployment as the Lambda driven solution, but has additional deployment configuration and testing steps covered in this README. 
 
 This CI CD driven solution to automating schema validation through API Gateway provides more control over the schema update process.  In contrast to the Lambda driven solution, the Lambda function does not apply the new schema directly to an API Gateway model.  Instead, it uses a CI CD pipeline to retrieve new schemas from the EventBridge Registry, applies them to API Gateway and runs integration tests.  If tests fail, the newly applied schema will be rolled back to a previous version.  This allows for additional testing and checks before schemas are promoted and enforced for requests.  
 
@@ -14,7 +14,7 @@ This implementation uses a GitHub Actions workflow, detailed below.  The approac
 ## GitHub Actions Pipeline 
 [GitHub Actions](https://docs.github.com/en/actions/about-github-actions/understanding-github-actions) is a CI CD platform that allows you to automate your build, test, and deployment pipeline.  You will use GitHub Actions to demonstrate how to automatically update and rollback event schemas from Amazon EventBridge.  This solution builds on the [Lambda Driven Schema Updater](https://github.com/aws-samples/serverless-samples/tree/main/apigw-eventbridge-schema-validation#lambda-driven-schema-updater), using a GitHub Actions workflow to check for new schema versions, update the API Gateway model, run integration tests and rollback the schema if tests are unsuccessful.  
 
-You can find the YAML definition for the pipeline at .github/workflows/updateSchema.yml.  This workflow is configured to run on Ubuntu Linux with a supported version of Node.js to run the schema update logic.  Environment variables are required to run effectively and are covered in more detail in the next section.  The integration test step runs a specific test file, allowing you to configure one test per workflow execution to more easily test different event stages.  Each integration test is labeled according to the event stage (i.e. stage1-integration.test.mjs) and stored under the \_\_tests__ directory.  If an integration test fails, the current schema applied to API Gateway will be rolled back to the previous version.  If tests pass, the newly applied schema version will remain.    
+You can find the YAML definition for the pipeline at .github/workflows/surgical-event-pipeline.yml.  This workflow is configured to run on Ubuntu Linux with a supported version of Node.js to run the schema update logic.  Environment variables are required to run effectively and are covered in more detail in the next section.  The integration test step runs a specific test file, allowing you to configure one test per workflow execution to test different event stages.  Each integration test is labeled according to the [event stage](../README.md#stages-of-event-evolution) (i.e. stage1-integration.test.mjs) and stored under the \_\_tests__ directory.  If an integration test fails, the current schema applied to API Gateway will be rolled back to the previous version.  If tests pass, the newly applied schema version will remain.    
 
 
 <!-- *********************************** TODO: Add visual here of the workflow 
@@ -22,8 +22,19 @@ You can find the YAML definition for the pipeline at .github/workflows/updateSch
 
 ## Deployment
 
+### Pre-Requisites
+
+* [Create an AWS account](https://portal.aws.amazon.com/gp/aws/developer/registration/index.html) if you do not already have one and log in. The IAM user that you use must have sufficient permissions to make necessary AWS service calls and manage AWS resources.
+* [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) installed and configured
+* [Git Installed](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
+* [AWS Serverless Application Model](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html) (AWS SAM) installed
+* [NPM](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm) installed
+
 > [!NOTE]
-For this solution, you'll need to [fork the repository](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo) so you can configure your AWS credentials and run your own GitHub Actions workflow.  If you're new to GitHub Actions, you may want to review their [documentation](https://docs.github.com/en/actions/about-github-actions/understanding-github-actions) before proceeding. 
+> Important: this application uses various AWS services and there are costs associated with these services after the Free Tier usage - please see the [AWS Pricing page](https://aws.amazon.com/pricing/) for details. You are responsible for any AWS costs incurred. No warranty is implied in this example.
+
+> [!NOTE]
+For this solution, you'll need to [fork the repository](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo) run the GitHub Actions workflow within your GitHub account.  If you're new to GitHub Actions, you may want to review their [documentation](https://docs.github.com/en/actions/about-github-actions/understanding-github-actions) before proceeding. 
 
 1. [Fork the repository](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo)
 2. Create a new directory, navigate to that directory in a terminal and clone the GitHub repository that you forked previously:
@@ -46,7 +57,7 @@ cp -r .github ../../
 cd ..
 ```
 
-6. Deploy the solution as specified in the [parent README](../README.md#deployment).  You can skip step 1 and 2 since you've already forked and cloned the repo.  Return back to the next step after successful deployment.
+6. Deploy the solution as specified in the [parent README deployment section](../README.md#deployment).  Start at step 3 since you have already forked and cloned the repo.  Return back here to the next step after successful deployment.
 
 
 The GitHub Action workflow uses the ["Configure AWS Credentials V2"](https://github.com/marketplace/actions/configure-aws-credentials-v2-action-for-github-actions#credentials) action.  This uses an AWS access key ID and secret access key stored as secrets.  This sample solution uses [repository level secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-a-repository); however, you can configure them at the [environment or organization level](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#about-secrets).  
@@ -56,13 +67,32 @@ The GitHub Action workflow uses the ["Configure AWS Credentials V2"](https://git
 
 For this sample, you'll need a user with permissions to administer API Gateway to update the model and deploy changes, and EventBridge read only access to list and download schemas.
 
-7. [Create the user in IAM](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) and add required permissions.  If you don't have access to perform this operation, you may need to work with your AWS engineering team. 
+7. [Create the user in IAM](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) and add required permissions.  If you don't have access to perform this operation, you may need to work with your AWS engineering team.  Replace <user name> with a descriptive user name of your choice, such as github-actions-schema-validation.  
 
 ```
 aws iam create-user --user-name <user name>
 aws iam attach-user-policy --user-name <user name> --policy-arn arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator
 aws iam attach-user-policy --user-name <user name> --policy-arn arn:aws:iam::aws:policy/AmazonEventBridgeReadOnlyAccess
 ```
+You can verify permissions by running: 
+
+```
+aws iam list-attached-user-policies --user-name <user name>
+```
+
+Example output: 
+```
+    "AttachedPolicies": [
+        {
+            "PolicyName": "AmazonAPIGatewayAdministrator",
+            "PolicyArn": "arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator"
+        },
+        {
+            "PolicyName": "AmazonEventBridgeReadOnlyAccess",
+            "PolicyArn": "arn:aws:iam::aws:policy/AmazonEventBridgeReadOnlyAccess"
+        }
+```
+
 
 8. Generate the access key id and secret access key.  Note the output, you'll need it for the next step. 
 
@@ -70,7 +100,7 @@ aws iam attach-user-policy --user-name <user name> --policy-arn arn:aws:iam::aws
 aws iam create-access-key --user-name <user name>
 ```
 
-9. [Create two repository secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-a-repository), AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, with the values obtained from the previous commands.
+9. [Create two repository secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-a-repository), AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, with the values obtained from the previous command.
 
 10. In the root directory of the project, open the ./github/workflows/surgical-event-pipeline.yml file that you copied in step 4.  Update the environment variables based on your project deployment.  You only need to update the API_ID and AWS_REGION if you left the default settings during deployment.  If you need to view your deployment information again, it can be found in the CloudFormation output tab for your deployment.  
 
