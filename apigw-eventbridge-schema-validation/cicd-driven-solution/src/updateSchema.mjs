@@ -6,8 +6,6 @@ import { SchemasClient, ExportSchemaCommand, ListSchemaVersionsCommand } from "@
 import Ajv from 'ajv-draft-04';
 const ajv = new Ajv();
 
-import { writeFileSync } from 'node:fs';
-
 import { APIGatewayClient, UpdateModelCommand, CreateDeploymentCommand, GetModelCommand } from "@aws-sdk/client-api-gateway";
 const apiClient = new APIGatewayClient();
 
@@ -295,8 +293,6 @@ async function updateSchemaToLatest(schemaVersionToDownload) {
         console.log("Updating schema to latest.  Current schema version in EventBridge registry:" + schemaVersionToDownload);
         await downloadAndUpdateSchema(schemaVersionToDownload);
         console.log("schema updated successfully to: " + schemaVersionToDownload);
-        // write the current schema version to a new file build/schema-version.txt
-        writeFileSync('build/schema-version.txt', schemaVersionToDownload.toString());
         currentSchemaVersion = schemaVersionToDownload;
     } else {
         console.log("no new schema version detected.");

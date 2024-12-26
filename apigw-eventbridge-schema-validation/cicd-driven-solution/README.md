@@ -298,7 +298,13 @@ curl --location --request POST '<YOUR API URL>' \
   }
 }'
 ```
-Wait for the new schema version to be created.  See previous test steps for guidance on checking for new schema versions.  
+Wait for the 3rd schema version to be created.  You can view schema versions again by running the following command: 
+
+```
+aws schemas list-schema-versions --schema-name scheduling.event@Surgical --registry-name discovered-schemas
+```
+
+Once the 3rd versions is listed, you can proceed to the next step.  
 
 For the final workflow execution, you will test the rollback capability.  In this scenario, a new schema version was generated from our stage 3 event, but we do not want that schema to be used to validate requests.  The integration test file prefix in the workflow will remain on "stage2."  When the workflow is run, the new schema version is downloaded and applied to API Gateway, but the integration tests will fail causing the schema to be rolled back to the previous version.  This allows you to set and keep a desired schema based on your tests.  
 
@@ -307,7 +313,7 @@ To test this, manually run the GitHub Actions workflow. Make sure TEST_FILE_PREF
 ![](../assets/rollback-schema.png)
 <p align="center"> Figure 5: Failed integration test, rollback schema  </p>
 
-You've successfully tested all three stages and learned how to automate validation of requests using a GitHub Actions pipeline.  If you prefer other CI CD platforms, you can extend this solution to run on them.     
+You've successfully tested all three stages and learned how to automate validation of requests using a GitHub Actions pipeline. 
 
 ## Cleanup
 
