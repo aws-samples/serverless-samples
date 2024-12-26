@@ -235,7 +235,7 @@ TEST_FILE_PREFIX: "stage2"
 ...
 ```
 
-Save the workflow file, commit to the repository and start another workflow execution.  The workflow will download the latest schema, apply it to API Gateway and verify by running the stage2 integration test.  If the tests pass, the new schema was applied successfully. 
+Save the workflow file, push changes to the repository and start another workflow execution.  If you did not enable automatic workflow execution on push to you repository, run the workflow manually again.  It will download the latest schema, apply it to API Gateway and verify by running the stage2 integration test.  If the tests pass, the new schema was applied successfully. 
 
 ![](../assets/integration-test-run.png)
 <p align="center"> Figure 4: Successful integration test run for stage 2   </p>
@@ -306,11 +306,11 @@ Wait for the 3rd schema version to be created.  You can view schema versions aga
 aws schemas list-schema-versions --schema-name scheduling.event@Surgical --registry-name discovered-schemas
 ```
 
-Once the 3rd versions is listed, you can proceed to the next step.  
+Once the 3rd schema version is listed, you can proceed to the next step.  
 
 For the final workflow execution, you will test the rollback capability.  In this scenario, a new schema version was generated from our stage 3 event, but we do not want that schema to be used to validate requests.  The integration test file prefix in the workflow will remain on "stage2."  When the workflow is run, the new schema version is downloaded and applied to API Gateway, but the integration tests will fail causing the schema to be rolled back to the previous version.  This allows you to set and keep a desired schema based on your tests.  
 
-To test this, manually run the GitHub Actions workflow. Make sure TEST_FILE_PREFIX is still set to "stage2"
+To test this, manually run the GitHub Actions workflow. Make sure TEST_FILE_PREFIX is still set to "stage2."  The following is an example workflow run with the rollback step executed due to failed tests.  
 
 ![](../assets/rollback-schema.png)
 <p align="center"> Figure 5: Failed integration test, rollback schema  </p>
@@ -322,6 +322,7 @@ You've successfully tested all three stages and learned how to automate validati
 1. Delete the stack
 
 ```
+cd apigw-eventbridge-schema-validation
 sam delete
 ```
 
