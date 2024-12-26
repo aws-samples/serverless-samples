@@ -22,7 +22,7 @@ env:
   SCHEMA_NAME: "scheduling.event@Surgical"
   API_ID: "r90lbbhnwj"   # Replace with your API Gateway ID
   API_MODEL_NAME: "surgical"
-  TEST_FILE_PREFIX: "stage1"
+  TEST_FILE_PREFIX: "stage2"
 
 permissions:
   contents: read

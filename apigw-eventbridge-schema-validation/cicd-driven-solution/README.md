@@ -102,9 +102,9 @@ aws iam create-access-key --user-name <user name>
 
 9. [Create two repository secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-a-repository), AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, with the values obtained from the previous command.
 
-10. In the root directory of the project, open the ./github/workflows/surgical-event-pipeline.yml file that you copied in step 4.  Update the environment variables based on your project deployment.  You only need to update the API_ID and AWS_REGION if you left the default settings during deployment.  If you need to view your deployment information again, it can be found in the CloudFormation output tab for your deployment.  
+10. In the root directory of the project, open the .github/workflows/surgical-event-pipeline.yml file that you copied in step 4.  Update the environment variables based on your project deployment.  You only need to update the API_ID and AWS_REGION if you left the default settings during deployment.  If you need to view your deployment information again, it can be found in the CloudFormation output tab for your deployment.  
 
-11. Commit changes to your forked repository
+11. Stage and commit the workflow changes to your forked repository.  Ensure the .github/workflows/surgical-event-pipeline.yml at the root of the repository was modified and pushed.   
 
 ## Testing
 
@@ -164,9 +164,11 @@ TEST_FILE_PREFIX: "stage1"
 
 The GitHub Actions workflow can be initiated by either committing a change to the repository main branch or manually through the GitHub UI or CLI by following this [guide](https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/manually-running-a-workflow).  To enable the workflow to run on commit, remove the comments for the 2 lines referenced toward the top of the workflow file.  Run the workflow.  This will download the latest schema version, apply it to the API Gateway model and test sending an event to API Gateway and through to EventBridge.
  
+An example of the GitHub Actions web interface for a manual workflow run: 
 ![](../assets/github_workflow_manual_run.png)
 <p align="center"> Figure 2: Manual workflow run </p>
 
+Example output of a successful workflow run: 
 ![](../assets/github_workflow_success_stage1_run.png)
 <p align="center"> Figure 3: Successful workflow run for stage 1    </p>
 
