@@ -26,14 +26,15 @@ permissions:
   contents: read
 
 jobs:
-  defaults:
-    run:
-      working-directory: apigw-eventbridge-schema-validation/cicd-driven-solution
 
   deploy:
-    name: Deploy
+    name: Update API Gateway model with latest schema
     runs-on: ubuntu-latest
     container: node:20
+
+    defaults:
+      run:
+        working-directory: apigw-eventbridge-schema-validation/cicd-driven-solution
 
     steps:
     - name: Checkout
