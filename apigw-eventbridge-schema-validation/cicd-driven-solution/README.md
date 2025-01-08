@@ -34,9 +34,9 @@ You can find the YAML definition for the pipeline at .github/workflows/surgical-
 > Important: this application uses various AWS services and there are costs associated with these services after the Free Tier usage - please see the [AWS Pricing page](https://aws.amazon.com/pricing/) for details. You are responsible for any AWS costs incurred. No warranty is implied in this example.
 
 > [!NOTE]
-For this solution, you'll need to [fork the repository](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo) to run the GitHub Actions workflow within your GitHub account.  If you're new to GitHub Actions, you may want to review their [documentation](https://docs.github.com/en/actions/about-github-actions/understanding-github-actions) before proceeding. 
+For this solution, you'll need to fork the repository to run the GitHub Actions workflow within your GitHub account.  If you're new to GitHub Actions, you may want to review their [documentation](https://docs.github.com/en/actions/about-github-actions/understanding-github-actions) before proceeding. 
 
-1. [Fork the repository](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo)
+1. [Fork the repository](https://github.com/aws-samples/serverless-samples/fork)
 2. Create a new directory, navigate to that directory in a terminal and clone the GitHub repository that you forked previously:
 ``` 
 git clone https://github.com/<your forked repo path>
@@ -100,9 +100,9 @@ Example output:
 aws iam create-access-key --user-name eb-schema-validation-github-actions-user
 ```
 
-9. [Create two repository secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-a-repository), AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, with the values obtained from the previous command.
+9. In your forked repository, [Create two repository secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-a-repository), AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, with the values obtained from the previous command.
 
-10. In the root directory of the project, open the .github/workflows/surgical-event-pipeline.yml file that you copied in step 4.  Update the environment variables based on your project deployment.  You only need to update the API_ID and AWS_REGION if you left the default settings during deployment.  If you need to view your deployment information again, it can be found in the CloudFormation output tab for your deployment.  
+10. In the root directory of your forked repository, open the .github/workflows/surgical-event-pipeline.yml file that you copied in step 4.  Update the environment variables based on your project deployment.  You only need to update the API_ID and AWS_REGION if you left the default settings during deployment.  If you need to view your deployment information again, it can be found in the CloudFormation output tab for your deployment.  
 
 11. Stage and commit the workflow changes to your forked repository.  Ensure the .github/workflows/surgical-event-pipeline.yml at the root of the repository was modified and pushed.   
 
@@ -155,14 +155,14 @@ Here's an example output, if successful:
 }
 ```
 
-Once the first schema version is created in the EventBridge Schema Registry, you can run the GitHub Actions workflow.  Before doing so, make sure the TEST_FILE_PREFIX environment variable is set to "stage1" in the GitHub Actions YAML workflow file.
+Once the first schema version is created in the EventBridge Schema Registry, you can run the GitHub Actions workflow.  Before doing so, make sure the TEST_FILE_PREFIX environment variable is set to "stage1" in the.github/workflows/surgical-event-pipeline.yml workflow file at the root of your repository.
 ```  
 ...
 TEST_FILE_PREFIX: "stage1"
 ...
 ```
 
-The GitHub Actions workflow can be initiated by either committing a change to the repository main branch or manually through the GitHub UI or CLI by following this [guide](https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/manually-running-a-workflow).  To enable the workflow to run on commit, remove the comments for the 2 lines referenced toward the top of the workflow file.  Run the workflow.  This will download the latest schema version, apply it to the API Gateway model and test sending an event to API Gateway and through to EventBridge.
+The GitHub Actions workflow can be initiated by either committing a change to the repository main branch or manually through the GitHub UI or CLI by following this [guide](https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/manually-running-a-workflow).  To enable the workflow to run on commit, remove the comments for the 2 lines referenced toward the top of the workflow file.  Running the GitHub Actions workflow will download the latest schema version, apply it to the API Gateway model, and send a test event to API Gateway.  Run the GitHub Actions workflow.    
  
 An example of the GitHub Actions web interface for a manual workflow run: 
 ![](../assets/github_workflow_manual_run.png)
@@ -172,7 +172,7 @@ Example output of a successful workflow run:
 ![](../assets/github_workflow_success_stage1_run.png)
 <p align="center"> Figure 3: Successful workflow run for stage 1    </p>
 
-To test the second event stage, run the following command to send another event to the custom event bus. 
+After a successful run of the workflow, you can move onto stage 2.  To test the second event stage, run the following command to send another event to the custom event bus. 
 
 ```
 curl --location --request POST '<YOUR API URL>' \
@@ -330,11 +330,11 @@ sam delete
 
 ![](../assets/github-actions-repo-secrets.png)
 
-3. List access keys and delete them from the IAM user
+3. List access keys and delete them from the IAM user.  If you changed the default user names during the deployment steps, make sure to update the following commands.
 
 List access keys
 ```
-aws iam list-access-keys --user <user_name> 
+aws iam list-access-keys --user eb-schema-validation-github-actions-user
 ```
 
 Delete access key using AccessKeyId from previous command: 
@@ -342,15 +342,15 @@ Delete access key using AccessKeyId from previous command:
 ```
 aws iam delete-access-key \
     --access-key-id <access key id> \
-    --user-name <user name>
+    --user-name eb-schema-validation-github-actions-user
 ```
 
-4. Remove user policies and delete the IAM user created for GitHub Actions
+4. Remove user policies and delete the IAM user created for GitHub Actions.  
 
 ```
-aws iam detach-user-policy --user-name <user name> --policy-arn arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator
-aws iam detach-user-policy --user-name <user name> --policy-arn arn:aws:iam::aws:policy/AmazonEventBridgeReadOnlyAccess
-aws iam delete-user --user-name <user name>
+aws iam detach-user-policy --user-name eb-schema-validation-github-actions-user --policy-arn arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator
+aws iam detach-user-policy --user-name eb-schema-validation-github-actions-user --policy-arn arn:aws:iam::aws:policy/AmazonEventBridgeReadOnlyAccess
+aws iam delete-user --user-name eb-schema-validation-github-actions-user
 ```
 5. Delete your forked repository   
 
