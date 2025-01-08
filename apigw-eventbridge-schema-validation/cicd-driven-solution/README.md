@@ -67,17 +67,17 @@ The GitHub Action workflow uses the ["Configure AWS Credentials V2"](https://git
 
 For this sample, you'll need a user with permissions to administer API Gateway to update the model and deploy changes, and EventBridge read only access to list and download schemas.
 
-7. [Create the user in IAM](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) and add required permissions.  If you don't have access to perform this operation, you may need to work with your AWS engineering team.  Replace \<user name\> with a descriptive user name of your choice, such as github-actions-schema-validation.  
+7. [Create the user in IAM](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html) and add required permissions.  If you don't have access to perform this operation, you may need to work with your AWS engineering team.  Feel free to replace the user name in the following commands with a descriptive user name of your choice.   
 
 ```
-aws iam create-user --user-name <user name>
-aws iam attach-user-policy --user-name <user name> --policy-arn arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator
-aws iam attach-user-policy --user-name <user name> --policy-arn arn:aws:iam::aws:policy/AmazonEventBridgeReadOnlyAccess
+aws iam create-user --user-name eb-schema-validation-github-actions-user
+aws iam attach-user-policy --user-name eb-schema-validation-github-actions-user --policy-arn arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator
+aws iam attach-user-policy --user-name eb-schema-validation-github-actions-user --policy-arn arn:aws:iam::aws:policy/AmazonEventBridgeReadOnlyAccess
 ```
 You can verify permissions by running: 
 
 ```
-aws iam list-attached-user-policies --user-name <user name>
+aws iam list-attached-user-policies --user-name eb-schema-validation-github-actions-user
 ```
 
 Example output: 
@@ -97,7 +97,7 @@ Example output:
 8. Generate the access key id and secret access key.  Note the output, you'll need it for the next step. 
 
 ```
-aws iam create-access-key --user-name <user name>
+aws iam create-access-key --user-name eb-schema-validation-github-actions-user
 ```
 
 9. [Create two repository secrets](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-a-repository), AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, with the values obtained from the previous command.
