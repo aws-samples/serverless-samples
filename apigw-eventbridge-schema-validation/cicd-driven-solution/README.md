@@ -352,7 +352,13 @@ aws iam detach-user-policy --user-name eb-schema-validation-github-actions-user 
 aws iam detach-user-policy --user-name eb-schema-validation-github-actions-user --policy-arn arn:aws:iam::aws:policy/AmazonEventBridgeReadOnlyAccess
 aws iam delete-user --user-name eb-schema-validation-github-actions-user
 ```
-5. Delete your forked repository   
+5. Delete the EventBridge schema 
+```
+aws schemas delete-schema \
+    --registry-name discovered-schemas \
+    --schema-name scheduling.event@Surgical
+```
+6. Delete your forked repository   
 
 ## Next steps
 
