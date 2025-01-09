@@ -246,7 +246,7 @@ TEST_FILE_PREFIX: "stage2"
 ...
 ```
 
-Save the workflow file, push changes to the repository and start another workflow execution.  If you did not enable automatic workflow execution on push to you repository, run the workflow manually again.  It will download the latest schema, apply it to API Gateway and verify by running the stage2 integration test.  If the tests pass, the new schema was applied successfully. 
+Save the workflow file, push changes to the repository and start another workflow execution.  If you did not enable automatic workflow execution on push to you repository, run the workflow manually again.  It will download the latest schema, apply it to API Gateway and verify by running the stage2 integration test.  If the tests pass, the new schema was applied successfully.  An example is shown below.  
 
 ![](../assets/integration-test-run.png)
 <p align="center"> Figure 4: Successful integration test run for stage 2   </p>
