@@ -20,7 +20,7 @@ env:
   AWS_REGION: "us-west-2" # Replace with your AWS Region
   REGISTRY_NAME: "discovered-schemas"
   SCHEMA_NAME: "scheduling.event@Surgical"
-  API_ID: "xd5cnble6l"   # Replace with your API Gateway ID
+  API_ID: "i48znro4wj"   # Replace with your API Gateway ID
   API_MODEL_NAME: "surgical"
   TEST_FILE_PREFIX: "stage1"
 
