@@ -104,6 +104,17 @@ aws iam create-access-key --user-name eb-schema-validation-github-actions-user
 
 10. In the root directory of your forked repository, open the .github/workflows/surgical-event-pipeline.yml file that you copied in step 4.  Update the environment variables based on your project deployment.  You only need to update the API_ID and AWS_REGION if you left the default settings during deployment.  If you need to view your deployment information again, it can be found in the CloudFormation output tab for your deployment.  
 
+Example of environment variable section in the workflow file: 
+```
+env:
+  AWS_REGION: "us-east-1" # Replace with your AWS Region
+  REGISTRY_NAME: "discovered-schemas"
+  SCHEMA_NAME: "scheduling.event@Surgical"
+  API_ID: "9tc80z9qqf"   # Replace with your API Gateway ID
+  API_MODEL_NAME: "surgical"
+  TEST_FILE_PREFIX: "stage1"
+```
+
 11. Stage and commit the workflow changes to your forked repository.  Ensure the .github/workflows/surgical-event-pipeline.yml at the root of the repository was modified and pushed.   
 
 ## Testing
