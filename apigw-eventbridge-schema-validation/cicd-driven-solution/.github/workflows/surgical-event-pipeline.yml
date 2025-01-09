@@ -9,7 +9,7 @@ name: Update API Gateway model with latest schema
 
 on:
 
-  # Comment out next two lines to run workflow on commit to main branch
+  # Uncomment the next two lines to run the GitHub Actions workflow on pushes to main branch
   #  push:
   #    branches: [ "main" ]
 
