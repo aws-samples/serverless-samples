@@ -62,7 +62,7 @@ jobs:
         run: node src/updateSchema.mjs
 
       - name: Wait for API Gateway deployment to stage
-        run: sleep 30
+        run: sleep 60
 
       - name: integration-tests
         continue-on-error: true
