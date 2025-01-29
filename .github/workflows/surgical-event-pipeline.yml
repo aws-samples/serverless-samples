@@ -20,9 +20,9 @@ env:
   AWS_REGION: "us-west-2" # Replace with your AWS Region
   REGISTRY_NAME: "discovered-schemas"
   SCHEMA_NAME: "scheduling.event@Surgical"
-  API_ID: "xpoq6yeijh"   # Replace with your API Gateway ID
+  API_ID: "jaye7yo6kb"   # Replace with your API Gateway ID
   API_MODEL_NAME: "surgical"
-  TEST_FILE_PREFIX: "stage2"
+  TEST_FILE_PREFIX: "stage1"
 
 permissions:
   contents: read
@@ -62,7 +62,7 @@ jobs:
         run: node src/updateSchema.mjs
 
       - name: Wait for API Gateway deployment to stage
-        run: sleep 30
+        run: sleep 60
 
       - name: integration-tests
         continue-on-error: true
