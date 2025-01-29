@@ -24,9 +24,7 @@ The following architecture uses Eventbridge schema discovery to generate new sch
 <p style="text-align:center; font-style: italic"> Figure 2: Architecture that uses Lambda to update API Gateway model when a new schema is detected in EventBridge </p>
 
 ### CI CD Driven Schema Updater
-Another automated option is to control these changes through your CI CD pipeline.  In this solution, the Lambda function does not apply the new schema directly to an API Gateway model.  It only downloads, processes and stores the new schema to a repository (i.e. Git, S3, artifact repository) where the CI CD pipeline can reference it.  This allows for additional testing and checks before schemas are promoted and enforced.  This approach provides more control to the schema update process in exchange for some complexity.   
-![CI CD driven schema updater](./assets/CI_CD_Updater.png)
-<p style="text-align:center; font-style: italic"> Figure 3: Architecture that uses a CI CD pipeline to update API Gateway model when a new schema is detected in EventBridge </p>
+You can find this solution in the [cicd-driven-solution](cicd-driven-solution/README.md) subdirectory.  It uses GitHub Actions to demonstrate how this can be implemented within a CI CD pipeline.    
 
 ## Stages of Event Evolution
 
@@ -139,7 +137,7 @@ This is the final stage where events grow into the full business context require
 
 ## Deployment
 
-The following solution uses the Lambda based schema updater architecture referenced above.  This is intended to be deployed to non-production environments.  You'll deploy the solution and test the three stages covered.  You can modify the SAM template and Lambda function to also use this approach for CI CD driven updates or other unique needs your application requires.
+The following deployment is used for both the Lambda and CI CD driven solutions; however, the steps are slightly different.  For the CI CD driven solution, [start here](cicd-driven-solution/README.md#deployment); otherwise, continue on.  This is intended to be deployed to non-production environments.  You'll deploy the solution and test the three stages covered.  You can modify the SAM template and Lambda function to fit the unique needs of your application.
 
 ### Pre-Requisites
 
@@ -149,7 +147,8 @@ The following solution uses the Lambda based schema updater architecture referen
 * [AWS Serverless Application Model](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html) (AWS SAM) installed
 * [NPM](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm) installed
 
-Important: this application uses various AWS services and there are costs associated with these services after the Free Tier usage - please see the [AWS Pricing page](https://aws.amazon.com/pricing/) for details. You are responsible for any AWS costs incurred. No warranty is implied in this example.
+> [!NOTE] 
+> Important: this application uses various AWS services and there are costs associated with these services after the Free Tier usage - please see the [AWS Pricing page](https://aws.amazon.com/pricing/) for details. You are responsible for any AWS costs incurred. No warranty is implied in this example.
 
 ### Deployment Steps
 
@@ -174,9 +173,12 @@ Important: this application uses various AWS services and there are costs associ
 
 Once you have run `sam deploy --guided` mode once and saved arguments to a configuration file (samconfig.toml), you can use `sam deploy` in future to use these defaults.  
 
-Copy the API URL from the output for later use in the testing section.
+Copy the API URL from the output for later use in the testing section.  If deploying CI CD driven solution, [navigate back to deployment steps](cicd-driven-solution/README.md#deployment).  
 
 ## Testing
+
+> [!NOTE]  
+> Testing for the CI CD driven solution can be found in the [cicd-driven-solution](cicd-driven-solution/README.md#testing) subdirectory.  Ensure you complete all deployment steps first.  
 
 This first test will emulate the first stage of our event evolution.  A schema will be created in EventBridge, but won't be enforced in API Gateway until you enable the rule to trigger the Lambda function.  This will be done in the second test.
 
@@ -355,7 +357,7 @@ You've successfully tested all three stages and learned how to automate validati
 
 ## Cleanup
  
-1. Delete the stack
+1. Delete the stack.  Ensure you are in the apigw-eventbridge-schema-validation directory before running.  
     ```
     sam delete
     ```
