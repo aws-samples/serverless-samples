@@ -24,7 +24,7 @@ The following architecture uses Eventbridge schema discovery to generate new sch
 <p style="text-align:center; font-style: italic"> Figure 2: Architecture that uses Lambda to update API Gateway model when a new schema is detected in EventBridge </p>
 
 ### CI CD Driven Schema Updater
-You can find this solution in the [cicd-driven-solution](cicd-driven-solution/README.md) subdirectory
+You can find this solution in the [cicd-driven-solution](cicd-driven-solution/README.md) subdirectory.  It uses GitHub Actions to demonstrate how this can be implemented within a CI CD pipeline.    
 
 ## Stages of Event Evolution
 
