@@ -60,7 +60,7 @@ git push origin main
 To create the pipeline, you will deploy it with CloudFormation. Replace the Github variables and run the following command:
 
 ```bash
-STACK_NAME=
+STACK_NAME=<STACK_NAME>
 
 aws cloudformation deploy --stack-name $STACK_NAME \
 --template-file ./pipeline.yaml --capabilities CAPABILITY_IAM --parameter-overrides \

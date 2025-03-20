@@ -211,20 +211,22 @@ Resources:
       Name: !Ref AWS::StackName
       RoleArn: !GetAtt CodePipelineExecutionRole.Arn
       Stages:
-        - Name: SourceCodeRepo
-          ActionTypeId:
-            Category: Source
-            Owner: ThirdParty
-            Provider: GitHub
-            Version: "1"
-          Configuration:
-            Owner: !Ref gitHubOwner
-            Repo: !Ref gitHubRepo
-            Branch: !Ref gitHubBranch
-            OAuthToken: !Ref gitHubToken
-          OutputArtifacts:
-            - Name: SourceCodeAsZip
-          RunOrder: 1
+        - Name: Source
+          Actions:
+            - Name: SourceCodeRepo
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Provider: GitHub
+                Version: "1"
+              Configuration:
+                Owner: !Ref gitHubOwner
+                Repo: !Ref gitHubRepo
+                Branch: !Ref gitHubBranch
+                OAuthToken: !Ref gitHubToken
+              OutputArtifacts:
+                - Name: SourceCodeAsZip
+              RunOrder: 1
         - Name: Build
           Actions:
             - Name: LocationsServiceCodeBuild
