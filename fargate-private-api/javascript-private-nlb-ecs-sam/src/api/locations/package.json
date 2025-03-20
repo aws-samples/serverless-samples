@@ -6,6 +6,7 @@
     "@aws-sdk/client-dynamodb": "^3.385.0",
     "@aws-sdk/lib-dynamodb": "^3.43.0",
     "@aws-sdk/util-dynamodb": "^3.43.0",
+    "@aws-sdk/smithy-client": "^3.370.0",
     "aws-embedded-metrics": "^2.0.4",
     "aws-xray-sdk": "^3.3.4",
     "body-parser": "^1.20.3",
@@ -14,9 +15,9 @@
     "uuid": "^8.3.2"
   },
   "scripts": {
-    "start": "AWS_EMF_ENVIRONMENT=Local node server.js",
+    "start": "cross-env AWS_EMF_ENVIRONMENT=Local node server.js",
     "test": "jest",
-    "test:unit": "AWS_EMF_ENVIRONMENT=Local jest --silent --testPathPattern=__tests__ --detectOpenHandles"
+    "test:unit": "cross-env AWS_EMF_ENVIRONMENT=Local jest --silent --testPathPattern=__tests__ --detectOpenHandles"
   },
   "devDependencies": {
     "jest": "^27.4.3",

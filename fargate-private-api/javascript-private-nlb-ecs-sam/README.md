@@ -27,11 +27,14 @@ The application uses a Amazon Cognito stack for authentication/authorization and
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html): `aws --version` (Use 2.x)
 - [Node.js](https://nodejs.org/en/download/): `node --version` (Use 14.x)
 - [jq](https://stedolan.github.io/jq/): jq --version
+- [Node.js](https://nodejs.org/en/download/): `node --version` (Use 22.x)
+- [GitHub account](https://github.com/signup/)
+- [GitHub empty repository](https://github.com/new/)
+- [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic/)
 
 ## Deploying with CI/CD pipeline
 You will use the CloudFormation CLI to deploy the stack defined within `pipeline.yaml`. This will deploy the required foundation which will allow you to make changes to your application and deploy them in a CI/CD fashion. 
 The following resources will be created:
-- CodeCommit repository for application code source control
 - Elastic Container Registry repositories for housing the application's container images
 - CodeBuild project for building and testing the application
 - CodePipeline for orchestrating the CI/CD process
@@ -48,6 +51,24 @@ mkdir ../fargate-private-api-cicd && cd ../fargate-private-api-cicd
 git init -b main
 git pull ../serverless-samples fargate-private-api
 ```
+To push the code in GitHub repository, run the following commands (with the desired URL (i.e. HTTPS, SSH) in place of `<GitHub_Repository_URL>`):
+```bash
+git remote add origin <GitHub_Repository_URL>
+git push origin main
+```
+
+To create the pipeline, you will deploy it with CloudFormation. Replace the Github variables and run the following command:
+
+```bash
+STACK_NAME=
+
+aws cloudformation deploy --stack-name $STACK_NAME \
+--template-file ./pipeline.yaml --capabilities CAPABILITY_IAM --parameter-overrides \
+gitHubOwner=<GITHUB_OWNER> \
+gitHubRepo=<GITHUB_REPOSITORY_NAME> \
+gitHubBranch=<GITHUB_BRANCH_NAME> \
+gitHubToken=<GITHUB_PERSONAL_ACCESS_TOKEN>
+```
 
 First we need to create the VPC, so that the CodeBuild instance for the integration testing in the pipeline can use the VPC properties which is required to invoke the private API
 
@@ -61,26 +82,10 @@ To create the pipeline, you will deploy it with CloudFormation. Run the followin
 aws cloudformation deploy --stack-name $STACK_NAME --template-file ./pipeline.yaml --capabilities CAPABILITY_IAM
 ```
 
-Once the stack is created, the pipeline will attempt to run and will fail at the SourceCodeRepo stage as there is no code in the AWS CodeCommit yet.
-
 ***NOTE:** If you change stack name, avoid stack names longer than 25 characters. In case you need longer stack names check comments in the pipeline.yaml and update accordingly.*
 
-***Note:** You may need to set up AWS CodeCommit repository access for HTTPS users [using Git credentials](https://docs.aws.amazon.com/codecommit/latest/userguide/setting-up-gc.html?icmpid=docs_acc_console_connect_np) and [set up the AWS CLI Credential Helper](https://docs.aws.amazon.com/console/codecommit/connect-tc-alert-np).*
 
-To view the CodeCommit URLs, run the following command:
-```bash
-aws cloudformation describe-stacks --stack-name $STACK_NAME | jq -r '.Stacks[0].Outputs[] | select(.OutputKey == "CodeCommitRepositoryHttpUrl" or .OutputKey == "CodeCommitRepositorySshUrl")'
-```
-
-Run the following command (with the desired URL (i.e. HTTPS, SSH) in place of `<CodeCommit_URL>`):
-
-```bash
-git remote add origin <CodeCommit_URL>
-git push origin main
-```
-
-
-This will trigger a new deployment in CodePipeline. Navigate to the CodePipeline in AWS Management Console to see the process and status. You can also release changes manually by clicking the "Release change" button. For the proceeding commands to run successfully, the Production environment has to be deployed, which requires manual approval (via CodePipline in AWS Console) once the integration tests have successfully completed.
+Once the stack is created, it will trigger a new deployment in CodePipeline. Navigate to the CodePipeline in AWS Management Console to see the process and status. You can also release changes manually by clicking the "Release change" button. For the proceeding commands to run successfully, the Production environment has to be deployed, which requires manual approval (via CodePipline in AWS Console) once the integration tests have successfully completed.
 
 ![CodePipeline](./assets/CodePipeline.png)
 
