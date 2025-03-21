@@ -9,8 +9,7 @@ from unittest.mock import patch
 import boto3
 import pytest
 import io
-from moto import mock_dynamodb
-from moto import mock_s3
+from moto import mock_aws
 
 from botocore.response import StreamingBody
 
@@ -23,7 +22,7 @@ JOB_STAUS_COMPLETE = "complete"
 
 @contextmanager
 def setup_test_environment():
-    with mock_dynamodb():
+    with mock_aws():
         set_up_dynamodb()
         yield
 
@@ -48,7 +47,7 @@ def set_up_dynamodb():
         }
     )
 
-@mock_s3
+@mock_aws
 def setup_mock_s3():
     s3_client = boto3.client(
         "s3",
