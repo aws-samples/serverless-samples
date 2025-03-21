@@ -27,7 +27,7 @@ The application uses a Amazon Cognito stack for authentication/authorization and
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html): `aws --version` (Use 2.x)
 - [Node.js](https://nodejs.org/en/download/): `node --version` (Use 22.x)
 - [GitHub account](https://github.com/signup/)
-- [GitHub empty repository](hhttps://github.com/new/)
+- [GitHub empty repository](https://github.com/new/)
 - [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic/)
 
 ## Deploying with CI/CD pipeline
