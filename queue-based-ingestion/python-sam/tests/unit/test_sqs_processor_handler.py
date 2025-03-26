@@ -9,7 +9,7 @@ from unittest.mock import patch
 import boto3
 import pytest
 import io
-from moto import mock_dynamodb
+from moto import mock_aws
 from botocore.response import StreamingBody
 
 SQS_MESSAGE_STORE_TABLE_NAME = 'SQS_MESSAGE_STORE_TEST'
@@ -21,7 +21,7 @@ MOCK_PAYLOAD_KEY= 'mock_payload_key'
 
 @contextmanager
 def setup_test_environment():
-    with mock_dynamodb():
+    with mock_aws():
         set_up_dynamodb()
         yield
 

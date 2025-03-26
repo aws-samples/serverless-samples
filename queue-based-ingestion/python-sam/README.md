@@ -18,6 +18,12 @@ This project contains source code and supporting files for a serverless applicat
 
 The application uses a shared Amazon Cognito stack for authentication/authorization. You will need to create this stack and update `template.yaml` parameters section with the stack name. See the next section for details.
 
+## Prerequisites
+- [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html): `aws --version` (Use 2.x)
+- [GitHub account](https://github.com/signup/)
+- [GitHub empty repository](https://github.com/new/)
+- [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic/)
+
 ## Amazon Cognito Setup
 
 This example uses a shared stack that deploys Amazon Cognito resources. The shared stack will be deployed automatically if you use a CI/CD pipeline. See [README.md](../shared/README.md) in the shared resources directory for the stack manual deployment instructions. After manual deployment finishes, update your AWS SAM template file `template.yaml` parameter CognitoStackName with the shared Cognito stack name.
@@ -158,24 +164,23 @@ git init -b main
 git pull ../serverless-samples queue-based-ingestion
 cd python-sam
 ```
+If you changed stack name, make sure that Parameters section of template.yaml is updated with the output values from the shared Cognito stack
+To push the code in GitHub repository, run the following commands (with the desired URL (i.e. HTTPS, SSH) in place of `<GitHub_Repository_URL>`):
+
+```bash
+git remote add origin <GitHub_Repository_URL>
+git push origin main
+```
 
 To create the pipeline, you will need to run the following command:
 
 ```bash
-aws cloudformation create-stack --stack-name queue-based-ingestion-cicd --template-body file://pipeline.yaml --capabilities CAPABILITY_IAM
+aws cloudformation create-stack --stack-name queue-based-ingestion-cicd --template-body file://pipeline.yaml --capabilities CAPABILITY_IAM --parameter-overrides \
+gitHubOwner=<GITHUB_OWNER> \
+gitHubRepo=<GITHUB_REPOSITORY_NAME> \
+gitHubBranch=<GITHUB_BRANCH_NAME> \
+gitHubToken=<GITHUB_PERSONAL_ACCESS_TOKEN>
 
-```
-
-The pipeline will attempt to run and will fail at the SourceCodeRepo stage as there is no code in the AWS CodeCommit yet.
-
-**Note:** You may need to set up AWS CodeCommit repository access for HTTPS users [using Git credentials](https://docs.aws.amazon.com/codecommit/latest/userguide/setting-up-gc.html?icmpid=docs_acc_console_connect_np) and [set up the AWS CLI Credential Helper](https://docs.aws.amazon.com/console/codecommit/connect-tc-alert-np).
-
-Once you have access to the code repository, navigate to python-sam folder, and, if you changed stack name, make sure that Parameters section of template.yaml is updated with the output values from the shared Cognito stack, and push code base to CodeCommit to start automated deployments.
-You can find URL to AWS CodeCommit Repository in the output section of the CloudFormation stack deployed above.
-
-```bash
-git remote add origin <URL to AWS CodeCommit repository>
-git push origin main
 ```
 
 Navigate to the AWS CodePipeline in AWS Management Console and release this change if needed by clicking "Release change" button.

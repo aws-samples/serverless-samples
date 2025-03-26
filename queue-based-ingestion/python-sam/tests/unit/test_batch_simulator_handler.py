@@ -9,15 +9,15 @@ from unittest.mock import patch
 import boto3
 import pytest
 import io
-from moto import mock_s3
+from moto import mock_aws
 
 BATCH_SIMULATOR_BUCKET_NAME = 'BATCH_SIMULATOR_TEST_BUCKET'
 @contextmanager
 def setup_test_environment():
-    with mock_s3():
+    with mock_aws():
         setup_mock_s3()
         yield
-@mock_s3
+@mock_aws
 def setup_mock_s3():
     s3_client = boto3.client(
         "s3",

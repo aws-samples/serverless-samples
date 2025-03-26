@@ -14,6 +14,12 @@ This project contains source code and supporting files for a serverless applicat
 
 The application uses a shared Amazon Cognito stack for authentication/authorization. The shared stack will be deployed automatically if you use the CI/CD pipeline included in this project. If you deploy the application manually, you will need to create this stack and update the `template.yaml` parameters section with the stack name. See the manual deployment section for more details.
 
+## Prerequisites
+- [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html): `aws --version` (Use 2.x)
+- [GitHub account](https://github.com/signup/)
+- [GitHub empty repository](https://github.com/new/)
+- [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic/)
+
 ## Deploy the CI/CD pipeline
 To create the CI/CD pipeline, we will copy the code from the serverless-samples directory into a new and separate directory and use this new directory as the codebase for your pipeline. 
 
@@ -26,23 +32,18 @@ serverless-graphql-api-cicd:~$ git init -b main
 serverless-graphql-api-cicd:~$ git pull ../serverless-samples serverless-graphql-api
 serverless-graphql-api-cicd:~$ cd python-appsync-sam-vtl
 ```
+If you changed stack name, make sure that Parameters section of template.yaml is updated with the output values from the shared Amazon Cognito stack
+To push the code in GitHub repository, run the following commands (with the desired URL (i.e. HTTPS, SSH) in place of `<GitHub_Repository_URL>`):
+
+```bash
+git remote add origin <GitHub_Repository_URL>
+git push origin main
+```
 
 To create the pipeline, run the following command:
 
 ```console
 python-appsync-sam-vtl:~$ aws cloudformation create-stack --stack-name serverless-api-pipeline --template-body file://pipeline.yaml --capabilities CAPABILITY_IAM
-```
-The pipeline will attempt to run and will fail at the SourceCodeRepo stage as there is no code in the AWS CodeCommit yet.
-
-***NOTE:** If you change stack name, avoid stack names longer than 25 characters. In case you need longer stack names, check comments in the pipeline.yaml and update accordingly.*
-
-***Note:** You may need to set up AWS CodeCommit repository access for HTTPS users [using Git credentials](https://docs.aws.amazon.com/codecommit/latest/userguide/setting-up-gc.html?icmpid=docs_acc_console_connect_np) and [set up the AWS CLI Credential Helper](https://docs.aws.amazon.com/console/codecommit/connect-tc-alert-np).*
-
-Once you have access to the code repository, navigate to the python-appsync-sam-vtl folder, and, if you changed stack name, make sure that Parameters section of template.yaml is updated with the output values from the shared Amazon Cognito stack, and push the code base to CodeCommit to start an automated deployment:
-
-```console
-python-appsync-sam-vtl:~$ git remote add origin <URL to AWS CodeCommit repository>
-python-appsync-sam-vtl:~$ git push origin main
 ```
 
 Navigate to the AWS CodePipeline in the AWS Management Console and release this change if needed by clicking "Release change" button.
