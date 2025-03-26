@@ -16,11 +16,6 @@ Parameters:
     Type: String
 
 Resources:
-  CodeRepository:
-    Type: AWS::CodeCommit::Repository
-    Properties:
-      RepositoryName: !Ref AWS::StackName
-      RepositoryDescription: Code repository for serverless GraphQL API sample application
 
   # S3 Bucket for build artifacts
   BuildArtifactsBucket:
@@ -460,7 +455,6 @@ Resources:
       Path: /
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AWSCodePipeline_FullAccess
-        - arn:aws:iam::aws:policy/AWSCodeCommitReadOnly
       Policies:
         - PolicyName: CodePipelineAccess
           PolicyDocument:
@@ -481,17 +475,6 @@ Resources:
                   - "s3:ListBucket"
                   - "s3:*Object*"
                 Resource: !Sub "arn:aws:s3:::${BuildArtifactsBucket}/*"
-              - Effect: Allow
-                Action:
-                  - "codecommit:GitPull"
-                  - "codecommit:Get*"
-                  - "codecommit:List*"
-                  - "codecommit:BatchGet*"
-                  - "codecommit:BatchDescribe*"
-                  - "codecommit:Describe*"
-                  - "codecommit:EvaluatePullRequestApprovalRules"
-                  - "codecommit:UploadArchive"
-                Resource: !Sub "arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${CodeRepository.Name}"
         - PolicyName: CodePipelineCodeBuildAndCloudformationAccess
           PolicyDocument:
             Version: "2012-10-17"
@@ -521,13 +504,6 @@ Resources:
                   - !Sub "arn:aws:cloudformation:${AWS::Region}:aws:transform/Serverless-2016-10-31"
 
 Outputs:
-  CodeCommitRepositoryHttpUrl:
-    Description: AWS CodeCommit Git repository
-    Value: !GetAtt CodeRepository.CloneUrlHttp
-
-  CodeCommitRepositorySshUrl:
-    Description: AWS CodeCommit Git repository
-    Value: !GetAtt CodeRepository.CloneUrlSsh
 
   BuildArtifactS3Bucket:
     Description: Amazon S3 Bucket for Pipeline and Build artifacts
