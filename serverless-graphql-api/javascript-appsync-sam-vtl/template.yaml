@@ -21,20 +21,27 @@ Parameters:
     Default: apiAdmins
 
 Resources:
-  GraphQLApi:
-    Type: AWS::Serverless::GraphQLApi
+GraphQLApi:
+    Type: "AWS::Serverless::GraphQLApi"
     Properties:
       Name: !Sub "GraphQLBackendAPI-${AWS::StackName}"
       Auth:
         Type: AMAZON_COGNITO_USER_POOLS
         UserPool:
-          UserPoolId: !Sub "${CognitoStackName}-UserPool"
+          UserPoolId: 
+            Fn::ImportValue: !Sub "${CognitoStackName}-UserPool"
           AwsRegion: !Ref "AWS::Region"
           DefaultAction: ALLOW
+        AdminGroupName: 
+            !Sub "${UserPoolAdminGroupName}
       XrayEnabled: true
+      Logging:
+        Level: ALL
+        ExcludeVerboseContent: false
+        CloudWatchLogsRoleArn: !GetAtt PushToCloudWatchLogsRole.Arn
       Tags:
         Stack: !Sub "${AWS::StackName}"
-      SchemaInline:  |
+      SchemaInline :                       
         schema {
           query: Query
           mutation: Mutation
@@ -48,7 +55,6 @@ Resources:
           resources: [Resource]
           timestamp: String
         }
-
         type Resource {
           resourceid: ID!
           locationid: ID!
@@ -58,7 +64,6 @@ Resources:
           bookings: [Booking]
           timestamp: String
         }
-
         type Booking {
           bookingid: ID!
           resourceid: ID!
@@ -66,20 +71,18 @@ Resources:
           starttimeepochtime: Float
           timestamp: String
         }
-
         type Mutation {
           createLocation(locationid: ID, name: String!, description: String, imageUrl: String): Location
-          @aws_auth(cognito_groups: ["apiAdmins"])
+          @aws_auth(cognito_groups: ["${AdminGroupName}"])
           deleteLocation(locationid: ID!): ID
-          @aws_auth(cognito_groups: ["apiAdmins"])
+          @aws_auth(cognito_groups: ["${AdminGroupName}"])
           createResource(resourceid: ID, locationid: ID!, name: String!, description: String, type: String): Resource
-          @aws_auth(cognito_groups: ["apiAdmins"])
+          @aws_auth(cognito_groups: ["${AdminGroupName}"])
           deleteResource(resourceid: ID!): ID
-          @aws_auth(cognito_groups: ["apiAdmins"])
+          @aws_auth(cognito_groups: ["${AdminGroupName}"])
           createBooking(bookingid: ID, resourceid: ID!, starttimeepochtime: Float): Booking
           deleteBooking(bookingid: ID!): ID
         }
-
         type Query {
           getAllLocations: [Location]
           getLocation(locationid: ID!): Location
@@ -87,7 +90,6 @@ Resources:
           getBooking(bookingid: ID!): Booking
           getMyBookings: [Booking]
         }
-
         type Subscription {
           locationCreated: Location
           @aws_subscribe(mutations: ["createLocation"])
@@ -96,139 +98,77 @@ Resources:
           bookingCreated(resourceid: ID): Booking
           @aws_subscribe(mutations: ["createBooking"])
         }
+      DataSources:
+        - Type: AMAZON_DYNAMODB
+          Name: LocationsDataSource
+          TableName: !Ref LocationsTable
+          ServiceRoleArn: !GetAtt AppSyncServiceRole.Arn
+          Region: !Ref "AWS::Region"
+        - Type: AMAZON_DYNAMODB
+          Name: ResourcesDataSource
+          TableName: !Ref ResourcesTable
+          ServiceRoleArn: !GetAtt AppSyncServiceRole.Arn
+          Region: !Ref "AWS::Region"
+        - Type: AMAZON_DYNAMODB
+          Name: BookingsDataSource
+          TableName: !Ref BookingsTable
+          ServiceRoleArn: !GetAtt AppSyncServiceRole.Arn
+          Region: !Ref "AWS::Region"
+      Resolvers:  
+        Mutation.createLocation:
+          DataSource: LocationsTable
+          RequestMappingTemplate: ./src/mapping_templates/create_location_request.vtl
+          ResponseMappingTemplate: ./src/mapping_templates/create_location_response.vtl
+        Mutation.deleteLocation:
+          DataSource: LocationsTable
+          RequestMappingTemplate: ./src/mapping_templates/delete_location_request.vtl
+          ResponseMappingTemplate: ./src/mapping_templates/delete_location_response.vtl
+        Query.getLocation:
+          DataSource: LocationsTable
+          RequestMappingTemplate: ./src/mapping_templates/get_location_request.vtl
+          ResponseMappingTemplate: ./src/mapping_templates/get_location_response.vtl
+        Query.getAllLocations:
+          DataSource: LocationsTable
+          RequestMappingTemplate: ./src/mapping_templates/get_locations_request.vtl
+          ResponseMappingTemplate: ./src/mapping_templates/get_locations_response.vtl
+        Mutation.createResource:
+          DataSource: ResourcesTable
+          RequestMappingTemplate: ./src/mapping_templates/create_resource_request.vtl
+          ResponseMappingTemplate: ./src/mapping_templates/create_resource_response.vtl
+        Mutation.deleteResource:
+          DataSource: ResourcesTable
+          RequestMappingTemplate: ./src/mapping_templates/delete_resource_request.vtl
+          ResponseMappingTemplate: ./src/mapping_templates/delete_resource_response.vtl
+        Query.getResource:
+          DataSource: ResourcesTable
+          RequestMappingTemplate: ./src/mapping_templates/get_resource_request.vtl
+          ResponseMappingTemplate: ./src/mapping_templates/get_resource_response.vtl
+        Location.resources:
+          DataSource: ResourcesTable
+          RequestMappingTemplate: ./src/mapping_templates/get_resources_for_location_request.vtl
+          ResponseMappingTemplate: ./src/mapping_templates/get_resources_for_location_response.vtl
+        Mutation.createBooking:
+          DataSource: BookingsTable
+          RequestMappingTemplate: ./src/mapping_templates/create_booking_request.vtl
+          ResponseMappingTemplate: ./src/mapping_templates/create_booking_response.vtl
+        Mutation.deleteBooking:
+          DataSource: BookingsTable
+          RequestMappingTemplate: ./src/mapping_templates/delete_booking_request.vtl
+          ResponseMappingTemplate: ./src/mapping_templates/delete_booking_response.vtl
+        Query.getBooking:
+          DataSource: BookingsTable
+          RequestMappingTemplate: ./src/mapping_templates/get_booking_request.vtl
+          ResponseMappingTemplate: ./src/mapping_templates/get_booking_response.vtl
+        Resource.bookings:
+          DataSource: BookingsTable
+          RequestMappingTemplate: ./src/mapping_templates/get_bookings_for_resource_request.vtl
+          ResponseMappingTemplate: ./src/mapping_templates/get_bookings_for_resource_response.vtl
+        Query.getMyBookings:
+          DataSource: BookingsTable
+          RequestMappingTemplate: ./src/mapping_templates/get_bookings_for_user_request.vtl
+          ResponseMappingTemplate: ./src/mapping_templates/get_bookings_for_user_response.vtl
 
-  CreateLocationFunction:
-    Type: AWS::AppSync::FunctionConfiguration
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      Name: CreateLocation
-      DataSourceName: LocationsDataSource
-      FunctionVersion: "2018-05-29"
-      RequestMappingTemplateS3Location: ./src/mapping_templates/create_location_request.vtl
-      ResponseMappingTemplateS3Location: ./src/mapping_templates/create_location_response.vtl
 
-  DeleteLocationFunction:
-    Type: AWS::AppSync::FunctionConfiguration
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      Name: DeleteLocation
-      DataSourceName: LocationsDataSource
-      FunctionVersion: "2018-05-29"
-      RequestMappingTemplateS3Location: ./src/mapping_templates/delete_location_request.vtl
-      ResponseMappingTemplateS3Location: ./src/mapping_templates/delete_location_response.vtl
-
-  GetLocationFunction:
-    Type: AWS::AppSync::FunctionConfiguration
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      Name: GetLocation
-      DataSourceName: LocationsDataSource
-      FunctionVersion: "2018-05-29"
-      RequestMappingTemplateS3Location: ./src/mapping_templates/get_location_request.vtl
-      ResponseMappingTemplateS3Location: ./src/mapping_templates/get_location_response.vtl
-
-  GetAllLocationsFunction:
-    Type: AWS::AppSync::FunctionConfiguration
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      Name: GetAllLocations
-      DataSourceName: LocationsDataSource
-      FunctionVersion: "2018-05-29"
-      RequestMappingTemplateS3Location: ./src/mapping_templates/get_all_locations_request.vtl
-      ResponseMappingTemplateS3Location: ./src/mapping_templates/get_all_locations_response.vtl
-
-  CreateLocationResolver:
-    Type: AWS::AppSync::Resolver
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      TypeName: Mutation
-      FieldName: createLocation
-      Kind: PIPELINE
-      PipelineConfig:
-        Functions:
-          - !GetAtt CreateLocationFunction.FunctionId
-      RequestMappingTemplate: "{}"
-      ResponseMappingTemplate: "{}"
-
-  DeleteLocationResolver:
-    Type: AWS::AppSync::Resolver
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      TypeName: Mutation
-      FieldName: deleteLocation
-      Kind: PIPELINE
-      PipelineConfig:
-        Functions:
-          - !GetAtt DeleteLocationFunction.FunctionId
-      RequestMappingTemplate: "{}"
-      ResponseMappingTemplate: "{}"
-
-  GetLocationResolver:
-    Type: AWS::AppSync::Resolver
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      TypeName: Query
-      FieldName: getLocation
-      Kind: PIPELINE
-      PipelineConfig:
-        Functions:
-          - !GetAtt GetLocationFunction.FunctionId
-      RequestMappingTemplate: "{}"
-      ResponseMappingTemplate: "{}"
-
-  GetAllLocationsResolver:
-    Type: AWS::AppSync::Resolver
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      TypeName: Query
-      FieldName: getAllLocations
-      Kind: PIPELINE
-      PipelineConfig:
-        Functions:
-          - !GetAtt GetAllLocationsFunction.FunctionId
-      RequestMappingTemplate: "{}"
-      ResponseMappingTemplate: "{}"
-
-  LocationsDataSource:
-    Type: AWS::AppSync::DataSource
-    Properties:
-      ApiId: !GetAtt GraphQLApi.ApiId
-      Name: LocationsDataSource
-      Type: AMAZON_DYNAMODB
-      DynamoDBConfig:
-        TableName: !Ref LocationsTable
-        AwsRegion: !Ref "AWS::Region"
-      ServiceRoleArn: !GetAtt AppSyncServiceRole.Arn
-
-  LocationsTable:
-    Type: AWS::Serverless::SimpleTable
-    Properties:
-      PrimaryKey:
-        Name: locationid
-        Type: String
-      ProvisionedThroughput:
-        ReadCapacityUnits: 2
-        WriteCapacityUnits: 2
-      Tags:
-        Stack: !Sub "${AWS::StackName}"
-
-  AppSyncServiceRole:
-    Type: "AWS::IAM::Role"
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          -
-            Effect: "Allow"
-            Principal:
-              Service:
-                - "appsync.amazonaws.com"
-            Action:
-              - "sts:AssumeRole"
-      Path: "/"
-      Tags:
-        - Key: "Stack" 
-          Value: !Sub "${AWS::StackName}"
 
   AppSyncLogsKMSKey:
     Type: AWS::KMS::Key
@@ -314,6 +254,25 @@ Resources:
         
 
   
+  AppSyncServiceRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "appsync.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      Tags:
+        - Key: "Stack" 
+          Value: !Sub "${AWS::StackName}"
+
+  
 
   DynamoDBAccessPolicy:
     Type: "AWS::IAM::Policy"
@@ -348,6 +307,18 @@ Resources:
       Roles:
         -
           Ref: "AppSyncServiceRole"
+
+  LocationsTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: locationid
+        Type: String
+      ProvisionedThroughput:
+        ReadCapacityUnits: 2
+        WriteCapacityUnits: 2
+      Tags:
+        Stack: !Sub "${AWS::StackName}"
 
   ResourcesTable:
     Type: AWS::DynamoDB::Table
