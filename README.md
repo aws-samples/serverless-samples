@@ -57,6 +57,8 @@ This repository contains samples of Serverless application code.
 - ## apigw-log-analytic
   This solution provides analytics for Amazon API Gateway (REST endpoints). It visualizes and analyzes API Gateway access logs using an Amazon QuickSight dashboard. This pre-built dashboard enables you to analyze API usage by visualizing various components. These visuals include customer identifiers with usage plans, helping developers identify popular routes, errors, authentication methods, and users reaching quota limits. [README](./apigw-log-analytic)
 
+- ## multi-account-private-apigw-ecs-sam
+  This solution how to enable secure, centralized API communications across multiple AWS accounts that contains various compute services using a private AWS PrivateLink. This allows to expose multiple backend microservices through single cetralized API Gateway. It integrates securely with different backend services using VPC endpoints powered by AWS PrivateLink.
 
 ## Security
 
