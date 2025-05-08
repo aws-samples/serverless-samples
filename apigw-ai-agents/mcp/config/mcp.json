@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+      "api-expert-server": {
+        "command": "uv",
+        "args": [
+          "--directory",
+          "..../api-helper/",
+          "run",
+          "api_helper.py"
+        ],
+        "disabled": false,
+        "env": {
+          "AWS_REGION": "us-east-1",
+          "EXPERT_AGENT_ID": "XXXX",
+          "EXPERT_AGENT_ALIAS": "XXXX",
+          "OAC_BUILDER_AGENT_ID": "XXXX",
+          "OAC_BUILDER_AGENT_ALIAS": "XXXX",
+          "API_BUILDER_AGENT_ID": "XXXX",
+          "API_BUILDER_AGENT_ALIAS": "XXXX"
+        }
+      }
+
+  }
+}
