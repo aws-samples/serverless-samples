@@ -2,6 +2,12 @@
 
 This repository contains samples of Serverless application code.
 
+- ## apigw-ai-agents
+
+  This sample focuses on developing a set of Amazon Bedrock agents, tools, knowledge bases for RAG that focus on APIs and integration services. Implementation would be tailored to follow your internal best practices, guidance, and governance requirements. You can add your organization specific content to the knowledge bases, modify agent prompts and their configurations to fit your use case, add your organizational logic to the tools' logic, or introduce additional agents and tools to be used by the agents.
+
+  [[README]](./apigw-ai-agents)
+
 - ## lambda-ecs-dual-deploy 
 
   This AWS Lambda / ECS Dual Deploy Sample Application demonstrates the steps necessary to build a container image that runs on both AWS Lambda and on another container service like AWS Elastic Container Service (ECS).
