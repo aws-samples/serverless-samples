@@ -40,6 +40,8 @@ The following environment variables must be configured for MCP server to functio
 - `OAC_BUILDER_AGENT_ALIAS`: Alias of the OpenAPI Builder Bedrock agent
 - `API_BUILDER_AGENT_ID`: ID of the API Builder Bedrock agent
 - `API_BUILDER_AGENT_ALIAS`: Alias of the API Builder Bedrock agent
+- `API_INSPECTOR_AGENT_ID`: ID of the API Inspector Bedrock agent
+- `API_INSPECTOR_AGENT_ALIAS`: Alias of the API Inspector Bedrock agent
 
 
 ## MCP Client Configuration

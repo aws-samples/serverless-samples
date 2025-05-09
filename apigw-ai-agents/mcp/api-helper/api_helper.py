@@ -240,6 +240,56 @@ async def build_API(request: str) -> str:
         logger.error(f"Error invoking API Builder agent: {e}")
         return "Error: Could not complete requested action."
 
+@mcp.tool()
+async def inspect_API(request: str) -> str:
+    """ 
+    An API inspector tool retrieves and inspects API definition and configuration.
+    This tool is designed to analyze and identify potential issues in API Gateway configurations and OpenAPI specifications. 
+
+    Use this tool to inspect and evaluate API endpoints against AWS best practices, security standards, and Well-Architected principles. 
+    
+    The tool retrieves API configuration data directly from AWS accounts when provided with an API ID. 
+    It examines critical aspects including:
+     - security configurations, 
+     - throttling settings,
+     - resource limits, 
+     - request validation,
+     - WAF integration, 
+     - observability setups, 
+     - documentation completeness. 
+     
+     After analysis, tool delivers a structured assessment of identified issues alongside actionable recommendations for improvement.
+    
+    Args:
+        request: 
+            Request for an API inspection that includes ID of an API to be inspected 
+    """
+    
+    # Initialize the Bedrock Agent Runtime client
+    bedrock_agent_runtime = boto3.client(
+        'bedrock-agent-runtime',
+        region_name=os.getenv("AWS_REGION"),
+        config=config
+    )
+    try:
+        logger.debug(f"API Inspector tool request: {request}")
+        # Invoke bedrock API Expert agent and get response
+        response = bedrock_agent_runtime.invoke_agent(
+            agentId=os.getenv("API_INSPECTOR_AGENT_ID"),
+            agentAliasId=os.getenv("API_INSPECTOR_AGENT_ALIAS"),
+            sessionId=str(uuid.uuid4()),
+            inputText=request
+        )
+        result=""
+        for event in response.get("completion"):
+            result+=event['chunk']['bytes'].decode('utf-8')
+
+        logger.debug(f"API Inspector agent response: {result}")
+        return result
+    except Exception as e:
+        logger.error(f"Error invoking API Inspector agent: {e}")
+        return "Error: Could not complete requested action."
+
 
 if __name__ == "__main__":
     # Initialize and run the server

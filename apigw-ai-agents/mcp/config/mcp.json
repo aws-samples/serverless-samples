@@ -16,7 +16,9 @@
           "OAC_BUILDER_AGENT_ID": "XXXX",
           "OAC_BUILDER_AGENT_ALIAS": "XXXX",
           "API_BUILDER_AGENT_ID": "XXXX",
-          "API_BUILDER_AGENT_ALIAS": "XXXX"
+          "API_BUILDER_AGENT_ALIAS": "XXXX",
+          "API_INSPECTOR_AGENT_ID": "XXXX",
+          "API_INSPECTOR_AGENT_ALIAS": "XXXX"
         }
       }
 
