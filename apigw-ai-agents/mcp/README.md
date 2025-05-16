@@ -52,6 +52,7 @@ If you are using Amazon Q Developer CLI:
 1. Update configuration file with the agent ID and alias ID using output values from the stacks you've deployed using Infrastructure as Code deployment [instructions](../iac/README.md)
 2. Copy configuration file to `~/.aws/amazonq`
 3. Copy rules file to `~/.amazonq/rules` (you may need to create this directory first)
+4. Start Q chat and run command `/context add --global "~/.amazonq/rules/q-cli-rules.md"`
 
 **Note that rules guide MCP client to use API Expert for all API related questions and tasks. You may need to adjust them to keep balance between API Expert, other tools, and your development environment built-in capabilities.**
 
