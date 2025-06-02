@@ -15,8 +15,8 @@ In the application code they add the 'X-API-Version' header for a small percenta
 ## Setup
 ### AWS SAM
 This project includes two SAM templates:
-- `template-path-based-routing.yaml` - application with the API gateway path based routing example, initial state of the application
-- `template-header-based-routing.yaml` - application with the API gateway header based routing example, end state of the application
+- `template-path-based-routing.yaml` - application with the API Gateway path based routing example, initial state of the application
+- `template-header-based-routing.yaml` - application with the API Gateway header based routing example, end state of the application
 
 You can deploy either of them following instructions below.
 
