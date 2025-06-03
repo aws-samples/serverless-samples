@@ -2,6 +2,9 @@
 
 This is example implementation of the Amazon API Gateway routing rules based on a resource path or header value. 
 
+See Amazon API Gateway feature launch [blog post](https://aws.amazon.com/blogs/compute/dynamically-routing-requests-with-amazon-api-gateway-routing-rules/).
+
+
 ## Overview
 Consider a real-world scenario where a team needs to gradually migrate users to a new API version, such as an e-commerce platform updating its checkout API from v1 to v2. First, the team creates two API deployments in API Gateway - one for each version. Then, they set up a Routing Rule with priority 1 that checks for the header 'X-API-Version: v2' and routes matching requests to the v2 API. They also create another rule with priority 2 that routes all requests with paths starting with '/checkout' to the v1 API as a fallback
 

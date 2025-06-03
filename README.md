@@ -16,6 +16,12 @@ This solution doesn't replace existing governance structures—it amplifies thei
 
   [[README]](./apigw-ai-agents)
 
+- ## apigw-header-routing
+
+This is example implementation of the Amazon API Gateway routing rules based on a resource path or header value. This Amazon API gateway capability enables you to route API requests based on HTTP header values, either independently or in combination with URL paths. In this post, you will learn how to use this new capability to implement routing strategies such as API versioning and gradual rollouts without modifying your API endpoints.
+
+[[README]](./apigw-header-routing)
+
 - ## lambda-ecs-dual-deploy 
 
   This AWS Lambda / ECS Dual Deploy Sample Application demonstrates the steps necessary to build a container image that runs on both AWS Lambda and on another container service like AWS Elastic Container Service (ECS).
