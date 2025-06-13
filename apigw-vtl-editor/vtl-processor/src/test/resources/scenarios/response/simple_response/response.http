@@ -1,0 +1,5 @@
+HTTP/1.1 200 OK
+Content-Type: application/json
+X-Request-Id: req-12345
+
+{"status":"success","data":{"id":123,"name":"Test Item"}}

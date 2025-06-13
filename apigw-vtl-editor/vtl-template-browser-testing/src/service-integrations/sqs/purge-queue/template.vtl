@@ -1,0 +1,4 @@
+{
+  #set($params = $util.parseJson($input.body))
+  "QueueUrl": "$params.queueUrl"
+}

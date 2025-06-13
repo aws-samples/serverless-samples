@@ -1,0 +1,4 @@
+{
+  "result": {"status":"success","data":{"id":123,"name":"Test Item"}},
+  "requestId": "req-12345"
+}

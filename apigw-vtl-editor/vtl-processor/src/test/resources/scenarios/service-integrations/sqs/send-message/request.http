@@ -1,0 +1,29 @@
+POST /queue/send HTTP/1.1
+Host: sqs.us-east-1.amazonaws.com
+Content-Type: application/json
+X-Amz-Target: AmazonSQS.SendMessage
+X-Amz-Date: 20250515T162600Z
+
+
+{
+  "body": "{\"orderId\":\"order-12345\",\"customerId\":\"cust-6789\",\"items\":[{\"productId\":\"prod-101\",\"quantity\":2,\"price\":29.99},{\"productId\":\"prod-202\",\"quantity\":1,\"price\":49.99}],\"totalAmount\":109.97}",
+  "delaySeconds": 30,
+  "messageAttributes": {
+    "OrderType": {
+      "dataType": "String",
+      "stringValue": "Priority"
+    },
+    "Region": {
+      "dataType": "String",
+      "stringValue": "West"
+    },
+    "Timestamp": {
+      "dataType": "Number",
+      "stringValue": "1621234567890"
+    },
+    "BinaryAttribute": {
+      "dataType": "Binary",
+      "binaryValue": "SGVsbG8gV29ybGQ="
+    }
+  }
+}

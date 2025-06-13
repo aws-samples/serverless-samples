@@ -1,0 +1,5 @@
+POST /resource HTTP/1.1
+Host: api.example.com
+Content-Type: application/json
+
+{"user":{"name":"John","details":{"age":30,"active":true}},"items":["apple","banana","orange"]}
