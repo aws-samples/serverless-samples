@@ -1,0 +1,12 @@
+POST /stepfunctions/execution HTTP/1.1
+Host: states.us-east-1.amazonaws.com
+Content-Type: application/json
+X-Amz-Target: AWSStepFunctions.StartExecution
+X-Amz-Date: 20250515T163200Z
+
+
+{
+  "stateMachineArn": "arn:aws:states:us-east-1:123456789012:stateMachine:MyStateMachine",
+  "name": "MyExecution-12345",
+  "input": "{\"orderId\":\"order-67890\",\"customerId\":\"cust-12345\",\"orderItems\":[{\"productId\":\"prod-101\",\"quantity\":2},{\"productId\":\"prod-202\",\"quantity\":1}],\"shippingAddress\":{\"street\":\"123 Main St\",\"city\":\"Seattle\",\"state\":\"WA\",\"zipCode\":\"98101\"}}"
+}

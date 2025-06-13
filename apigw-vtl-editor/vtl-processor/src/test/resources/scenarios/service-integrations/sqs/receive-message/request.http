@@ -1,0 +1,25 @@
+POST /queue/receive HTTP/1.1
+Host: sqs.us-east-1.amazonaws.com
+Content-Type: application/json
+X-Amz-Target: AmazonSQS.ReceiveMessage
+X-Amz-Date: 20250515T162700Z
+
+
+{
+  "queueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/orders-queue",
+  "maxNumberOfMessages": 10,
+  "visibilityTimeout": 30,
+  "waitTimeSeconds": 20,
+  "attributeNames": [
+    "All",
+    "ApproximateFirstReceiveTimestamp",
+    "ApproximateReceiveCount",
+    "SenderId",
+    "SentTimestamp"
+  ],
+  "messageAttributeNames": [
+    "All",
+    "OrderType",
+    "Region"
+  ]
+}

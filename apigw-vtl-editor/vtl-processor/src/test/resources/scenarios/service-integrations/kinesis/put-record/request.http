@@ -1,0 +1,14 @@
+POST /kinesis/record HTTP/1.1
+Host: kinesis.us-east-1.amazonaws.com
+Content-Type: application/json
+X-Amz-Target: Kinesis_20131202.PutRecord
+X-Amz-Date: 20250515T163100Z
+
+
+{
+  "streamName": "MyKinesisStream",
+  "data": "{\"userId\":\"user123\",\"event\":\"pageView\",\"page\":\"/products\",\"timestamp\":\"2025-05-15T16:31:00Z\"}",
+  "partitionKey": "user123",
+  "sequenceNumberForOrdering": "1234567890",
+  "explicitHashKey": "0"
+}

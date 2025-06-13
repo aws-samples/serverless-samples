@@ -77,6 +77,8 @@ This is example implementation of the Amazon API Gateway routing rules based on 
 - ## apigw-log-analytic
   This solution provides analytics for Amazon API Gateway (REST endpoints). It visualizes and analyzes API Gateway access logs using an Amazon QuickSight dashboard. This pre-built dashboard enables you to analyze API usage by visualizing various components. These visuals include customer identifiers with usage plans, helping developers identify popular routes, errors, authentication methods, and users reaching quota limits. [README](./apigw-log-analytic)
 
+- ## apigw-vtl-editor
+  The API Gateway VTL Editor provides a browser-based environment for testing Apache Velocity Template Language (VTL) transformations used in AWS API Gateway. Instead of deploying templates to AWS and testing them live—which creates slow iteration cycles and complex debugging processes — developers can now locally test test VTL templates with immediate feedback. This tool accelerates API development by enabling rapid template iteration and reducing deployment errors before templates reach production. [README](./apigw-vtl-editor/)
 
 ## Security
 
