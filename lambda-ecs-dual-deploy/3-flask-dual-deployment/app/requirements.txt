@@ -3,4 +3,4 @@
 
 # place dependencies here
 Flask==2.2.5
-requests==2.32.2
+requests==2.32.4
