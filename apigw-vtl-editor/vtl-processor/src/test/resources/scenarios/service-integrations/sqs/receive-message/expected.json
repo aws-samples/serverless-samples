@@ -1,0 +1,18 @@
+{
+  "QueueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/orders-queue",
+  "MaxNumberOfMessages": 10,
+  "VisibilityTimeout": 30,
+  "WaitTimeSeconds": 20,
+  "AttributeNames": [
+    "All",
+    "ApproximateFirstReceiveTimestamp",
+    "ApproximateReceiveCount",
+    "SenderId",
+    "SentTimestamp"
+  ],
+  "MessageAttributeNames": [
+    "All",
+    "OrderType",
+    "Region"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "context": {
+    "accountId": "123456789012",
+    "apiId": "api123",
+    "httpMethod": "POST",
+    "resourcePath": "/stepfunctions/sync-execution",
+    "stage": "prod",
+    "requestId": "req-stepfunctions-sync-12345"
+  },
+  "stageVariables": {
+    "environment": "prod",
+    "region": "us-east-1"
+  }
+}

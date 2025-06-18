@@ -1,0 +1,15 @@
+#if($input.path('$.user.details.active'))
+{
+  "name": "$input.path('$.user.name')",
+  "age": $input.path('$.user.details.age'),
+  "items": [
+    #foreach($item in $input.path('$.items'))
+    "$item"#if($foreach.hasNext),#end
+    #end
+  ]
+}
+#else
+{
+  "status": "inactive"
+}
+#end

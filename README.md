@@ -2,6 +2,26 @@
 
 This repository contains samples of Serverless application code.
 
+- ## apigw-ai-agents
+
+ This sample solution provides an intelligent, AI-powered assistant that delivers real-time guidance for API development and governance on AWS. By integrating Amazon Bedrock agents with customizable knowledge bases, it bridges the gap between AWS best practices and your organization's specific governance requirements—creating a seamless, frictionless developer experience. The centralized knowledge base can be consumed by various services, including through a Model Context Protocol (MCP) server that enables developers to access this guidance directly within their existing development tools and IDEs.
+
+Key Benefits
+ - Developer Acceleration: Provides immediate, contextual advice during API development, reducing cycle times and preventing costly rework by ensuring designs align with both AWS and company standards from the outset.
+ - Governance as Code: Transforms static documentation and governance frameworks into interactive, real-time guidance embedded within development workflows, increasing compliance without adding friction.
+ - Operational Excellence: Automatically reviews deployed API configurations, proactively identifies improvement opportunities, and delivers recommendations to stakeholders, enhancing security posture and performance.
+ - Knowledge Centralization: Consolidates organizational wisdom, AWS documentation, and best practices into a unified advisory system that grows smarter with every interaction.
+
+This solution doesn't replace existing governance structures—it amplifies their effectiveness by making them accessible exactly when developers and operators need them most, enabling your organization to implement "golden path" strategies that balance innovation speed with operational stability.
+
+  [[README]](./apigw-ai-agents)
+
+- ## apigw-header-routing
+
+This is example implementation of the Amazon API Gateway routing rules based on a resource path or header value. This Amazon API gateway capability enables you to route API requests based on HTTP header values, either independently or in combination with URL paths. In this post, you will learn how to use this new capability to implement routing strategies such as API versioning and gradual rollouts without modifying your API endpoints.
+
+[[README]](./apigw-header-routing)
+
 - ## lambda-ecs-dual-deploy 
 
   This AWS Lambda / ECS Dual Deploy Sample Application demonstrates the steps necessary to build a container image that runs on both AWS Lambda and on another container service like AWS Elastic Container Service (ECS).
@@ -59,6 +79,10 @@ This repository contains samples of Serverless application code.
 
 - ## multi-account-private-apigw-ecs-sam
   This solution how to enable secure, centralized API communications across multiple AWS accounts that contains various compute services using a private AWS PrivateLink. This allows to expose multiple backend microservices through single cetralized API Gateway. It integrates securely with different backend services using VPC endpoints powered by AWS PrivateLink.
+
+- ## apigw-vtl-editor
+  The API Gateway VTL Editor provides a browser-based environment for testing Apache Velocity Template Language (VTL) transformations used in AWS API Gateway. Instead of deploying templates to AWS and testing them live—which creates slow iteration cycles and complex debugging processes — developers can now locally test test VTL templates with immediate feedback. This tool accelerates API development by enabling rapid template iteration and reducing deployment errors before templates reach production. [README](./apigw-vtl-editor/)
+
 
 ## Security
 

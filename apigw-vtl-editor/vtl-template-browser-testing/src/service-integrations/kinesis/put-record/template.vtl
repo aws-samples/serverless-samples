@@ -1,0 +1,12 @@
+{
+  #set($params = $util.parseJson($input.body))
+  "StreamName": "$params.streamName",
+  "Data": "$util.base64Encode($params.data)",
+  "PartitionKey": "$params.partitionKey"
+  #if($params.sequenceNumberForOrdering)
+  ,"SequenceNumberForOrdering": "$params.sequenceNumberForOrdering"
+  #end
+  #if($params.explicitHashKey)
+  ,"ExplicitHashKey": "$params.explicitHashKey"
+  #end
+}

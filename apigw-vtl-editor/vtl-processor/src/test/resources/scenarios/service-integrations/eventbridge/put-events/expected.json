@@ -1,0 +1,22 @@
+{
+  "Entries": [
+    {
+      "Source": "com.example.app",
+      "DetailType": "UserSignup",
+      "Detail": "{\"userId\":\"user123\",\"signupTime\":\"2025-05-15T16:25:00Z\",\"userType\":\"premium\"}",
+      "Resources": [
+        "arn:aws:lambda:us-east-1:123456789012:function:ProcessSignup"
+      ],
+      "EventBusName": "default"
+    },
+    {
+      "Source": "com.example.app",
+      "DetailType": "UserActivity",
+      "Detail": "{\"userId\":\"user123\",\"action\":\"login\",\"timestamp\":\"2025-05-15T16:25:10Z\"}",
+      "Resources": [
+        "arn:aws:lambda:us-east-1:123456789012:function:TrackActivity"
+      ],
+      "EventBusName": "custom-bus"
+    }
+  ]
+}

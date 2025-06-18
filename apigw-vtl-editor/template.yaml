@@ -1,0 +1,36 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: VTL Template Processor Lambda Function
+
+Resources:
+  VTLProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: vtl-processor/target/vtl-processor-1.0-SNAPSHOT.jar
+      Handler: com.vtl.processor.VTLProcessorHandler::handleRequest
+      Runtime: java11
+      Architectures:
+        - x86_64
+      MemorySize: 512
+      Timeout: 15
+      Events:
+        ProcessVTL:
+          Type: Api
+          Properties:
+            Path: /process-vtl
+            Method: post
+            Cors:
+              AllowOrigin: "'*'"
+              AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+              AllowMethods: "'POST,OPTIONS'"
+
+Outputs:
+  VTLProcessorFunction:
+    Description: "VTL Processor Lambda Function ARN"
+    Value: !GetAtt VTLProcessorFunction.Arn
+  VTLProcessorApi:
+    Description: "API Gateway endpoint URL for Prod stage for VTL Processor function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/process-vtl/"
+  VTLProcessorFunctionName:
+    Description: "VTL Processor Lambda Function"
+    Value: !Ref VTLProcessorFunction

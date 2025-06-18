@@ -1,0 +1,649 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. 
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Template for Amazon Bedrock Knowledge Base using an existing S3 bucket and OpenSearch index'
+
+Parameters:
+  ExistingS3BucketName:
+    Type: String
+    Description: Name of the existing S3 bucket containing documents
+  
+  BedrockEmbeddingModelId:
+    Type: String
+    Description: Bedrock model ID to use for embeddings
+    Default: "amazon.titan-embed-text-v2:0"
+
+Resources:
+  # IAM Policies for Bedrock Knowledge Base Role
+  S3AccessForKnowledgeBasePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Policy for S3 access for Bedrock Knowledge Base
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 's3:GetObject'
+              - 's3:ListBucket'
+            Resource:
+              - !Sub 'arn:aws:s3:::${ExistingS3BucketName}'
+              - !Sub 'arn:aws:s3:::${ExistingS3BucketName}/*'
+
+  StartIngestionJobPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Policy for starting Bedrock ingestion jobs
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'bedrock:StartIngestionJob'
+              - 'bedrock:GetIngestionJob'
+            Resource: 
+              - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*'
+              - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*/data-source/*'
+
+  BedrockOpenSearchAccessPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Policy for Bedrock to access OpenSearch
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'aoss:CreateCollection'
+              - 'aoss:DeleteCollection'
+              - 'aoss:UpdateCollection'
+              - 'aoss:GetCollection'
+              - 'aoss:CreateIndex'
+              - 'aoss:DeleteIndex'
+              - 'aoss:UpdateIndex'
+              - 'aoss:GetIndex'
+              - 'aoss:BatchGetCollection'
+              - 'aoss:APIAccessAll'
+            Resource: 
+              - !Sub 'arn:aws:aoss:${AWS::Region}:${AWS::AccountId}:collection/*'
+
+  # IAM Policies for Lambda Execution Role
+  LambdaOpenSearchAccessPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Policy for Lambda to access OpenSearch
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'aoss:CreateCollection'
+              - 'aoss:DeleteCollection'
+              - 'aoss:UpdateCollection'
+              - 'aoss:GetCollection'
+              - 'aoss:CreateIndex'
+              - 'aoss:DeleteIndex'
+              - 'aoss:UpdateIndex'
+              - 'aoss:GetIndex'
+              - 'aoss:BatchGetCollection'
+              - 'aoss:APIAccessAll'
+            Resource: 
+              - !Sub 'arn:aws:aoss:${AWS::Region}:${AWS::AccountId}:collection/*'
+          - Effect: Allow
+            Action:
+              - 'aoss:CreateSecurityPolicy'
+              - 'aoss:GetSecurityPolicy'
+              - 'aoss:UpdateSecurityPolicy'
+            Resource: 
+              - !Sub 'arn:aws:aoss:${AWS::Region}:${AWS::AccountId}:security-policy/encryption/*'
+              - !Sub 'arn:aws:aoss:${AWS::Region}:${AWS::AccountId}:security-policy/network/*'
+          - Effect: Allow
+            Action:
+              - 'aoss:CreateAccessPolicy'
+              - 'aoss:GetAccessPolicy'
+              - 'aoss:UpdateAccessPolicy'
+            Resource: 
+              - !Sub 'arn:aws:aoss:${AWS::Region}:${AWS::AccountId}:access-policy/*'
+
+  LambdaBedrockAgentAccessPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Policy for Lambda to access Bedrock Agent
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - "bedrock:GetIngestionJob"
+              - "bedrock:StartIngestionJob"
+            Resource: 
+              - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*'
+              - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*/data-source/*'
+
+  # IAM Role for Bedrock Knowledge Base
+  BedrockKnowledgeBaseRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonBedrockFullAccess'
+        - !Ref S3AccessForKnowledgeBasePolicy
+        - !Ref StartIngestionJobPolicy
+        - !Ref BedrockOpenSearchAccessPolicy
+
+  # OpenSearch Serverless encryption policy
+  OpenSearchEncryptionPolicy:
+    Type: AWS::OpenSearchServerless::SecurityPolicy
+    Properties:
+      Name: !Sub "kb-enc-${AWS::StackName}"
+      Type: encryption
+      Description: "Encryption policy for vector store"
+      Policy: !Sub |
+        {
+          "Rules": [
+            {
+              "ResourceType": "collection",
+              "Resource": [
+                "collection/kb-store-${AWS::StackName}"
+              ]
+            }
+          ],
+          "AWSOwnedKey": true
+        }
+
+  # OpenSearch Serverless network policy
+  OpenSearchNetworkPolicy:
+    Type: AWS::OpenSearchServerless::SecurityPolicy
+    Properties:
+      Name: !Sub "kb-net-${AWS::StackName}"
+      Type: network
+      Description: "Network policy for vector store"
+      Policy: !Sub |
+        [
+          {
+            "Rules": [
+              {
+                "ResourceType": "collection",
+                "Resource": [
+                  "collection/kb-store-${AWS::StackName}"
+                ]
+              }
+            ],
+            "AllowFromPublic": true
+          }
+        ]
+
+
+
+  # OpenSearch Serverless data access policy
+  OpenSearchDataAccessPolicy:
+    Type: AWS::OpenSearchServerless::AccessPolicy
+    DependsOn: [BedrockKnowledgeBaseRole, LambdaExecutionRole]
+    Properties:
+      Name: !Sub "kb-data-${AWS::StackName}"
+      Type: data
+      Description: "Data access policy for vector store"
+      Policy: !Sub |
+        [
+          {
+            "Rules": [
+              {
+                "ResourceType": "collection",
+                "Resource": [
+                  "collection/kb-store-${AWS::StackName}"
+                ],
+                "Permission": [
+                  "aoss:*"
+                ]
+              },
+              {
+                "ResourceType": "index",
+                "Resource": [
+                  "index/kb-store-${AWS::StackName}/*"
+                ],
+                "Permission": [
+                  "aoss:*"
+                ]
+              }
+            ],
+            "Principal": [
+              "${BedrockKnowledgeBaseRole.Arn}",
+              "${LambdaExecutionRole.Arn}",
+              "arn:aws:iam::${AWS::AccountId}:root"
+            ]
+          }
+        ]
+
+  # Create a vector store using Amazon OpenSearch Serverless
+  VectorStore:
+    Type: AWS::OpenSearchServerless::Collection
+    DependsOn: [OpenSearchEncryptionPolicy, OpenSearchNetworkPolicy, OpenSearchDataAccessPolicy]
+    Properties:
+      Name: !Sub "kb-store-${AWS::StackName}"
+      Type: VECTORSEARCH
+      Description: Vector store for Bedrock Knowledge Base
+
+  # Create the vector index in OpenSearch
+  CreateVectorIndex:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Timeout: 300
+      MemorySize: 256
+      Environment:
+        Variables:
+          COLLECTION_ID: !Ref VectorStore
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+          import time
+          import urllib.request
+          import urllib.parse
+          import urllib.error
+          import base64
+          import hmac
+          import hashlib
+          import os
+          from datetime import datetime
+
+          def sign(key, msg):
+              return hmac.new(key, msg.encode('utf-8'), hashlib.sha256).digest()
+
+          def getSignatureKey(key, dateStamp, regionName, serviceName):
+              kDate = sign(('AWS4' + key).encode('utf-8'), dateStamp)
+              kRegion = sign(kDate, regionName)
+              kService = sign(kRegion, serviceName)
+              kSigning = sign(kService, 'aws4_request')
+              return kSigning
+
+          def create_signed_request(host, region, method, url, service='aoss', payload=None, headers=None):
+              # Get AWS credentials
+              session = boto3.Session()
+              credentials = session.get_credentials()
+              access_key = credentials.access_key
+              secret_key = credentials.secret_key
+              session_token = credentials.token
+              
+              # Create a date for headers and the credential string
+              t = datetime.utcnow()
+              amzdate = t.strftime('%Y%m%dT%H%M%SZ')
+              datestamp = t.strftime('%Y%m%d')
+              
+              # Create canonical request
+              canonical_uri = url
+              canonical_querystring = ''
+              
+              if headers is None:
+                  headers = {}
+              
+              headers['host'] = host
+              headers['x-amz-date'] = amzdate
+              if session_token:
+                  headers['x-amz-security-token'] = session_token
+              
+              if payload:
+                  payload_hash = hashlib.sha256(payload.encode('utf-8')).hexdigest()
+                  headers['content-type'] = 'application/json'
+              else:
+                  payload_hash = hashlib.sha256(b'').hexdigest()
+              
+              headers['x-amz-content-sha256'] = payload_hash
+              
+              # Sort headers by key
+              canonical_headers = ''
+              signed_headers = ''
+              for key in sorted(headers.keys()):
+                  canonical_headers += key.lower() + ':' + headers[key] + '\n'
+                  signed_headers += key.lower() + ';'
+              signed_headers = signed_headers[:-1]  # Remove trailing ;
+              
+              # Create canonical request
+              canonical_request = method + '\n' + canonical_uri + '\n' + canonical_querystring + '\n' + canonical_headers + '\n' + signed_headers + '\n' + payload_hash
+              
+              # Create string to sign
+              algorithm = 'AWS4-HMAC-SHA256'
+              credential_scope = datestamp + '/' + region + '/' + service + '/' + 'aws4_request'
+              string_to_sign = algorithm + '\n' +  amzdate + '\n' +  credential_scope + '\n' +  hashlib.sha256(canonical_request.encode('utf-8')).hexdigest()
+              
+              # Calculate signature
+              signing_key = getSignatureKey(secret_key, datestamp, region, service)
+              signature = hmac.new(signing_key, string_to_sign.encode('utf-8'), hashlib.sha256).hexdigest()
+              
+              # Add signing information to the request
+              authorization_header = algorithm + ' ' + 'Credential=' + access_key + '/' + credential_scope + ', ' +  'SignedHeaders=' + signed_headers + ', ' + 'Signature=' + signature
+              headers['Authorization'] = authorization_header
+              
+              return headers
+
+          def send_response(event, context, response_status, response_data):
+              response_body = {
+                  'Status': response_status,
+                  'Reason': f'See details in CloudWatch Log Stream: {context.log_stream_name}',
+                  'PhysicalResourceId': context.log_stream_name,
+                  'StackId': event['StackId'],
+                  'RequestId': event['RequestId'],
+                  'LogicalResourceId': event['LogicalResourceId'],
+                  'Data': response_data
+              }
+              
+              response_body_json = json.dumps(response_body)
+              headers = {
+                  'Content-Type': '',
+                  'Content-Length': str(len(response_body_json))
+              }
+              
+              try:
+                  req = urllib.request.Request(
+                      url=event['ResponseURL'],
+                      data=response_body_json.encode('utf-8'),
+                      headers=headers,
+                      method='PUT'
+                  )
+                  response = urllib.request.urlopen(req)
+                  print(f"Status code: {response.getcode()}")
+                  print("CFN response sent successfully")
+              except Exception as e:
+                  print(f"Error sending CFN response: {str(e)}")
+
+
+          def handler(event, context):
+              print("Creating vector index in OpenSearch Serverless")
+              print(event)
+              response_data = {}
+
+              if event['RequestType'] == 'Delete':
+                  send_response(event, context, "SUCCESS", response_data)
+                  return
+              
+              try:
+                  # Get the region from the Lambda function ARN
+                  region = context.invoked_function_arn.split(':')[3]
+                  
+                  # Get collection ID from environment variable
+                  collection_id = os.environ.get('COLLECTION_ID')
+                  if not collection_id:
+                      raise ValueError("COLLECTION_ID environment variable is not set")
+                  
+                  print(f"Using collection ID from environment variable: {collection_id}")
+                  
+                  # Get collection details
+                  aoss = boto3.client('opensearchserverless')
+                  # Wait for collection to be active
+                  max_retries = 10
+                  collection_endpoint = None
+                  
+                  for i in range(max_retries):
+                      try:
+                          response = aoss.batch_get_collection(ids=[collection_id])
+                          if 'collectionDetails' in response and len(response['collectionDetails']) > 0:
+                              status = response['collectionDetails'][0]['status']
+                              print(f"Collection status: {status}")
+                              if status == 'ACTIVE':
+                                  collection_endpoint = response['collectionDetails'][0]['collectionEndpoint']
+                                  break
+                          else:
+                              print("Collection not found or no details available")
+                      except Exception as e:
+                          print(f"Error getting collection: {str(e)}")
+                      
+                      if i == max_retries - 1:
+                          error_msg = f"Collection did not become active after {max_retries} attempts"
+                          print(error_msg)
+                          response_data['Error'] = error_msg
+                          send_response(event, context, "FAILED", response_data)
+                      
+                      print(f"Waiting for collection to become active (attempt {i+1}/{max_retries})...")
+                      time.sleep(10)
+                  
+                  if not collection_endpoint:
+                      error_msg = "Failed to get collection endpoint"
+                      print(error_msg)
+                      response_data['Error'] = error_msg
+                      send_response(event, context, "FAILED", response_data)
+                  
+                  print(f"Collection endpoint: {collection_endpoint}")
+                  
+                  # Wait a bit more to ensure collection is fully ready
+                  time.sleep(10)
+                  
+                  # Create the index
+                  index_name = "vector-index"
+                  index_body = json.dumps({
+                  "settings": {
+                      "index.knn": "true",
+                      "number_of_shards": 1,
+                      "knn.algo_param.ef_search": 512,
+                      "number_of_replicas": 0,
+                  },
+                  "mappings": {
+                      "properties": {
+                      "vector": {
+                          "type": "knn_vector",
+                          "dimension": 1024,
+                          "method": {
+                              "name": "hnsw",
+                              "engine": "faiss",
+                              "space_type": "l2"
+                          },
+                      },
+                      "text": {
+                          "type": "text"
+                      },
+                      "text-metadata": {
+                          "type": "text" 
+                      }
+                      }
+                  }
+                  })
+                  
+                  host = collection_endpoint.replace('https://', '')
+                  url_path = f"/{index_name}"
+                  
+                  headers = create_signed_request(
+                      host=host,
+                      region=region,
+                      method='PUT',
+                      url=url_path,
+                      payload=index_body
+                  )
+                  
+                  # Make the request
+                  req = urllib.request.Request(
+                      url=f"https://{host}{url_path}",
+                      data=index_body.encode('utf-8'),
+                      headers=headers,
+                      method='PUT'
+                  )
+                  
+                  try:
+                      response = urllib.request.urlopen(req)
+                      response_data['Message'] = f"Successfully created index: {response.read().decode('utf-8')}"
+                      print("Index created")
+                      #wait for 10 seconds before proceeding
+                      time.sleep(10)
+                      send_response(event, context, "SUCCESS", response_data)
+                  except urllib.error.HTTPError as e:
+                      error_body = e.read().decode('utf-8')
+                      print(f"Failed to create index: {error_body}")
+                      # If the index already exists, consider it a success
+                      if e.code == 400 and "resource_already_exists_exception" in error_body:
+                          print("Index already exists, considering this a success")
+                          response_data['Message'] = f'Index {index_name} already exists'
+                          send_response(event, context, "SUCCESS", response_data)
+                      else:
+                          response_data['Error'] = error_body
+                          send_response(event, context, "FAILED", response_data)
+                  except Exception as e:
+                      print(f"Error creating index: {str(e)}")
+                      response_data['Error'] = f"Error creating index: {str(e)}"
+                      send_response(event, context, "FAILED", response_data)
+              except Exception as e:
+                  print(f"Error: {str(e)}")
+                  response_data['Error'] = f'Error: {str(e)}'
+                  send_response(event, context, "FAILED", response_data)
+                
+  # IAM role for Lambda function
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+        - !Ref LambdaOpenSearchAccessPolicy
+        - !Ref LambdaBedrockAgentAccessPolicy
+
+  # Create vector index in OpenSearch 
+  VectorIndex:
+    Type: Custom::LambdaInvoke
+    DependsOn: [VectorStore, OpenSearchDataAccessPolicy]
+    Properties:
+      ServiceToken: !GetAtt CreateVectorIndex.Arn
+
+  # Create the Bedrock Knowledge Base
+  BedrockKnowledgeBase:
+    Type: AWS::Bedrock::KnowledgeBase
+    DependsOn: VectorIndex
+    Properties:
+      Name: !Sub "kb-${AWS::StackName}"
+      Description: "Knowledge Base created with data from S3"
+      KnowledgeBaseConfiguration:
+        Type: VECTOR
+        VectorKnowledgeBaseConfiguration:
+          EmbeddingModelArn: !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockEmbeddingModelId}'
+      RoleArn: !GetAtt BedrockKnowledgeBaseRole.Arn
+      StorageConfiguration:
+        Type: OPENSEARCH_SERVERLESS
+        OpensearchServerlessConfiguration:
+          CollectionArn: !GetAtt VectorStore.Arn
+          FieldMapping:
+            MetadataField: "text-metadata"
+            TextField: "text"
+            VectorField: "vector"
+          VectorIndexName: "vector-index"
+
+  # Create a data source for the Knowledge Base
+  BedrockKnowledgeBaseDataSource:
+    Type: AWS::Bedrock::DataSource
+    Properties:
+      DataSourceConfiguration:
+        Type: S3
+        S3Configuration:
+          BucketArn: !Sub 'arn:aws:s3:::${ExistingS3BucketName}'
+      KnowledgeBaseId: !GetAtt BedrockKnowledgeBase.KnowledgeBaseId
+      Name: !Sub "kb-${AWS::StackName}-ds"
+
+  # Lambda function to create ingestion job
+  CreateIngestionJobFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Timeout: 300
+      Code:
+        ZipFile: |
+          import boto3
+          import time
+          import urllib.request
+          import json
+
+          def send_response(event, context, response_status, response_data):
+              response_body = {
+                  'Status': response_status,
+                  'Reason': f'See details in CloudWatch Log Stream: {context.log_stream_name}',
+                  'PhysicalResourceId': context.log_stream_name,
+                  'StackId': event['StackId'],
+                  'RequestId': event['RequestId'],
+                  'LogicalResourceId': event['LogicalResourceId'],
+                  'Data': response_data
+              }
+              
+              response_body_json = json.dumps(response_body)
+              headers = {
+                  'Content-Type': '',
+                  'Content-Length': str(len(response_body_json))
+              }
+              
+              try:
+                  req = urllib.request.Request(
+                      url=event['ResponseURL'],
+                      data=response_body_json.encode('utf-8'),
+                      headers=headers,
+                      method='PUT'
+                  )
+                  response = urllib.request.urlopen(req)
+                  print(f"Status code: {response.getcode()}")
+                  print("CFN response sent successfully")
+              except Exception as e:
+                  print(f"Error sending CFN response: {str(e)}")
+
+          def handler(event, context):
+            print(event)
+            response_data = {}
+            try:
+              if event['RequestType'] == 'Create' or event['RequestType'] == 'Update':
+                bedrock = boto3.client('bedrock-agent')
+                
+                # Get parameters from the event
+                kb_id = event['ResourceProperties']['KnowledgeBaseId']
+                ds_id = event['ResourceProperties']['DataSourceId']
+                job_name = event['ResourceProperties']['Name']
+                job_description = event['ResourceProperties'].get('Description', 'Created by CloudFormation')
+                
+                # Create the ingestion job
+                response = bedrock.start_ingestion_job(
+                  knowledgeBaseId=kb_id,
+                  dataSourceId=ds_id,
+                  description=job_description
+                )
+               
+                response_data['Message'] = f"Successfully started sync job."
+                send_response(event, context, "SUCCESS", response_data)
+              elif event['RequestType'] == 'Delete':
+                # Optionally handle deletion
+                send_response(event, context, "SUCCESS", response_data)
+            except Exception as e:
+              print(f"Error: {str(e)}")
+              response_data['Error'] = str(e)
+              send_response(event, context, "FAILED", response_data)
+
+  # Custom resource to create ingestion job
+  BedrockIngestionJob:
+    Type: Custom::BedrockIngestionJob
+    Properties:
+      ServiceToken: !GetAtt CreateIngestionJobFunction.Arn
+      KnowledgeBaseId: !GetAtt BedrockKnowledgeBase.KnowledgeBaseId
+      DataSourceId: !GetAtt BedrockKnowledgeBaseDataSource.DataSourceId
+      Name: !Sub "kb-${AWS::StackName}-InitialSync"
+      Description: 'Initial sync of documents from S3 to Knowledge Base'
+
+Outputs:
+  KnowledgeBaseId:
+    Description: ID of the created Knowledge Base
+    Value: !GetAtt BedrockKnowledgeBase.KnowledgeBaseId
+    Export:
+      Name: !Sub "${AWS::StackName}-KnowledgeBaseId"
+  
+  DataSourceId:
+    Description: ID of the created Data Source
+    Value: !GetAtt BedrockKnowledgeBaseDataSource.DataSourceId
+  
+  VectorStoreId:
+    Description: ID of the created Vector Store
+    Value: !Ref VectorStore
