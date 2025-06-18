@@ -18,6 +18,21 @@ Important: this application uses various AWS services and there are costs associ
 - [AWS Serverless Application Model](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html)  (AWS SAM) installed.
 - Setup .aws/credentials [named profiles](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html) namely **centralAccount**, **accountA** and **accountB** so you can run CLI and AWS SAM commands against them.
 
+### Security Considerations
+
+This solution implements the following security best practices:
+
+- **Restricted Egress Rules**: All security groups have explicit egress rules that only allow necessary outbound traffic:
+  - HTTP (80) and HTTPS (443) for API and container services
+  - DNS (53/UDP) for name resolution
+  - Internal VPC communication for resources within the same VPC
+- **Restricted Ingress Rules**: All security groups have explicit ingress rules that only allow necessary inbound traffic:
+  - HTTP (80) and HTTPS (443) for API and container services
+  - No wildcard protocol (-1) rules are used for better security
+- **Private Communication**: Uses AWS PrivateLink to establish secure, private connections between accounts
+- **Least Privilege**: IAM roles follow the principle of least privilege
+- **Public Subnet Configuration**: Public subnets have MapPublicIpOnLaunch set to false to prevent automatic assignment of public IP addresses to instances launched in these subnets
+
 ### Deployment Instructions
 
 **Note**: Please make sure to follow the below steps in order to make sure the deployment is successful. 

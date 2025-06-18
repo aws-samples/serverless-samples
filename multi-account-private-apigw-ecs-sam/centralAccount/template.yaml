@@ -64,9 +64,31 @@ Resources:
       GroupDescription: Security group for VPC Endpoint
       VpcId: !Ref VPC
       SecurityGroupIngress:
-        - IpProtocol: tcp
+        - Description: Allow HTTP inbound traffic from within VPC
+          IpProtocol: tcp
           FromPort: 80
           ToPort: 80
+          CidrIp: 10.0.0.0/16
+        - Description: Allow HTTPS inbound traffic from within VPC
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 10.0.0.0/16
+      SecurityGroupEgress:
+        - Description: Allow HTTP outbound traffic for API communication
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - Description: Allow HTTPS outbound traffic for secure communication
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - Description: Allow internal VPC communication
+          IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
           CidrIp: 10.0.0.0/16
 
   ApiResource:
@@ -203,7 +225,8 @@ Resources:
             - Effect: Allow
               Action:
                 - ec2:DescribeNetworkInterfaces
-              Resource: '*'
+              Resource: 
+                - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*'
 
   ########### Custom Resource to Fetch VPC Endpoint IPs ###############
   GetPrivateIPs:

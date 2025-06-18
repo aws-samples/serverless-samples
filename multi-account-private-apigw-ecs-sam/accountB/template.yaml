@@ -38,7 +38,7 @@ Resources:
       VpcId: !Ref VPC
       CidrBlock: !Ref PublicSubnet1CIDR
       AvailabilityZone: !Select [0, !GetAZs ""]
-      MapPublicIpOnLaunch: true
+      MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
           Value: Public-Subnet-1
@@ -49,7 +49,7 @@ Resources:
       VpcId: !Ref VPC
       CidrBlock: !Ref PublicSubnet2CIDR
       AvailabilityZone: !Select [1, !GetAZs ""]
-      MapPublicIpOnLaunch: true
+      MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
           Value: Public-Subnet-2
@@ -164,7 +164,33 @@ Resources:
       GroupDescription: Security group for ECS tasks
       VpcId: !Ref VPC
       SecurityGroupIngress:
-        - Description: Allow inbound traffic from NLB
+        - Description: Allow HTTP inbound traffic from within VPC
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !Ref VpcCIDR
+        - Description: Allow HTTPS inbound traffic from within VPC
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref VpcCIDR
+      SecurityGroupEgress:
+        - Description: Allow HTTPS outbound traffic for ECR image pulling
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - Description: Allow HTTP outbound traffic for container services
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - Description: Allow DNS resolution
+          IpProtocol: udp
+          FromPort: 53
+          ToPort: 53
+          CidrIp: 0.0.0.0/0
+        - Description: Allow internal VPC communication
           IpProtocol: -1
           FromPort: -1
           ToPort: -1
