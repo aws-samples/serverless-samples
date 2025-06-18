@@ -1,0 +1,11 @@
+POST /queue/delete HTTP/1.1
+Host: sqs.us-east-1.amazonaws.com
+Content-Type: application/json
+X-Amz-Target: AmazonSQS.DeleteMessage
+X-Amz-Date: 20250515T162800Z
+
+
+{
+  "queueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/orders-queue",
+  "receiptHandle": "AQEBmhDGqMe1+PSaEEBwQIQKRnuAqh+dN/NW7q0xz1WsUCh+ddc/G7q0xz1WsUCh+ddc"
+}
