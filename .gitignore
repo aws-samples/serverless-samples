@@ -25,3 +25,13 @@ downloaded_package_*
 
 # Ignore lambda build files
 */python-rest-terraform/application/builds/*
+
+*.js
+!jest.config.js
+*.d.ts
+node_modules
+
+# CDK asset staging directory
+.cdk.staging
+cdk.out
+cdk.out/*
