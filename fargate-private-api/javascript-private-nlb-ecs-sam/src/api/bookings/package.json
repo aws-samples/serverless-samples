@@ -1,0 +1,27 @@
+{
+  "name": "bookings",
+  "version": "1.0.0",
+  "description": "Bookings Service REST API",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.662.0",
+    "@aws-sdk/lib-dynamodb": "^3.43.0",
+    "@aws-sdk/util-dynamodb": "^3.43.0",
+    "@aws-sdk/smithy-client": "^3.370.0",
+    "aws-embedded-metrics": "^2.0.4",
+    "aws-xray-sdk": "^3.3.4",
+    "body-parser": "^1.20.1",
+    "express": "^4.21.2",
+    "uuid": "^8.3.2"
+  },
+  "scripts": {
+    "start": "cross-env AWS_EMF_ENVIRONMENT=Local node server.js",
+    "test": "jest",
+    "test:unit": "cross-env AWS_EMF_ENVIRONMENT=Local jest --silent --testPathPattern=__tests__ --detectOpenHandles"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "jest": "^27.4.3",
+    "mockdate": "^3.0.5",
+    "supertest": "^6.1.6"
+  }
+}

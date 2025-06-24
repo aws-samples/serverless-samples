@@ -1,0 +1,27 @@
+{
+    "name": "serverless-api",
+    "description": "Serverless API",
+    "version": "0.0.1",
+    "private": true,
+    "dependencies": {
+        "@aws-sdk/client-dynamodb": "^3.385.0",
+        "@aws-sdk/lib-dynamodb": "^3.14.0",
+        "@aws-sdk/util-dynamodb": "^3.20.0",
+        "aws-embedded-metrics": "^2.0.4",
+        "aws-xray-sdk-core": "^3.3.3",
+        "jsonwebtoken": "^9.0.0",
+        "jwk-to-pem": "^2.0.5",
+        "request": "^2.88.2",
+        "uuid": "^8.3.2"
+    },
+    "devDependencies": {
+        "jest": "^29.7.0",
+        "mockdate": "^3.0.5",
+        "supertest": "^6.1.3"
+    },
+    "scripts": {
+        "test": "jest",
+        "test:unit": "jest --testPathPattern=__tests__/unit --detectOpenHandles",
+        "test:integration": "jest --testPathPattern=__tests__/integration"
+    }
+}

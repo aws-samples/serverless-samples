@@ -1,0 +1,33 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+version: 0.2
+
+env:
+  variables:
+    CODE_SRC_DIR: python-rest-terraform/application/
+    TF_VERSION: "1.9.4"
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.12
+    commands:
+      - curl -s -qL -o terraform.zip https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip
+      - unzip -o terraform.zip
+      - mv terraform /bin
+      - rm terraform.zip
+      - cd ${CODEBUILD_SRC_DIR}/${CODE_SRC_DIR}
+      - yum install -y jq
+      - pip install -r ./src/lambda_layer/requirements.txt
+      - pip install -r ./tests/requirements.txt
+  build:
+    commands:
+      - echo Extracting outputs of Terraform Apply
+      - outputs=$(cat terraform_outputs_${TF_VAR_environment}.json)
+      - eval "$(echo "$outputs" | jq -r 'to_entries | map("export TF_OUTPUT_\(.key)=\(.value.value|@sh)") | join("\n")')"
+      - echo ## INTEGRATION TEST : Starting with the Intigration Tests
+      - python -m pytest tests/integration -v
+artifacts:
+  files:
+    - '**/*'

@@ -1,0 +1,18 @@
+{
+    "resource": "/locations/{locationid}/resources",
+    "path": "/locations/6dbe5870-9be1-11eb-a004-3d33bdb3c48c/resources",
+    "httpMethod": "PUT",
+    "headers": null,
+    "multiValueHeaders": null,
+    "queryStringParameters": null,
+    "multiValueQueryStringParameters": null,
+    "pathParameters": {
+        "locationid": "6dbe5870-9be1-11eb-a004-3d33bdb3c48c"
+    },
+    "stageVariables": null,
+    "requestContext": {
+        "requestId": "7e3cebdc-b2f1-4422-91f0-d72cad9c4108"
+    },
+    "body": "{\n   \"description\":\"Venetian Level 2\",\n    \"name\":\"Titian 2205\",\n    \"type\": \"room\"}",
+    "isBase64Encoded": false
+}

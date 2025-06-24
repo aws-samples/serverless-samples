@@ -1,0 +1,45 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. 
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Lambda function to export OpenAPI definition from API Gateway
+
+Resources:
+  ApiDefinitionRetrieverFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.9
+      Timeout: 30
+      MemorySize: 128
+      Policies:
+        # Allow read-only access to the API definitions in the account
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - apigateway:GET
+              Resource: "*"
+  FunctionInvokePermission:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ApiDefinitionRetrieverFunction
+      Principal: bedrock.amazonaws.com
+      SourceArn: !Join 
+        - ''
+        - - 'arn:aws:bedrock:'
+          - !Ref 'AWS::Region'
+          - ':'
+          - !Ref 'AWS::AccountId'
+          - ':*'
+
+Outputs:
+  ApiDefinitionRetrieverFunction:
+    Description: "API Definition Retriever Lambda Function ARN"
+    Value: !GetAtt ApiDefinitionRetrieverFunction.Arn
+  ApiDefinitionRetrieverFunctionName:
+    Description: "API Definition Retriever Lambda Function Name"
+    Value: !Ref ApiDefinitionRetrieverFunction

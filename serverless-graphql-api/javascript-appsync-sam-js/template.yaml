@@ -1,0 +1,823 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+
+AWSTemplateFormatVersion: 2010-09-09
+Transform:
+  - AWS::Serverless-2016-10-31
+
+Description: >
+  Backend AppSync API 
+
+Parameters:
+  CognitoStackName:
+    Description: An environment name for Cognito stack
+    Type: String
+    Default: serverless-api-cognito
+
+  UserPoolAdminGroupName:
+    Description: 'User pool group name for API administrators, leave default value unless you used different one in the shared Cognito stack. NOTE: If you need to change this parameter value, update ./src/mapping_templates/delete_booking_request.vtl accordingly'
+    Type: String
+    Default: apiAdmins
+
+Resources:
+
+  GraphQLApi:
+    Type: AWS::Serverless::GraphQLApi
+    Properties:
+      Name: !Sub "GraphQLBackendAPI-${AWS::StackName}"
+      Auth:
+        Type: AMAZON_COGNITO_USER_POOLS
+        UserPool:
+          UserPoolId: 
+            Fn::ImportValue: !Sub "${CognitoStackName}-UserPool"
+          AwsRegion: !Ref "AWS::Region"
+          DefaultAction: ALLOW
+        AdminGroupName: 
+            !Sub "${UserPoolAdminGroupName}
+      XrayEnabled: true
+      Logging:
+        Level: ALL
+        ExcludeVerboseContent: false
+        CloudWatchLogsRoleArn: !GetAtt PushToCloudWatchLogsRole.Arn
+      Tags:
+        Stack: !Sub "${AWS::StackName}"
+      SchemaInline :  
+        schema {
+          query: Query
+          mutation: Mutation
+          subscription: Subscription
+        }
+        type Location {
+          locationid: ID!
+          name: String!
+          description: String
+          imageUrl: String
+          resources: [Resource]
+          timestamp: String
+        }
+
+        type Resource {
+          resourceid: ID!
+          locationid: ID!
+          name: String!
+          description: String
+          type: String
+          bookings: [Booking]
+          timestamp: String
+        }
+
+        type Booking {
+          bookingid: ID!
+          resourceid: ID!
+          userid: ID!
+          starttimeepochtime: Float
+          timestamp: String
+        }
+
+        type Mutation {
+          createLocation(locationid: ID, name: String!, description: String, imageUrl: String): Location
+          @aws_auth(cognito_groups: ["${AdminGroupName}"])
+          deleteLocation(locationid: ID!): ID
+          @aws_auth(cognito_groups: ["${AdminGroupName}"])
+          createResource(resourceid: ID, locationid: ID!, name: String!, description: String, type: String): Resource
+          @aws_auth(cognito_groups: ["${AdminGroupName}"])
+          deleteResource(resourceid: ID!): ID
+          @aws_auth(cognito_groups: ["${AdminGroupName}"])
+          createBooking(bookingid: ID, resourceid: ID!, starttimeepochtime: Float): Booking
+          deleteBooking(bookingid: ID!): ID
+        }
+
+        type Query {
+          getAllLocations: [Location]
+          getLocation(locationid: ID!): Location
+          getResource(resourceid: ID!): Resource
+          getBooking(bookingid: ID!): Booking
+          getMyBookings: [Booking]
+        }
+
+        type Subscription {
+          locationCreated: Location
+          @aws_subscribe(mutations: ["createLocation"])
+          resourceCreated(resourceid: ID): Resource
+          @aws_subscribe(mutations: ["createResource"])
+          bookingCreated(resourceid: ID): Booking
+          @aws_subscribe(mutations: ["createBooking"])
+        }
+      DataSources:
+        - Type: AMAZON_DYNAMODB
+          Name: LocationsDataSource
+          TableName: !Ref LocationsTable
+          ServiceRoleArn: !GetAtt AppSyncServiceRole.Arn
+          Region: !Ref "AWS::Region"
+        - Type: AMAZON_DYNAMODB
+          Name: ResourcesDataSource
+          TableName: !Ref ResourcesTable
+          ServiceRoleArn: !GetAtt AppSyncServiceRole.Arn
+          Region: !Ref "AWS::Region"
+        - Type: AMAZON_DYNAMODB
+          Name: BookingsDataSource
+          TableName: !Ref BookingsTable
+          ServiceRoleArn: !GetAtt AppSyncServiceRole.Arn
+          Region: !Ref "AWS::Region" 
+      Functions:
+        CreateLocationFunction:
+            DataSourceName: LocationsDataSource
+            Description: Function to create a location
+            Name: CreateLocation
+            Runtime:
+              Name: APPSYNC_JS
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/create_location_function.js
+        DeleteLocationFunction:
+            DataSourceName: LocationsDataSource
+            Description: Function to delete a location
+            Name: DeleteLocation
+            Runtime:
+              Name: APPSYNC_JS
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/delete_location_function.js               
+        GetLocationFunction:
+            DataSourceName: LocationsDataSource
+            Description: Function to get location details
+            Name: GetLocation
+            Runtime:
+              Name: APPSYNC_JS
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/get_location_function.js
+        GetAllLocationsFunction:
+            DataSourceName: LocationsDataSource
+            Description: Function to get all locations
+            Name: GetAllLocations
+            Runtime:
+              Name: APPSYNC_JS
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/get_locations_function.js
+        CreateResourceFunction:
+            DataSourceName: ResourcesDataSource
+            Description: Function to create a resource
+            Name: CreateResource
+            Runtime:
+              Name: APPSYNC_JS
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/create_resource_function.js
+        DeleteResourceFunction:
+            DataSourceName: ResourcesDataSource
+            Description: Function to delete a resource
+            Name: DeleteResource
+            Runtime:
+              Name: APPSYNC_JS
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/delete_resource_function.js
+        GetResourceFunction:
+            DataSourceName: ResourcesDataSource
+            Description: Function to get resource details
+            Name: GetResource
+            Runtime:
+              Name: APPSYNC_JS
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/get_resource_function.js
+        GetResourcesForLocationFunction:
+            DataSourceName: ResourcesDataSource
+            Description: Function to get resource details
+            Name: GetResourcesForLocation
+            Runtime:
+              Name: APPSYNC_JS
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/get_resources_for_location_function.js
+        CreateBookingFunction:
+            DataSourceName: BookingsDataSource
+            Description: Function to create a new booking
+            Name: CreateBooking
+            Runtime:
+              Name: APPSYNC_JS
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/create_booking_function.js
+        DeleteBookingFunction:
+            DataSourceName: BookingsDataSource
+            Description: Function to delete a booking
+            Name: DeleteBooking
+            Runtime:
+              Name: APPSYNC_JS
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/delete_booking_function.js
+        GetBookingFunction:
+            DataSourceName: BookingsDataSource
+            Description: Function to get booking details
+            Name: GetBooking
+            Runtime:
+              Name: APPSYNC_JS
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/get_booking_function.js
+        GetBookingsForResourceFunction:          
+            DataSourceName: BookingsDataSource
+            Name: GetBookingsForResource
+            Runtime:
+              Name: 'APPSYNC_JS'
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/get_bookings_for_resource_function.js
+        GetBookingsForUserFunction:         
+            DataSourceName: BookingsDataSource
+            Name: GetBookingsForUser
+            Runtime:
+              Name: 'APPSYNC_JS'
+              RuntimeVersion: '1.0.0'
+            CodeUri: ./src/resolvers/get_bookings_for_user_function.js
+
+      Resolvers:
+        Mutation.createLocation:
+          TypeName: Mutation
+          FieldName: createLocation
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - CreateLocationFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js 
+        Mutation.deleteLocation:
+          TypeName: Mutation
+          FieldName: deleteLocation
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - DeleteLocationFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js
+        Query.getLocation:
+          TypeName: Query
+          FieldName: getLocation
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - GetLocationFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js    
+        Query.allLocations:
+          TypeName: Query
+          FieldName: getAllLocations
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - GetAllLocationsFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js    
+        Mutation.createResource:
+          TypeName: Mutation
+          FieldName: createResource
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - CreateResourceFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js
+        Mutation.deleteResource:
+          TypeName: Mutation
+          FieldName: deleteResource
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - DeleteResourceFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js
+        Query.singleResource:
+          TypeName: Query
+          FieldName: getResource
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - GetResourceFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js    
+        Location.resourcesForLocation:
+          TypeName: Location
+          FieldName: resources
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - GetResourcesForLocationFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js
+        Mutation.createBooking:
+          TypeName: Mutation
+          FieldName: createBooking
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - CreateBookingFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js
+        Mutation.deleteBooking:
+          TypeName: Mutation
+          FieldName: deleteBooking
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - DeleteBookingFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js
+        Query.singleBooking:
+          TypeName: Query
+          FieldName: getBooking
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - GetBookingFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js  
+        Resource.bookings:
+          TypeName: Resource
+          FieldName: bookings
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - GetBookingsForResourceFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js
+        Query.bookingsForUser:
+          TypeName: Query
+          FieldName: getMyBookings
+          Kind: PIPELINE
+          PipelineConfig:
+            Functions:
+              - GetBookingsForUserFunction
+          Runtime:
+            Name: APPSYNC_JS
+            RuntimeVersion: '1.0.0'
+          CodeUri: ./src/resolvers/generic_pipeline_resolver.js   
+        
+                       
+    
+
+  AppSyncLogsKMSKey:
+    Type: AWS::KMS::Key
+    Properties: 
+      Description: CMK for AppSync logs
+      Enabled: true
+      EnableKeyRotation: True
+      KeyPolicy: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: 
+              AWS: 
+                - !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action:
+              - "kms:*"
+            Resource: "*"
+          - Effect: Allow
+            Principal:
+              Service:
+                - !Sub logs.${AWS::Region}.amazonaws.com
+            Action:
+              - "kms:Encrypt*"
+              - "kms:Decrypt*"
+              - "kms:ReEncrypt*"
+              - "kms:GenerateDataKey*"
+              - "kms:Describe*"
+            Resource: "*"
+            Condition:
+              ArnEquals: 
+                kms:EncryptionContext:aws:logs:arn: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/appsync/apis/${GraphQLApi.ApiId}"
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyUsage: ENCRYPT_DECRYPT
+      Tags:
+        - Key: "Stack" 
+          Value: !Sub "${AWS::StackName}"
+
+  GraphQLApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/appsync/apis/${GraphQLApi.ApiId}"
+      RetentionInDays: 7
+      KmsKeyId: !GetAtt AppSyncLogsKMSKey.Arn
+      Tags:
+        - Key: "Stack" 
+          Value: !Sub "${AWS::StackName}"
+
+  PushToCloudWatchLogsRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Effect: Allow
+            Principal: 
+              Service: 
+                - appsync.amazonaws.com
+            Action: 
+              - sts:AssumeRole
+      Path: "/"
+      Tags:
+        - Key: "Stack" 
+          Value: !Sub "${AWS::StackName}"
+
+  PushToCloudWatchLogsRolePolicy: 
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyName: !Sub ${AWS::StackName}-PushToCloudWatchLogs-Policy
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - Effect: Allow
+            Action: 
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: !GetAtt GraphQLApiLogGroup.Arn
+      Roles: 
+        - Ref: PushToCloudWatchLogsRole
+  
+  AppSyncServiceRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "appsync.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      Tags:
+        - Key: "Stack" 
+          Value: !Sub "${AWS::StackName}"
+ 
+
+  DynamoDBAccessPolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: "dynamodb-access"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Action: 
+              - "dynamodb:BatchGet*"
+              - "dynamodb:DescribeStream"
+              - "dynamodb:DescribeTable"
+              - "dynamodb:Get*"
+              - "dynamodb:Query"
+              - "dynamodb:Scan"
+              - "dynamodb:BatchWrite*"
+              - "dynamodb:CreateTable"
+              - "dynamodb:Delete*"
+              - "dynamodb:Update*"
+              - "dynamodb:PutItem"
+              - "dynamodb:ConditionCheckItem"
+            Resource:
+              - !GetAtt LocationsTable.Arn
+              - !GetAtt ResourcesTable.Arn
+              - !GetAtt BookingsTable.Arn
+              - !Sub "${ResourcesTable.Arn}/index/locationidGSI"
+              - !Sub "${BookingsTable.Arn}/index/useridGSI"
+              - !Sub "${BookingsTable.Arn}/index/bookingsByUserByTimeGSI"
+              - !Sub "${BookingsTable.Arn}/index/bookingsByResourceByTimeGSI"
+      Roles:
+        -
+          Ref: "AppSyncServiceRole"
+
+  LocationsTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: locationid
+        Type: String
+      ProvisionedThroughput:
+        ReadCapacityUnits: 2
+        WriteCapacityUnits: 2
+      Tags:
+        Stack: !Sub "${AWS::StackName}"
+
+  ResourcesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: True
+      SSESpecification:
+        KMSMasterKeyId: alias/aws/dynamodb
+        SSEEnabled: True
+        SSEType: KMS
+      AttributeDefinitions:
+        - AttributeName: resourceid
+          AttributeType: S
+        - AttributeName: locationid
+          AttributeType: S
+      KeySchema:
+        - AttributeName: resourceid
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: locationidGSI
+          KeySchema:
+            - AttributeName: locationid
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      Tags:
+        - Key: "Stack"
+          Value: !Sub "${AWS::StackName}"
+
+  BookingsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: True
+      SSESpecification:
+        KMSMasterKeyId: alias/aws/dynamodb
+        SSEEnabled: True
+        SSEType: KMS
+      AttributeDefinitions:
+        - AttributeName: bookingid
+          AttributeType: S
+        - AttributeName: userid
+          AttributeType: S
+        - AttributeName: resourceid
+          AttributeType: S
+        - AttributeName: starttimeepochtime
+          AttributeType: N
+      KeySchema:
+        - AttributeName: bookingid
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: useridGSI
+          KeySchema:
+            - AttributeName: userid
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: bookingsByUserByTimeGSI
+          KeySchema:
+            - AttributeName: userid
+              KeyType: HASH
+            - AttributeName: starttimeepochtime
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: bookingsByResourceByTimeGSI
+          KeySchema:
+            - AttributeName: resourceid
+              KeyType: HASH
+            - AttributeName: starttimeepochtime
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      Tags:
+        - Key: "Stack"
+          Value: !Sub "${AWS::StackName}"
+
+  AlarmsKMSKey:
+    Type: AWS::KMS::Key
+    Properties: 
+      Description: CMK for SNS alarms topic
+      Enabled: true
+      EnableKeyRotation: True
+      KeyPolicy: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: 
+              Service: 
+                - "cloudwatch.amazonaws.com"
+                - "sns.amazonaws.com"
+            Action:
+              - "kms:GenerateDataKey*"
+              - "kms:Decrypt"
+            Resource: "*"
+          - Effect: Allow
+            Principal: 
+              AWS: 
+                - !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action:
+              - "kms:*"
+            Resource: "*"
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyUsage: ENCRYPT_DECRYPT
+      PendingWindowInDays: 30
+      Tags: 
+        - Key: "Stack" 
+          Value: !Sub "${AWS::StackName}"
+
+  AlarmsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId: !Ref AlarmsKMSKey
+      Tags:
+        - Key: "Stack" 
+          Value: !Sub "${AWS::StackName}"
+
+  ApiErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref AlarmsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: GraphQLAPIId
+          Value: !GetAtt GraphQLApi.ApiId
+      EvaluationPeriods: 1
+      MetricName: 5XXError
+      Namespace: AWS/AppSync
+      Period: 60
+      Statistic: Sum
+      Threshold: 1.0
+
+  LocationsDynamoDBThrottlingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref AlarmsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref LocationsTable
+      EvaluationPeriods: 1
+      MetricName: ThrottledRequests
+      Namespace: AWS/DynamoDB
+      Period: 60
+      Statistic: Sum
+      Threshold: 1.0
+
+  ResourcesDynamoDBThrottlingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref AlarmsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref ResourcesTable
+      EvaluationPeriods: 1
+      MetricName: ThrottledRequests
+      Namespace: AWS/DynamoDB
+      Period: 60
+      Statistic: Sum
+      Threshold: 1.0
+
+  BookingsDynamoDBThrottlingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref AlarmsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref BookingsTable
+      EvaluationPeriods: 1
+      MetricName: ThrottledRequests
+      Namespace: AWS/DynamoDB
+      Period: 60
+      Statistic: Sum
+      Threshold: 1.0
+
+  ApplicationDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub "${AWS::StackName}-dashboard"
+      DashboardBody: 
+        Fn::Sub: >
+          {
+              "widgets": [
+                  {
+                      "height": 6,
+                      "width": 18,
+                      "y": 0,
+                      "x": 0,
+                      "type": "metric",
+                      "properties": {
+                          "metrics": [
+                              [ "AWS/AppSync", "4xx", "GraphQLAPIId", "${GraphQLApi.ApiId}", { "yAxis": "right" } ],
+                              [ ".", "5xx", ".", ".", { "yAxis": "right" } ],
+                              [ ".", "Latency", ".", ".", { "stat": "Average" } ]
+                          ],
+                          "view": "timeSeries",
+                          "stacked": false,
+                          "region": "${AWS::Region}",
+                          "period": 60,
+                          "stat": "Sum",
+                          "title": "AppSync"
+                      }
+                  },
+                  {
+                      "height": 6,
+                      "width": 6,
+                      "y": 6,
+                      "x": 0,
+                      "type": "metric",
+                      "properties": {
+                          "metrics": [
+                              [ "AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "${LocationsTable}", { "stat": "Maximum" } ],
+                              [ ".", "ConsumedWriteCapacityUnits", ".", ".", { "stat": "Maximum" } ],
+                              [ ".", "ProvisionedReadCapacityUnits", ".", ".", { "period": 300 } ],
+                              [ ".", "ProvisionedWriteCapacityUnits", ".", ".", { "period": 300 } ]
+                          ],
+                          "view": "timeSeries",
+                          "stacked": false,
+                          "region": "${AWS::Region}",
+                          "title": "DynamoDB - Locations",
+                          "period": 60,
+                          "stat": "Average"
+                      }
+                  },
+                  {
+                      "height": 6,
+                      "width": 6,
+                      "y": 6,
+                      "x": 6,
+                      "type": "metric",
+                      "properties": {
+                          "metrics": [
+                              [ "AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "${ResourcesTable}", { "stat": "Maximum" } ],
+                              [ ".", "ConsumedWriteCapacityUnits", ".", ".", { "stat": "Maximum" } ],
+                              [ ".", "ProvisionedReadCapacityUnits", ".", ".", { "period": 300 } ],
+                              [ ".", "ProvisionedWriteCapacityUnits", ".", ".", { "period": 300 } ]
+                          ],
+                          "view": "timeSeries",
+                          "stacked": false,
+                          "region": "${AWS::Region}",
+                          "title": "DynamoDB - Resources",
+                          "period": 60,
+                          "stat": "Average"
+                      }
+                  },
+                  {
+                      "height": 6,
+                      "width": 6,
+                      "y": 6,
+                      "x": 12,
+                      "type": "metric",
+                      "properties": {
+                          "metrics": [
+                              [ "AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "${BookingsTable}", { "period": 60, "stat": "Maximum" } ],
+                              [ ".", "ConsumedWriteCapacityUnits", ".", ".", { "period": 60, "stat": "Maximum" } ],
+                              [ ".", "ProvisionedReadCapacityUnits", ".", "." ],
+                              [ ".", "ProvisionedWriteCapacityUnits", ".", "." ]
+                          ],
+                          "view": "timeSeries",
+                          "stacked": false,
+                          "region": "${AWS::Region}",
+                          "title": "DynamoDB - Bookings",
+                          "period": 300,
+                          "stat": "Average"
+                      }
+                  }
+              ]
+          }
+
+Outputs:
+  APIEndpoint:
+    Description: "GraphQL API endpoint URL"
+    Value: !GetAtt GraphQLApi.GraphQLUrl
+
+  DashboardURL:
+    Description: "Dashboard URL"
+    Value: !Sub "https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${ApplicationDashboard}"
+
+  AlarmsTopic:
+    Description: "SNS Topic to be used for the alarms subscriptions"
+    Value: !Ref AlarmsTopic
+
+  AppSyncLogs:
+    Description: "CloudWatch Logs group for AppSync logs"
+    Value: !Ref GraphQLApiLogGroup
+
+  LocationsTable:
+    Description: "DynamoDB Locations table"
+    Value: !Ref LocationsTable
+
+  ResourcesTable:
+    Description: "DynamoDB Resources table"
+    Value: !Ref ResourcesTable
+
+  BookingsTable:
+    Description: "DynamoDB Bookings table"
+    Value: !Ref BookingsTable

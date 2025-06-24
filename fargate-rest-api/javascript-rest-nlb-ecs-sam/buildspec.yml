@@ -1,0 +1,24 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+        nodejs: 18
+    commands:
+      # Move to the Lambda authorizer root directory
+      - cd ./src/api/authorizer
+      # Install all dependencies
+      - npm ci --only=production
+  build:
+    commands:
+      # Package app
+      - cd ../../../
+      - aws cloudformation package --template template.yaml --s3-bucket $BUILD_OUTPUT_BUCKET --output-template application.yaml
+artifacts:
+  type: zip
+  files:
+    - application.yaml
+    - vpc.yaml
+    - cognito.yaml

@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: APIGW private custom domain name implementation
+Transform: AWS::Serverless-2016-10-31
+Parameters:
+  pCertificateArn:
+    Type: String
+  pSubnetIds:
+    Type: List<String>
+  pVpcEndpointIps:
+    Type: List<String>
+  pVpcId:
+    Type: String
+Resources:
+  Facade:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      IpAddressType: ipv4
+      Scheme: internal
+      Subnets: !Ref pSubnetIds
+      Type: network
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Order: 1
+          TargetGroupArn: !Ref Targets
+          Type: forward
+      LoadBalancerArn: !Ref Facade
+      Port: 443
+      Certificates:
+        - CertificateArn: !Ref pCertificateArn
+      Protocol: TLS
+  Targets:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPort: 443
+      HealthCheckProtocol: TCP
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 3
+      Port: 443
+      Protocol: TLS
+      Targets:
+        - Id: !Select [ 0, !Ref pVpcEndpointIps ]
+          Port: 443
+        - Id: !Select [ 1, !Ref pVpcEndpointIps ]
+          Port: 443
+        - Id: !Select [ 2, !Ref pVpcEndpointIps ]
+          Port: 443
+        - Id: !Select [ 3, !Ref pVpcEndpointIps ]
+          Port: 443
+      TargetType: ip
+      VpcId: !Ref pVpcId
+Outputs:
+  outFacade:
+    Value: !Ref Facade
+  outFacadeDnsName:
+    Value: !GetAtt Facade.DNSName

@@ -1,0 +1,12 @@
+POST /stepfunctions/stop-execution HTTP/1.1
+Host: states.us-east-1.amazonaws.com
+Content-Type: application/json
+X-Amz-Target: AWSStepFunctions.StopExecution
+X-Amz-Date: 20250515T163400Z
+
+
+{
+  "executionArn": "arn:aws:states:us-east-1:123456789012:execution:MyStateMachine:MyExecution-12345",
+  "cause": "Manual stop requested by API Gateway",
+  "error": "ExecutionManuallyTerminated"
+}

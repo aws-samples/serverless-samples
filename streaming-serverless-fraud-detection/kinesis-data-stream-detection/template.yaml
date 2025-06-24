@@ -1,0 +1,240 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: 2010-09-09
+Transform:
+  - AWS::Serverless-2016-10-31
+
+Description: >
+  Serverless fraud detection - data analysis by stream consumer
+
+Parameters:
+  FraudDetectorID:
+    Description: ID of the Amazon Fraud Detector
+    Type: String
+    Default: transaction_fraud_detector
+
+Resources:
+  # KMS key to encrypt alerts topic
+  FraudDetectionAlertsTopicKey:
+    Type: AWS::KMS::Key
+    Properties: 
+      Description: CMK for SNS fraud detection alerts topic
+      Enabled: true
+      EnableKeyRotation: True
+      KeyPolicy: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: 
+              Service: 
+                - "cloudwatch.amazonaws.com"
+                - "sns.amazonaws.com"
+            Action:
+              - "kms:GenerateDataKey*"
+              - "kms:Decrypt"
+            Resource: "*"
+          - Effect: Allow
+            Principal: 
+              AWS: 
+                - !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action:
+              - "kms:*"
+            Resource: "*"
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyUsage: ENCRYPT_DECRYPT
+      PendingWindowInDays: 30
+      Tags: 
+        - Key: "Stack" 
+          Value: !Sub "${AWS::StackName}"
+
+  # SNS topic to publish transactions for the further review
+  FraudDetectionAlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId: !Ref FraudDetectionAlertsTopicKey
+
+  # Amazon Kinesis Data Stream for transaction ingestion
+  TransactionsKinesisDataStream:
+    Type: AWS::Kinesis::Stream
+    Properties: 
+      RetentionPeriodHours: 24
+      StreamModeDetails: 
+        StreamMode: ON_DEMAND
+      StreamEncryption:
+        EncryptionType: KMS
+        KeyId: alias/aws/kinesis
+
+  # DynamoDB table to store transactions ingested by the stream
+  TransactionsTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: transactionid
+        Type: String
+
+  # Amazon Kinesis Data Stream consumer AWS Lambda function
+  KinesisConsumerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Kinesis Data Stream consumer function
+      Handler: src/consumer.lambda_handler
+      Runtime: python3.9
+      MemorySize: 128
+      Timeout: 100
+      Tracing: Active
+      Environment:
+        Variables:
+          FRAUD_DETECTION_WORKFLOW: !Ref FraudDetectionWorkflow
+      Events:
+        KinesisEvent:
+          Type: Kinesis
+          Properties:
+            Stream: !GetAtt TransactionsKinesisDataStream.Arn
+            StartingPosition: LATEST
+            BatchSize: 10
+      Policies:
+        - StepFunctionsExecutionPolicy:
+            StateMachineName: !GetAtt FraudDetectionWorkflow.Name
+
+  # KMS key to encrypt Kinesis consumer logs
+  KinesisConsumerLogsKMSKey:
+    Type: AWS::KMS::Key
+    Properties: 
+      Description: CMK for Kinesis consumer logs
+      Enabled: true
+      EnableKeyRotation: True
+      KeyPolicy: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: 
+              AWS: 
+                - !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action:
+              - "kms:*"
+            Resource: "*"
+          - Effect: Allow
+            Principal:
+              Service:
+                - !Sub logs.${AWS::Region}.amazonaws.com
+            Action:
+              - "kms:Encrypt*"
+              - "kms:Decrypt*"
+              - "kms:ReEncrypt*"
+              - "kms:GenerateDataKey*"
+              - "kms:Describe*"
+            Resource: "*"
+            Condition:
+              ArnEquals: 
+                kms:EncryptionContext:aws:logs:arn: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${KinesisConsumerFunction}"
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyUsage: ENCRYPT_DECRYPT
+
+  # Kinesis stream consumer Lambda function Amazon CloudWatch Logs log group to override default indefinete log retention period
+  KinesisConsumerFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${KinesisConsumerFunction}"
+      RetentionInDays: 7
+      KmsKeyId: !GetAtt KinesisConsumerLogsKMSKey.Arn
+
+  # KMS key to encrypt workflow logs
+  WorkflowLogsKMSKey:
+    Type: AWS::KMS::Key
+    Properties: 
+      Description: CMK for workflow logs
+      Enabled: true
+      EnableKeyRotation: True
+      KeyPolicy: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: 
+              AWS: 
+                - !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action:
+              - "kms:*"
+            Resource: "*"
+          - Effect: Allow
+            Principal:
+              Service:
+                - !Sub logs.${AWS::Region}.amazonaws.com
+            Action:
+              - "kms:Encrypt*"
+              - "kms:Decrypt*"
+              - "kms:ReEncrypt*"
+              - "kms:GenerateDataKey*"
+              - "kms:Describe*"
+            Resource: "*"
+            Condition:
+              ArnEquals: 
+                kms:EncryptionContext:aws:logs:arn: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/${AWS::StackName}/WorkflowLogs"
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyUsage: ENCRYPT_DECRYPT
+
+  # CloudWatch Logs group for Step Functions workflow execution logs
+  FraudDetectionWorkflowLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/${AWS::StackName}/WorkflowLogs"
+      RetentionInDays: 7
+      KmsKeyId: !GetAtt WorkflowLogsKMSKey.Arn
+
+  # Step Functions workflow to process incoming transactions
+  FraudDetectionWorkflow:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Type: EXPRESS
+      DefinitionUri: src/workflow.yaml
+      DefinitionSubstitutions: 
+        TransactionsTableName: !Ref TransactionsTable
+        FraudDetectorID: !Sub "${FraudDetectorID}"
+        FraudAlertsTopicArn: !Ref FraudDetectionAlertsTopic
+      Logging:
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt FraudDetectionWorkflowLogGroup.Arn
+        IncludeExecutionData: False
+        Level: ALL
+      Tracing:
+        Enabled: true
+      Policies: # Find out more about SAM policy templates: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt FraudDetectionAlertsTopic.TopicName 
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TransactionsTable
+        - Version: '2012-10-17' # See https://docs.aws.amazon.com/step-functions/latest/dg/cw-logs.html for more details on Step Functions logging using CloudWatch Logs
+          Statement:
+          - Effect: Allow
+            Action:
+              - "logs:CreateLogDelivery"
+              - "logs:GetLogDelivery"
+              - "logs:UpdateLogDelivery"
+              - "logs:DeleteLogDelivery"
+              - "logs:ListLogDeliveries"
+              - "logs:PutLogEvents"
+              - "logs:PutResourcePolicy"
+              - "logs:DescribeResourcePolicies"
+              - "logs:DescribeLogGroups"
+            Resource: 
+              - "*"
+        - Version: '2012-10-17' 
+          Statement:
+          - Effect: Allow
+            Action:
+              - frauddetector:GetEventPrediction
+            Resource: 
+              - !Sub 'arn:aws:frauddetector:${AWS::Region}:${AWS::AccountId}:event-type/*'
+              - !Sub 'arn:aws:frauddetector:${AWS::Region}:${AWS::AccountId}:detector/${FraudDetectorID}'
+              - !Sub 'arn:aws:frauddetector:${AWS::Region}:${AWS::AccountId}:detector-version/*'
+
+Outputs:
+  TransactionsKinesisDataStream:
+    Description: Kinesis Data Stream for data inspection and fraud detection/prevention
+    Value: !Ref TransactionsKinesisDataStream
+  WorkflowLogsLink:
+    Description: StepFunctions execution logs
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#logsV2:log-groups/log-group/$252Faws$252F${AWS::StackName}$252FWorkflowLogs"
+
+    

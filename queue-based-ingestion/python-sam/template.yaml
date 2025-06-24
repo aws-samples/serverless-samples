@@ -1,0 +1,668 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: 2010-09-09
+Transform:
+  - AWS::Serverless-2016-10-31
+Description: This example demonstrates API Gateway and Amazon SQS integration capabilities.
+
+Globals:
+  Function:
+    Runtime: python3.8
+    MemorySize: 128
+    Timeout: 20
+    Tracing: Active
+
+Parameters:
+  CognitoStackName:
+    Description: An environment name for Cognito stack
+    Type: String
+    Default: queue-based-ingestion-cognito
+
+# Comment each resource section to explain usage
+Resources:
+  ##########################################################################
+  #   SQS Queue
+  ##########################################################################
+  # Define the SQS queue
+  JobRequestQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "job-request-queue-${AWS::StackName}"
+      VisibilityTimeout: 200
+  ##########################################################################
+  #   HTTP/ REST  API
+  ##########################################################################
+  JobRequestAPI:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      AccessLogSettings:
+        DestinationArn: !GetAtt JobRequestAPILogs.Arn
+        Format: '{ "requestId":"$context.requestId", "ip": "$context.identity.sourceIp", "requestTime":"$context.requestTime", "httpMethod":"$context.httpMethod","routeKey":"$context.routeKey","status":"$context.status","protocol":"$context.protocol", "responseLength":"$context.responseLength" ,"messageString":$context.error.message","$context.error.messageString","errors:"$context.integration.error","integrationStatus":$context.integration.integrationStatus","integrationErrorMessage":$context.integrationErrorMessage"}'
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: api.yaml
+      Auth:
+        Authorizers:
+          LambdaAuthorizer:
+            AuthorizerPayloadFormatVersion: 1.0
+            FunctionArn: !GetAtt AuthorizerFunction.Arn
+            FunctionInvokeRole: !GetAtt AuthorizerFunctionExecutionRole.Arn
+            Identity:
+              Headers:
+                - Authorization
+        DefaultAuthorizer: LambdaAuthorizer
+  ###########################################################################
+
+  ##########################################################################
+  JobOutputPayloadStore:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "job-${AWS::StackName}-${AWS::Region}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+        #'Fn::Transform' :
+        #- Name : 'String'
+        # Parameters:
+        #  InputString: !Sub "job-payload-output-bucket-${AWS::StackName}"
+        # Operation: Lower
+  ##########################################################################
+  #   Lambda Function #
+  ##########################################################################
+  BatchSimulatorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      #FunctionName: BatchSimulatorFunction
+      Description: Lambda to get status of job
+      CodeUri: src/api/
+      Handler: batch_simulator.lambda_handler
+      Timeout: 120
+      Environment:
+        Variables:
+          BATCH_SIMULATOR_BUCKET_NAME: !Ref JobOutputPayloadStore
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref JobOutputPayloadStore
+
+  SQSMessageProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      #FunctionName: SQSMessageProcessorFunction
+      Description: Lambda to be invoked by the SQS Queue
+      Handler: src/api/sqs_processor.lambda_handler
+      Timeout: 180
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref JobRequestStoreDynamoDBTable
+        - LambdaInvokePolicy:
+            FunctionName: !Ref BatchSimulatorFunction
+      Environment:
+        Variables:
+          BATCH_SIMULATOR_FUNCTION_NAME: !GetAtt BatchSimulatorFunction.Arn
+          SQS_MESSAGE_STORE_TABLE_NAME: !Ref JobRequestStoreDynamoDBTable
+      Events:
+        MySQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt JobRequestQueue.Arn
+            BatchSize: 10
+
+  GetJobStatusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      #FunctionName: GetJobStatusFunction
+      Description: Lambda to get status of job
+      Handler: src/api/get_job_status.lambda_handler
+      Environment:
+        Variables:
+          SQS_MESSAGE_STORE_TABLE_NAME: !Ref JobRequestStoreDynamoDBTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref JobRequestStoreDynamoDBTable
+        - S3CrudPolicy:
+            BucketName: !Ref JobOutputPayloadStore
+
+  AuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Handler for Lambda authorizer
+      Handler: src/api/authorizer.lambda_handler
+      Environment:
+        Variables:
+          USER_POOL_ID:
+            Fn::ImportValue: !Sub "${CognitoStackName}-UserPool"
+          APPLICATION_CLIENT_ID:
+            Fn::ImportValue: !Sub "${CognitoStackName}-UserPoolClient"
+          AWS_XRAY_TRACING_NAME: !Sub ${AWS::StackName}
+          AWS_XRAY_CONTEXT_MISSING: "LOG_ERROR"
+      Tags:
+        Stack: !Sub "${AWS::StackName}"
+  ##########################################################################
+  #   Roles                                                               #
+  ##########################################################################
+  JobRequestAPIRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - apigateway.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: AllowSqsIntegration
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "sqs:SendMessage"
+                  - "sqs:GetQueueUrl"
+                  - "sqs:SendMessageBatch"
+                Resource: !GetAtt JobRequestQueue.Arn
+              - Effect: Allow
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:DescribeLogGroups"
+                  - "logs:DescribeLogStreams"
+                  - "logs:PutLogEvents"
+                  - "logs:GetLogEvents"
+                  - "logs:FilterLogEvents"
+                Resource: !GetAtt JobRequestAPILogs.Arn
+              - Effect: Allow
+                Action:
+                  - "lambda:InvokeFunction"
+                Resource:
+                  Fn::Sub: "${GetJobStatusFunction.Arn}*"
+  AuthorizerFunctionExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - apigateway.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: "/"
+      Tags:
+        - Key: "Stack"
+          Value: !Sub "${AWS::StackName}"
+  AuthorizerFunctionExecutionRolePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub ${AWS::StackName}-Authorizer-Policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: lambda:InvokeFunction
+            Resource: !GetAtt AuthorizerFunction.Arn
+      Roles:
+        - Ref: AuthorizerFunctionExecutionRole
+  ###########################################################################
+  #   Cloudwatch Logs                                                       #
+  ##########################################################################
+
+  JobRequestAPILogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "apigw-sqs-proxy-sender-access-Logs-${AWS::StackName}"
+      RetentionInDays: 7
+
+  AuthorizerFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AuthorizerFunction}"
+      RetentionInDays: 7
+
+  GetJobStatusFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${GetJobStatusFunction}"
+      RetentionInDays: 7
+
+  SQSMessageProcessorFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${SQSMessageProcessorFunction}"
+      RetentionInDays: 7
+
+  BatchSimulatorFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${BatchSimulatorFunction}"
+      RetentionInDays: 7
+  ##########################################################################
+  #   DynamoDBTable                                                              #
+  ##########################################################################
+
+  JobRequestStoreDynamoDBTable:
+    Type: "AWS::DynamoDB::Table"
+    Properties:
+      TableName: !Sub "job-reqeust-store-${AWS::StackName}"
+      AttributeDefinitions:
+        - AttributeName: jobRequestId
+          AttributeType: S
+        - AttributeName: eventSource
+          AttributeType: S
+      KeySchema:
+        - AttributeName: jobRequestId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      GlobalSecondaryIndexes:
+        - IndexName: "eventSourceGSI"
+          KeySchema:
+            - AttributeName: "eventSource"
+              KeyType: "HASH"
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 5
+            WriteCapacityUnits: 5
+
+  ##########################################################################
+  #   Cloud Watch Alaram and Dashboard                                     #
+  ##########################################################################
+  CloudWatchAlarmsKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: CMK for SNS alarms topic
+      Enabled: true
+      EnableKeyRotation: True
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - "cloudwatch.amazonaws.com"
+                - "sns.amazonaws.com"
+            Action:
+              - "kms:GenerateDataKey*"
+              - "kms:Decrypt"
+            Resource: "*"
+          - Effect: Allow
+            Principal:
+              AWS:
+                - !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action:
+              - "kms:*"
+            Resource: "*"
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyUsage: ENCRYPT_DECRYPT
+      PendingWindowInDays: 30
+      Tags:
+        - Key: "Stack"
+          Value: !Sub "${AWS::StackName}"
+
+  CloudWatchAlarmsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId: !Ref CloudWatchAlarmsKMSKey
+      Tags:
+        - Key: "Stack"
+          Value: !Sub "${AWS::StackName}"
+
+  HttpApiErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref CloudWatchAlarmsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: ApiName
+          Value: !Ref JobRequestAPI
+      EvaluationPeriods: 1
+      MetricName: 5XXError
+      Namespace: AWS/ApiGateway
+      Period: 60
+      Statistic: Sum
+      Threshold: 1.0
+
+  AuthorizerFunctionErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref CloudWatchAlarmsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref AuthorizerFunction
+      EvaluationPeriods: 1
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: 1.0
+
+  GetJobStatusFunctionErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref CloudWatchAlarmsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref GetJobStatusFunction
+      EvaluationPeriods: 1
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: 1.0
+
+  SQSMessageProcessorFunctionErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref CloudWatchAlarmsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref SQSMessageProcessorFunction
+      EvaluationPeriods: 1
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: 1.0
+
+  BatchSimulatorFunctionErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref CloudWatchAlarmsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref BatchSimulatorFunction
+      EvaluationPeriods: 1
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: 1.0
+
+  GetJobStatusFunctionThrottlingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref CloudWatchAlarmsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref GetJobStatusFunction
+      EvaluationPeriods: 1
+      MetricName: Throttles
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: 1.0
+
+  SQSMessageProcessorFunctionThrottlingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref CloudWatchAlarmsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref SQSMessageProcessorFunction
+      EvaluationPeriods: 1
+      MetricName: Throttles
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: 1.0
+
+  BatchSimulatorFunctionThrottlingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref CloudWatchAlarmsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref BatchSimulatorFunction
+      EvaluationPeriods: 1
+      MetricName: Throttles
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: 1.0
+
+  AuthorizerFunctionThrottlingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref CloudWatchAlarmsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref AuthorizerFunction
+      EvaluationPeriods: 1
+      MetricName: Throttles
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: 1.0
+
+  JobRequestStoreDynamoDBThrottlingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref CloudWatchAlarmsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: TableName
+          Value: !Ref JobRequestStoreDynamoDBTable
+      EvaluationPeriods: 1
+      MetricName: ThrottledRequests
+      Namespace: AWS/DynamoDB
+      Period: 60
+      Statistic: Sum
+      Threshold: 1.0
+
+  ApplicationDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub "${AWS::StackName}-dashboard"
+      DashboardBody:
+        Fn::Sub: >
+          {
+            "widgets": [
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 12,
+                    "x": 0,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/Lambda", "Invocations", "FunctionName", "${GetJobStatusFunction}" ],
+                            [ ".", "Errors", ".", "." ],
+                            [ ".", "Throttles", ".", "." ],
+                            [ ".", "Duration", ".", ".", { "stat": "Average" } ],
+                            [ ".", "ConcurrentExecutions", ".", ".", { "stat": "Maximum" } ]
+                        ],
+                        "view": "timeSeries",
+                        "region": "${AWS::Region}",
+                        "stacked": false,
+                        "title": "Get Job Status Lambda",
+                        "period": 60,
+                        "stat": "Sum"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 18,
+                    "x": 0,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/Lambda", "Invocations", "FunctionName", "${SQSMessageProcessorFunction}" ],
+                            [ ".", "Errors", ".", "." ],
+                            [ ".", "Throttles", ".", "." ],
+                            [ ".", "Duration", ".", ".", { "stat": "Average" } ],
+                            [ ".", "ConcurrentExecutions", ".", ".", { "stat": "Maximum" } ]
+                        ],
+                        "view": "timeSeries",
+                        "region": "${AWS::Region}",
+                        "stacked": false,
+                        "title": "SQS Message Processor Lambda",
+                        "period": 60,
+                        "stat": "Sum"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 24,
+                    "x": 0,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/Lambda", "Invocations", "FunctionName", "${BatchSimulatorFunction}" ],
+                            [ ".", "Errors", ".", "." ],
+                            [ ".", "Throttles", ".", "." ],
+                            [ ".", "Duration", ".", ".", { "stat": "Average" } ],
+                            [ ".", "ConcurrentExecutions", ".", ".", { "stat": "Maximum" } ]
+                        ],
+                        "view": "timeSeries",
+                        "region": "${AWS::Region}",
+                        "stacked": false,
+                        "title": "Batch Simulator Lambda",
+                        "period": 60,
+                        "stat": "Sum"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 6,
+                    "x": 6,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/Lambda", "Invocations", "FunctionName", "${AuthorizerFunction}" ],
+                            [ ".", "Errors", ".", "." ],
+                            [ ".", "Throttles", ".", "." ],
+                            [ ".", "Duration", ".", ".", { "stat": "Average" } ],
+                            [ ".", "ConcurrentExecutions", ".", ".", { "stat": "Maximum" } ]
+                        ],
+                        "view": "timeSeries",
+                        "region": "${AWS::Region}",
+                        "stacked": false,
+                        "title": "Authorizer Lambda",
+                        "period": 60,
+                        "stat": "Sum"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 12,
+                    "x": 6,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", "${JobRequestStoreDynamoDBTable}", { "stat": "Maximum" } ],
+                            [ ".", "ConsumedWriteCapacityUnits", ".", ".", { "stat": "Maximum" } ],
+                            [ ".", "ProvisionedReadCapacityUnits", ".", ".", { "period": 300 } ],
+                            [ ".", "ProvisionedWriteCapacityUnits", ".", ".", { "period": 300 } ]
+                        ],
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "title": "DynamoDB - Job Request Store",
+                        "period": 60,
+                        "stat": "Average"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 6,
+                    "x": 0,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/ApiGateway", "4xx", "ApiId", "${JobRequestAPI}", { "yAxis": "right" } ],
+                            [ ".", "5xx", ".", ".", { "yAxis": "right" } ],
+                            [ ".", "DataProcessed", ".", ".", { "yAxis": "left" } ],
+                            [ ".", "Count", ".", ".", { "label": "Count", "yAxis": "right" } ],
+                            [ ".", "IntegrationLatency", ".", ".", { "stat": "Average" } ],
+                            [ ".", "Latency", ".", ".", { "stat": "Average" } ]
+                        ],
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "period": 60,
+                        "stat": "Sum",
+                        "title": "API Gateway"
+                    }
+
+                },
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 0,
+                    "x": 0,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/SQS", "NumberOfMessagesSent", "QueueName", "${JobRequestQueue.QueueName}" ],
+                            [ ".", "ApproximateNumberOfMessagesDelayed", ".", "." ],
+                            [ ".", "NumberOfMessagesDeleted", ".", "." ],
+                            [ ".", "NumberOfMessagesReceived", ".", "." ]
+                        ],
+                        "view": "timeSeries",
+                        "region": "${AWS::Region}",
+                        "stacked": false,
+                        "title": "Job Request Queue",
+                        "period": 60,
+                        "stat": "Sum"
+                    }    
+                }
+            ]
+          }
+
+##########################################################################
+#   Outputs                                                              #
+##########################################################################
+Outputs:
+  JobRequestAPIEndpoint:
+    Description: "HTTP API endpoint"
+    Value: !Sub "https://${JobRequestAPI}.execute-api.${AWS::Region}.amazonaws.com"
+
+  SQSMessageProcessorFunction:
+    Description: MyLambdaFunction function name
+    Value: !Ref SQSMessageProcessorFunction
+
+  JobRequestQueueARN:
+    Description: SQS queue ARN
+    Value: !GetAtt JobRequestQueue.Arn
+
+  JobRequestStoreDynamoDBTableARNGetAtt:
+    Description: DynamoDB Table ARN
+    Value: !GetAtt JobRequestStoreDynamoDBTable.Arn
+
+  JobOutputPayloadStoreARN:
+    Description: DynaJob Payload S3 Bucket  ARN
+    Value: !GetAtt JobOutputPayloadStore.Arn

@@ -1,0 +1,63 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. 
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for Amazon Bedrock Agent - API Requirements Gatherer Agent'
+
+Parameters:
+  AliasName:
+    Type: String
+    Description: Name for the agent alias
+    Default: prod
+
+Resources:
+  # IAM Role for Agent
+  BedrockAgentRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
+      Path: /service-role/
+
+  # Bedrock Agent
+  ApiRequirementsGathererAgent:
+    Type: AWS::Bedrock::Agent
+    Properties:
+      AgentName: !Sub "${AWS::StackName}-api-requirements-gatherer-agent"
+      Description: "Gather requirements for API builder"
+      Instruction: "<task_description>\nYou are an experienced API developer tasked with initializing a project to create an Amazon API Gateway for a REST API. Your goal is to gather the necessary information from the user for building API and related code artifacts.\nAsk questions until you have enough information.\n</task_description>\n\n<instructions>\n\n<user_interaction>\nAsk user to describe use case in more details if it is not in the original request.\nAlso ask the user the following questions to identify features required for the project:\n\n<user_questions>\n- What is your preferred programming language to be used if code examples need to be generated?\n- Do you need a private or public API endpoint?\n- What is the integration target for the API? Valid options:\n  - Existing public resource over HTTP\n  - Lambda function\n  - Other AWS service\n  - Existing resources in a private VPC (e.g., container orchestrator, on-premises applications accessible via DirectConnect)\n- What identity provider will be used to determine authentication and authorization for the API? Valid options:\n  - None\n  - IAM\n  - Amazon Cognito\n  - 3rd party OIDC/OAuth compliant identity provider\n  - Custom\n  (Do not offer to use API keys for authentication/authorization.)\n- Are rate limiting and usage quotas needed?\n- Will you use this API by a web application and need to add CORS configuration to the API? If yes, which domains should be allowed?\n- What CI/CD tools do you use or are familiar with?\n</user_questions>\n\nIf API uses private endpoint, ask follow-up questions:\n<user_questions>\n- What is VPC ID from where this API should be accessible\n- What are subnet IDs from where this API should be accessible\n</user_questions>\n\nIf integration target uses existing public resources over HTTP, ask follow-up question:\n<user_questions>\n- What is URL of the resource to be used in the integration target definition\n</user_questions>\n\nIf integration target uses existing resources in a private VPC, ask follow-up questions:\n<user_questions>\n- What is load balancer ARN to be used in VPC Link configuration\n- What is load balancer DNS name to be used in the integration target definition\n</user_questions>\n\nIf integration target uses Lambda functions, ask follow-up questions:\n<user_questions>\n- Are these new or already existing Lambda functions\n- In case of already existing functions - what are ARN of the functions to be used for each resource and method\n_ if new functions will be used - should functions generated include basics business logics\n</user_questions>\n\nIf authentication uses Amazon Cognito, ask follow-up question:\n<user_questions>\n- Do you want to use existing Amazon Cognito user pool, and if so - what is ID of the user pool\n</user_questions>\n\nIf CORS configuration is needed and domain was not provided, ask follow-up question:\n<user_questions>\n- Which domain should be allowed in the CORS configuration\n</user_questions>\n\n</user_interaction>\n\n</instructions>\n\n<response_format>\nProvide your response immediately without any preamble, enclosed in <requirements></requirements> tags. \nInclude original user request within <request></request> tags\nResponse example:\n  <request>Build pet store e-commerce API</request>\n  <requirements>\n  - Build e-commerce API for a pet store. \n  - Include endpoints for inventory, orders, customer management, shopping cart\n  - Use public API endpoints\n  - Create new Lambda functions to be used as integration targets, include business logics samples into the code\n  - Use Okta as identity provider and create Lambda Authorizer\n  - Configure CORS allowing access from www.example.com domain\n  - Do not use throttling or metering of the API\n  - Use GitHub for CI/CD pipelines and actions\n  </requirements>\n</response_format>\n\n"
+      FoundationModel: !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.anthropic.claude-3-5-sonnet-20241022-v2:0"     
+      IdleSessionTTLInSeconds: 600
+      AgentResourceRoleArn: !GetAtt BedrockAgentRole.Arn
+      ActionGroups:
+        - ActionGroupName: UserInputAction
+          ParentActionGroupSignature: AMAZON.UserInput
+          ActionGroupState: ENABLED
+          
+
+  # Create agent alias
+  ApiRequirementsGathererAgentAlias:
+    Type: AWS::Bedrock::AgentAlias
+    Properties:
+      AgentId: !Ref ApiRequirementsGathererAgent
+      AgentAliasName: !Ref AliasName
+      Description: "Production alias for API Requirements Gatherer Agent"
+
+Outputs:
+  AgentId:
+    Description: ID of the created Bedrock Agent
+    Value: !Ref ApiRequirementsGathererAgent
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiRequirementsGathererAgentId"
+  AgentAliasId:
+    Description: ID of the created Agent Alias
+    Value: !GetAtt ApiRequirementsGathererAgentAlias.AgentAliasId
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiRequirementsGathererAgentAliasId"

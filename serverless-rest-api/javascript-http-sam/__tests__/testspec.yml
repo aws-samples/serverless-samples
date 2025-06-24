@@ -1,0 +1,24 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+version: 0.2
+phases:
+  install:
+    commands:
+      # Install all dependencies (including dependencies for running tests)
+      - cd ./javascript-http-sam
+      - npm install
+      - chmod +x ./__tests__/integration/test_init.sh
+      - chmod +x ./__tests__/integration/test_cleanup.sh
+  pre_build:
+    commands:
+      # Prepare environment for testing
+      - eval "$(./__tests__/integration/test_init.sh)"
+  build:
+    commands:
+      # Discover and run integration tests in the '__tests__/inegration' directory
+      - npm run test:integration
+  post_build:
+    commands:
+      # Cleanup after testing
+      - ./__tests__/integration/test_cleanup.sh

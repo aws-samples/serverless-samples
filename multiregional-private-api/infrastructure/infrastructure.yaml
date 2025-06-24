@@ -1,0 +1,258 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description:  This template deploys a VPC, with a pair of subnets spread across two Availability Zones. It deploys an internet gateway. us-east-1 deployment must be performed first
+
+Parameters:
+  TransitGatewayForPeering:
+    Description: Transit Gateway ID in another region to peer. Leave empty if none
+    Type: String
+    Default: ""
+
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: private-api-infrastructure
+
+Conditions:
+  TransitGatewayForPeeringDefined: !Not [!Equals [!Ref TransitGatewayForPeering, ""]]
+
+Mappings:
+    DeploymentRegionMap:
+      us-east-1:
+        VpcCIDR: 10.1.0.0/16
+        Subnet1CIDR: 10.1.1.0/24
+        Subnet2CIDR: 10.1.2.0/24
+        TransitGatewayAsn: 64521
+        TransitGatewayCrossRegionRouteCIDR: 10.2.0.0/16
+        CrossRegionID: us-west-2
+        VpceServiceName: com.amazonaws.us-east-1.execute-api
+      us-west-2:
+        VpcCIDR: 10.2.0.0/16
+        Subnet1CIDR: 10.2.1.0/24
+        Subnet2CIDR: 10.2.2.0/24
+        TransitGatewayAsn: 64522
+        TransitGatewayCrossRegionRouteCIDR: 10.1.0.0/16
+        CrossRegionID: us-east-1
+        VpceServiceName: com.amazonaws.us-west-2.execute-api
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !FindInMap [DeploymentRegionMap, !Ref "AWS::Region", VpcCIDR]
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  Subnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+      CidrBlock: !FindInMap [DeploymentRegionMap, !Ref "AWS::Region", Subnet1CIDR] 
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-subnet-az1
+
+  Subnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ]
+      CidrBlock: !FindInMap [DeploymentRegionMap, !Ref "AWS::Region", Subnet2CIDR] 
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-subnet-az2
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-routes
+
+  DefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  Subnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref Subnet1
+
+  Subnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref Subnet2
+
+  InternalTrafficSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: internal-traffic-sg
+      GroupDescription: Security group for internal traffic
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !FindInMap [DeploymentRegionMap, !Ref "AWS::Region", VpcCIDR]
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !FindInMap [DeploymentRegionMap, !Ref "AWS::Region", TransitGatewayCrossRegionRouteCIDR]
+
+  TransitGateway:
+    Type: AWS::EC2::TransitGateway
+    Properties: 
+      AmazonSideAsn: !FindInMap [DeploymentRegionMap, !Ref "AWS::Region", TransitGatewayAsn]
+      AutoAcceptSharedAttachments: enable
+      DefaultRouteTableAssociation: disable
+      DefaultRouteTablePropagation: disable
+      Description: !Sub ${EnvironmentName} Transit Gateway for cross-region communications
+      DnsSupport: enable
+      MulticastSupport: disable
+      Tags: 
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-tgw
+
+  TransitGatewayAttachment:
+    Type: AWS::EC2::TransitGatewayAttachment
+    Properties: 
+      SubnetIds: 
+        - !Ref Subnet1
+        - !Ref Subnet2
+      Tags: 
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-tgw-vpc-attachment
+      TransitGatewayId: !Ref TransitGateway
+      VpcId: !Ref VPC
+
+  TransitGatewayPeeringAttachment:
+    Type: AWS::EC2::TransitGatewayPeeringAttachment
+    Condition: TransitGatewayForPeeringDefined
+    Properties: 
+      PeerAccountId: !Ref "AWS::AccountId"
+      PeerRegion: !FindInMap [DeploymentRegionMap, !Ref "AWS::Region", CrossRegionID] 
+      PeerTransitGatewayId: !Ref TransitGatewayForPeering
+      Tags: 
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-tgw-peering-attachment
+      TransitGatewayId: !Ref TransitGateway
+
+  TransitGatewayRouteTable:
+    Type: AWS::EC2::TransitGatewayRouteTable
+    Properties: 
+      Tags: 
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-tgw-route-table
+      TransitGatewayId: !Ref TransitGateway
+
+  TransitGatewayVPCRouteTableAssociation:
+    Type: AWS::EC2::TransitGatewayRouteTableAssociation
+    Properties: 
+      TransitGatewayAttachmentId: !Ref TransitGatewayAttachment
+      TransitGatewayRouteTableId: !Ref TransitGatewayRouteTable
+
+  TransitGatewayVPCRoute:
+    Type: AWS::EC2::TransitGatewayRoute
+    Properties: 
+      Blackhole: false
+      DestinationCidrBlock: !FindInMap [DeploymentRegionMap, !Ref "AWS::Region", VpcCIDR]
+      TransitGatewayAttachmentId: !Ref TransitGatewayAttachment
+      TransitGatewayRouteTableId: !Ref TransitGatewayRouteTable 
+
+  VPCTransitGatewayRoute:
+    Type: AWS::EC2::Route
+    DependsOn: TransitGatewayRouteTable
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: !FindInMap [DeploymentRegionMap, !Ref "AWS::Region", TransitGatewayCrossRegionRouteCIDR]  
+      TransitGatewayId: !Ref TransitGateway
+
+  VPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties: 
+      PrivateDnsEnabled: true
+      SecurityGroupIds: 
+        - !Ref InternalTrafficSecurityGroup
+      ServiceName: !FindInMap [DeploymentRegionMap, !Ref "AWS::Region", VpceServiceName] 
+      SubnetIds: 
+        - !Ref Subnet1
+        - !Ref Subnet2
+      VpcEndpointType: Interface
+      VpcId: !Ref VPC
+
+Outputs:
+
+  VPC:
+    Description: A reference to the created VPC
+    Value: !Ref VPC
+
+  Subnets:
+    Description: A list of the subnets
+    Value: !Join [ ",", [ !Ref Subnet1, !Ref Subnet2 ]]
+
+  VPCEndpoint:
+    Description: A reference to the created VPC Endpoint
+    Value: !Ref VPCEndpoint
+
+  TransitGateway:
+    Description: Transit Gateway for cross-regional traffic
+    Value: !Ref TransitGateway
+
+  TransitGatewayRouteTable:
+    Description: Transit Gateway route table ID for cross-regional traffic
+    Value: !Ref TransitGatewayRouteTable
+    Export: 
+      Name: !Join [":", [!Ref "AWS::StackName", "TransitGatewayRouteTable"]]
+
+  TransitGatewayPeeringAttachment:
+    Condition: TransitGatewayForPeeringDefined
+    Description: Transit Gateway peering attachment ID for cross-regional traffic
+    Value: !Ref TransitGatewayPeeringAttachment
+    Export: 
+      Name: !Join [":", [!Ref "AWS::StackName", "TransitGatewayPeeringAttachment"]]
+
+  VPCEndpointIPCommand:
+    Description: Command to run to get VPC Endpoint IP addresses
+    Value: !Sub 'aws ec2 describe-network-interfaces --filters Name=description,Values="VPC Endpoint Interface ${VPCEndpoint}" --query "NetworkInterfaces[*].PrivateIpAddress" --region ${AWS::Region}'
+
+  TransitGatewayPeeringAcceptanceCommand:
+    Condition: TransitGatewayForPeeringDefined
+    Description: Command to run to accept Transit Gateway cross-region peering request
+    Value: !Sub 
+      - |+
+        aws ec2 accept-transit-gateway-peering-attachment --transit-gateway-attachment-id ${attachment} --region ${region}
+      - attachment: !Ref TransitGatewayPeeringAttachment
+        region: !FindInMap
+        - DeploymentRegionMap
+        - !Ref "AWS::Region"
+        - CrossRegionID
+
+

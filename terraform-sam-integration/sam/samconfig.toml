@@ -1,0 +1,10 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "terraform-lambda-ssm"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-1gb98dl3chf2w"
+s3_prefix = "terraform-lambda-ssm"
+region = "us-west-1"
+capabilities = "CAPABILITY_IAM"
+image_repositories = []

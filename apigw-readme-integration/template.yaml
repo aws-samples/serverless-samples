@@ -1,0 +1,325 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: 2010-09-09
+Transform:
+  - AWS::Serverless-2016-10-31
+
+Description: >
+  Amazon API Gateway definition synchronization with ReadMe
+
+Globals:
+  Function:
+    Tracing: Active
+
+Parameters:
+  APIGWID:
+    Description: ID of the API Gateway endpoint to be monitored for changes
+    Type: String
+    Default: <API Gateway ID here>
+  APIGWStage:
+    Description: Stage of the API Gateway endpoint to be monitored for changes
+    Type: String
+    Default: <API Gateway stage name here>
+  APIGWType:
+    Description: Amazon API Gateway endpoint type (REST or HTTP)
+    Type: String
+    Default: REST
+    AllowedValues: 
+      - "REST"
+      - "HTTP"
+  RMProjectVersion:
+    Description: ReadMe Version number of your docs project, for example, v3.0. 
+    Type: String
+    Default: <ReadMe project version number here>
+  RMAPIDefinitionID:
+    Description: ReadMe ID of the API specification. The unique ID for each API can be found by navigating to your API Definitions page. Use "None" if it is a new API and you do not know definition ID yet.
+    Type: String
+    Default: None
+  RMAPIKey:
+    Description: ReadMe API key to be used for authentication
+    Type: String
+    Default: <ReadMe API key here>
+  NotificationEmail:
+    Description: ReadMe administrative user email for notifications
+    Type: String
+    Default: ReadMe admin email here
+
+Mappings:
+  APIGatewayClients:
+    REST: 
+      name: apigateway
+    HTTP: 
+      name: apigatewayv2
+
+Conditions:
+  IsRESTAPI: !Equals 
+    - !Ref APIGWType
+    - "REST"
+
+Resources:
+  # API definition synchronization AWS Lambda function and Amazon EventBridge rules
+  ReadMeSyncFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.9
+      MemorySize: 128
+      Timeout: 100
+      EventInvokeConfig:
+        MaximumRetryAttempts: 0
+      Handler: src/sync.lambda_handler
+      Description: API Gateway->ReadMe synchronization function
+      Events:
+        DeploymentCreated:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              Fn::Sub:
+              - |
+                {
+                  "detail": {
+                    "eventSource": ["apigateway.amazonaws.com"],
+                    "requestParameters": {
+                      "${stagenamefieldname}": ${stagenamevalue},
+                      "${apiidfieldname}": ["${APIGWID}"]
+                    },
+                    "eventName": ["CreateDeployment"],
+                    "errorCode": [ { "exists": false } ]
+                  }
+                }
+              - 
+                apiidfieldname: !If [IsRESTAPI, "restApiId", "apiId"]
+                stagenamefieldname: !If [IsRESTAPI, "createDeploymentInput", "stageName"]
+                stagenamevalue: 
+                  !If 
+                    - IsRESTAPI
+                    - !Sub "{\"stageName\": [\"${APIGWStage}\"]}"
+                    - !Sub "[\"${APIGWStage}\"]"
+        StageUpdated:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              Fn::Sub:
+              - |
+                {
+                  "detail": {
+                    "eventSource": ["apigateway.amazonaws.com"],
+                    "requestParameters": {
+                      "${apiidfieldname}": ["${APIGWID}"]
+                    },
+                    "responseElements": {
+                      "stageName": ["${APIGWStage}"]
+                    },
+                    "eventName": ["UpdateStage"],
+                    "errorCode": [ { "exists": false } ]
+                  }
+                }
+              - 
+                apiidfieldname: !If [IsRESTAPI, "restApiId", "apiId"]
+        StageDeleted:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              Fn::Sub:
+              - |
+                {
+                  "detail": {
+                    "eventSource": ["apigateway.amazonaws.com"],
+                    "requestParameters": {
+                      "stageName": ["${APIGWStage}"],
+                      "${apiidfieldname}": ["${APIGWID}"]
+                    },
+                    "eventName": ["DeleteStage"],
+                    "errorCode": [ { "exists": false } ]
+                  }
+                }
+              - 
+                apiidfieldname: !If [IsRESTAPI, "restApiId", "apiId"]
+        APIDeleted:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              Fn::Sub:
+              - |
+                {
+                  "detail": {
+                    "eventSource": ["apigateway.amazonaws.com"],
+                    "requestParameters": {
+                      "${apiidfieldname}": ["${APIGWID}"]
+                    },
+                    "eventName": ["${eventname}"],
+                    "errorCode": [ { "exists": false } ]
+                  }
+                }
+              - 
+                apiidfieldname: !If [IsRESTAPI, "restApiId", "apiId"]
+                eventname: !If [IsRESTAPI, "DeleteRestApi", "DeleteApi"]
+      Environment:
+        Variables:
+          PARAMETERS_PREFIX: !Sub "/${AWS::StackName}/"
+          APIGW_SDK_CLIENT_NAME: !FindInMap [APIGatewayClients, !Ref APIGWType, name]
+      Policies:
+        - SSMParameterReadPolicy:
+            ParameterName: !Sub "${AWS::StackName}/*"
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref RMAPIKeySecret
+        - Version: '2012-10-17' 
+          Statement:
+          - Effect: Allow
+            Action:
+              - apigateway:GET
+            Resource: 
+              'Fn::If':
+              - IsRESTAPI
+              - !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis/${APIGWID}/stages/${APIGWStage}/exports/oas30'
+              - !Sub 'arn:aws:apigateway:${AWS::Region}::/apis/${APIGWID}/exports/OAS30'
+        - Version: '2012-10-17' 
+          Statement:
+          - Effect: Allow
+            Action:
+              - ssm:PutParameter
+            Resource: 
+              - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${AWS::StackName}/RM-APIDefinitionID'
+      Tags:
+        Stack: !Sub "${AWS::StackName}"
+  
+  # Synchronization function Amazon CloudWatch Logs log group to override default indefinete log retention period
+  ReadMeSyncFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ReadMeSyncFunction}"
+      RetentionInDays: 7
+
+  # Configuration parameters in AWS Systems Manager Parameter Store
+  APIGWIDParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/APIGW-ID"
+      Type: String
+      Value: !Sub "${APIGWID}"
+      Description: SSM Parameter for API gateway ID
+      Tags:
+        Stack: !Sub "${AWS::StackName}"
+
+  APIGWStageParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/APIGW-Stage"
+      Type: String
+      Value: !Sub "${APIGWStage}"
+      Description: SSM Parameter for API gateway stage name
+      Tags:
+        Stack: !Sub "${AWS::StackName}"
+
+  APIGWTypeParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/APIGW-Type"
+      Type: String
+      Value: !Sub "${APIGWType}"
+      Description: SSM Parameter for API gateway endpoint type
+      Tags:
+        Stack: !Sub "${AWS::StackName}"
+
+  RMAPIDefinitionIDParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/RM-APIDefinitionID"
+      Type: String
+      Value: !Sub "${RMAPIDefinitionID}"
+      Description: SSM Parameter for ReadMe API definition ID
+      Tags:
+        Stack: !Sub "${AWS::StackName}"
+
+  RMAPIProjectVersionParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/${AWS::StackName}/RM-ProjectVersion"
+      Type: String
+      Value: !Sub "${RMProjectVersion}"
+      Description: SSM Parameter for ReadMe project version
+      Tags:
+        Stack: !Sub "${AWS::StackName}"
+
+  # ReadMe API key (used for  authentication) in AWS Secrets Manager
+  RMAPIKeySecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "/${AWS::StackName}/RM-APIKey"
+      Description: ReadMe API key
+      SecretString: !Sub "${RMAPIKey}"
+      Tags:
+        -
+          Key: Stack
+          Value: !Sub "${AWS::StackName}"
+
+  # Amazon SNS topic for notifications and alerts
+  NotificationsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId: !Ref NotificationsTopicKMSKey
+      Tags:
+        - Key: "Stack" 
+          Value: !Sub "${AWS::StackName}"
+
+  NotificationsTopicKMSKey:
+    Type: AWS::KMS::Key
+    Properties: 
+      Description: CMK for SNS notifications topic
+      Enabled: true
+      EnableKeyRotation: True
+      KeyPolicy: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: 
+              Service: 
+                - "cloudwatch.amazonaws.com"
+                - "sns.amazonaws.com"
+            Action:
+              - "kms:GenerateDataKey*"
+              - "kms:Decrypt"
+            Resource: "*"
+          - Effect: Allow
+            Principal: 
+              AWS: 
+                - !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action:
+              - "kms:*"
+            Resource: "*"
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyUsage: ENCRYPT_DECRYPT
+      PendingWindowInDays: 30
+      Tags: 
+        - Key: "Stack" 
+          Value: !Sub "${AWS::StackName}"
+
+  # Alarms for synchronization failures
+  ReadMeSyncFunctionErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref NotificationsTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ReadMeSyncFunction
+      EvaluationPeriods: 1
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Period: 60
+      Statistic: Sum
+      Threshold: 1.0
+
+  # Subscription for administrator to the notifications topic
+  TestTopicSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !Ref NotificationEmail
+      Protocol: email
+      TopicArn: !Ref NotificationsTopic
+
+Outputs:
+  NotificationsTopic:
+    Description: SNS Topic to be used for the notifications subscriptions
+    Value: !Ref NotificationsTopic

@@ -1,0 +1,30 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      # Install all dependencies (including dependencies for running tests)
+      - cd ./javascript-http-sam
+      - npm install
+  pre_build:
+    commands:
+      # Discover and run unit tests in the '__tests__/unit' directory
+      - npm run test:unit
+      # Remove all unit tests to reduce the size of the package that will be ultimately uploaded to Lambda
+      - rm -rf ./__tests__
+      # Remove all dependencies not needed for the Lambda deployment package (the packages from devDependencies in package.json)
+      - npm prune --production
+  build:
+    commands:
+      # Use AWS SAM to package the application by using AWS CloudFormation
+      - aws cloudformation package --template template.yaml --s3-bucket $BUILD_OUTPUT_BUCKET --output-template application.yaml
+artifacts:
+  type: zip
+  discard-paths: yes
+  files:
+    -  ./javascript-http-sam/application.yaml
+    - ./shared/cognito.yaml

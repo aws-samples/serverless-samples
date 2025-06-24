@@ -1,0 +1,282 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for API Gateway with Lambda integrations, ACM, and Route53'
+
+Parameters:
+  DomainName:
+    Type: String
+    Default: api.example.com
+    Description: Custom domain name for API Gateway
+  
+  HostedZoneId:
+    Type: AWS::Route53::HostedZone::Id
+    Description: ID of the existing Route53 hosted zone (e.g., Z23ABC4XYZL05B)
+  
+  LambdaRuntime:
+    Type: String
+    Default: nodejs18.x
+    Description: Runtime for Lambda functions
+    
+  CertificateArn:
+    Type: String
+    Description: ARN of an existing ACM certificate for the domain
+
+Resources:
+  # Lambda Functions for each API
+  ProductsV1Function:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: ProductsV1Function
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: !Ref LambdaRuntime
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+            return {
+              statusCode: 200,
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ message: 'Hello from products v1' })
+            };
+          };
+      Timeout: 10
+
+  ProductsV2Function:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: ProductsV2Function
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: !Ref LambdaRuntime
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+            return {
+              statusCode: 200,
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ message: 'Hello from products v2' })
+            };
+          };
+      Timeout: 10
+
+  OrdersFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: OrdersFunction
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: !Ref LambdaRuntime
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+            return {
+              statusCode: 200,
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ message: 'Hello from orders' })
+            };
+          };
+      Timeout: 10
+
+  # Lambda Execution Role
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  # API Gateway REST APIs
+  ProductsV1Api:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: ProductsV1
+      Description: Products API V1
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  ProductsV2Api:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: ProductsV2
+      Description: Products API V2
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  OrdersApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: Orders
+      Description: Orders API
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  ProductsV1Method:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ProductsV1Api
+      ResourceId: !GetAtt ProductsV1Api.RootResourceId
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ProductsV1Function.Arn}/invocations
+
+  ProductsV2Method:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ProductsV2Api
+      ResourceId: !GetAtt ProductsV2Api.RootResourceId
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ProductsV2Function.Arn}/invocations
+
+  OrdersMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref OrdersApi
+      ResourceId: !GetAtt OrdersApi.RootResourceId
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${OrdersFunction.Arn}/invocations
+
+  # API Gateway Deployments
+  ProductsV1Deployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - ProductsV1Method
+    Properties:
+      RestApiId: !Ref ProductsV1Api
+      Description: ProductsV1 API Deployment
+
+  ProductsV2Deployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - ProductsV2Method
+    Properties:
+      RestApiId: !Ref ProductsV2Api
+      Description: ProductsV2 API Deployment
+
+  OrdersDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - OrdersMethod
+    Properties:
+      RestApiId: !Ref OrdersApi
+      Description: Orders API Deployment
+
+  # API Gateway Stages
+  ProductsV1Stage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      RestApiId: !Ref ProductsV1Api
+      DeploymentId: !Ref ProductsV1Deployment
+      StageName: prod
+
+  ProductsV2Stage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      RestApiId: !Ref ProductsV2Api
+      DeploymentId: !Ref ProductsV2Deployment
+      StageName: prod
+
+  OrdersStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      RestApiId: !Ref OrdersApi
+      DeploymentId: !Ref OrdersDeployment
+      StageName: prod
+
+  # Lambda Permissions
+  ProductsV1FunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ProductsV1Function
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ProductsV1Api}/*
+
+  ProductsV2FunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ProductsV2Function
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ProductsV2Api}/*
+
+  OrdersFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref OrdersFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${OrdersApi}/*
+
+  # API Gateway Custom Domain
+  ApiCustomDomain:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      DomainName: !Ref DomainName
+      RegionalCertificateArn: !Ref CertificateArn
+      SecurityPolicy: "TLS_1_2"
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  # API Mappings
+  ProductsV1Mapping:
+    Type: AWS::ApiGatewayV2::ApiMapping
+    Properties:
+      DomainName: !Ref ApiCustomDomain
+      ApiId: !Ref ProductsV1Api
+      Stage: !Ref ProductsV1Stage
+      ApiMappingKey: "products/v1"
+
+  ProductsV2Mapping:
+    Type: AWS::ApiGatewayV2::ApiMapping
+    Properties:
+      DomainName: !Ref ApiCustomDomain
+      ApiId: !Ref ProductsV2Api
+      Stage: !Ref ProductsV2Stage
+      ApiMappingKey: "products/v2"
+
+  OrdersMapping:
+    Type: AWS::ApiGatewayV2::ApiMapping
+    Properties:
+      DomainName: !Ref ApiCustomDomain
+      ApiId: !Ref OrdersApi
+      Stage: !Ref OrdersStage
+      ApiMappingKey: orders
+
+  # Route53 Record
+  ApiDnsRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt ApiCustomDomain.RegionalDomainName
+        HostedZoneId: !GetAtt ApiCustomDomain.RegionalHostedZoneId
+
+Outputs:
+  CustomDomainUrl:
+    Description: Custom domain URL
+    Value: !Sub https://${DomainName}

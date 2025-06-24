@@ -1,0 +1,103 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: 2010-09-09
+Transform:
+  - AWS::Serverless-2016-10-31
+
+Description: >
+  Amazon API Gateway deploymnet inspection and feedback automation
+Parameters:
+  APIInspectorAgentStackName:
+    Type: String
+    Default: api-inspector-agent
+    Description: Name of the stack that exports the API Inspector Agent ID and Alias ID
+  AwsRegionForModelAccess:
+    Type: String
+    Default: us-east-1
+    Description: AWS region for which the API Inspector agent was deployed
+  SesEmailForNotifications:
+    Type: String
+    Default: ""
+    Description: Email address for notifications
+  
+
+Resources:
+  APIInspectorProxyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Path: /
+
+  APIInspectorProxyPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: APIInspectorProxyPolicy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - bedrock:InvokeAgent
+            Resource: !Sub 
+              - 'arn:aws:bedrock:${AwsRegionForModelAccess}:${AWS::AccountId}:agent-alias/${AgentId}/${AgentAlias}'
+              - AgentId: 
+                  Fn::ImportValue: 
+                    !Sub "${APIInspectorAgentStackName}-ApiInspectorAgentId"
+                AgentAlias: 
+                  Fn::ImportValue: 
+                    !Sub "${APIInspectorAgentStackName}-ApiInspectorAgentAliasId"
+          - Effect: Allow
+            Action: 
+              - ses:SendEmail
+            Resource: !Sub arn:aws:ses:${AWS::Region}:${AWS::AccountId}:identity/${SesEmailForNotifications}
+          - Effect: Allow
+            Action:
+              - apigateway:GET
+            Resource: !Sub arn:aws:apigateway:${AWS::Region}::/*/*
+      Roles:
+        - !Ref APIInspectorProxyRole
+
+  APIInspectorProxyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.13
+      MemorySize: 128
+      Timeout: 900
+      EventInvokeConfig:
+        MaximumRetryAttempts: 0
+      Environment:
+        Variables:
+          REGION_FOR_BEDROCK: !Ref AwsRegionForModelAccess
+          BEDROCK_AGENT_ID: 
+            Fn::ImportValue: 
+              !Sub "${APIInspectorAgentStackName}-ApiInspectorAgentId"
+          BEDROCK_AGENT_ALIAS: 
+            Fn::ImportValue: 
+              !Sub "${APIInspectorAgentStackName}-ApiInspectorAgentAliasId"
+          SES_EMAIL: !Ref SesEmailForNotifications
+      CodeUri: src/
+      Handler: inspector_proxy.lambda_handler
+      Description: API Gateway inspector agent proxy function
+      Role: !GetAtt APIInspectorProxyRole.Arn
+      Events:
+        APIModified:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              detail:
+                eventSource:
+                  - apigateway.amazonaws.com
+                eventName:
+                  - CreateDeployment
+                  - UpdateStage
+                errorCode:
+                  - exists: false

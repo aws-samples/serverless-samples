@@ -1,0 +1,59 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Amazon Fraud Detector template for streaming data samples."
+
+Parameters:
+  FraudDetectorResourcesStackName:
+    Description: Name of AWS CloudFormation stack with Amazon Fraud Detector resources defined
+    Type: String
+    Default: fraud-detector-resources
+  FraudDetectorModelArn:
+    Description: ARN of Amazon Fraud Detector model to be used in the detector
+    Type: String
+    Default: <Model ARN here>
+
+Resources:
+  # Detector
+  TransactionFraudDetector:
+    Type: AWS::FraudDetector::Detector
+    Properties:
+      DetectorId: 'transaction_fraud_detector'
+      DetectorVersionStatus: 'ACTIVE'
+      RuleExecutionMode: 'FIRST_MATCHED'
+      EventType:
+        Inline: false
+        Name: 'transaction_event'
+        Arn: 
+          Fn::ImportValue: !Sub "${FraudDetectorResourcesStackName}-TransactionEventTypeArn"
+      AssociatedModels:
+        - Arn: !Sub "${FraudDetectorModelArn}"
+      Rules:
+        - RuleId: 'decline_rule'
+          DetectorId: 'transaction_fraud_detector'
+          Expression: '$transaction_model_insightscore >= 950'
+          Language: "DETECTORPL"
+          Outcomes:
+            - Inline: false
+              Name: 'block'
+              Arn: 
+                Fn::ImportValue: !Sub "${FraudDetectorResourcesStackName}-BlockOutcomeArn" 
+        - RuleId: 'friction_rule'
+          DetectorId: 'transaction_fraud_detector'
+          Expression: '$transaction_model_insightscore >= 855 and $transaction_model_insightscore < 950'
+          Language: "DETECTORPL"
+          Outcomes:
+            - Inline: false
+              Name: 'investigate'
+              Arn: 
+                Fn::ImportValue: !Sub "${FraudDetectorResourcesStackName}-InvestigateOutcomeArn"
+        - RuleId: 'approve_rule'
+          DetectorId: 'transaction_fraud_detector'
+          Expression: '$transaction_model_insightscore < 855'
+          Language: "DETECTORPL"
+          Outcomes:
+            - Inline: false
+              Name: 'approve'
+              Arn: 
+                Fn::ImportValue: !Sub "${FraudDetectorResourcesStackName}-ApproveOutcomeArn"

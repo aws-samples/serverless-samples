@@ -1,0 +1,13 @@
+{
+  "params": {
+    "path": {
+    },
+    "querystring": {
+      "param1": "value1"
+    },
+    "header": {
+      "Host": "api.example.com",
+      "Content-Type": "application\/json"
+    }
+  }
+}

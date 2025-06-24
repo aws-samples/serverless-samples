@@ -1,0 +1,85 @@
+{
+    "eventVersion": "1.08",
+    "userIdentity": {
+        "type": "AssumedRole",
+        "principalId": "ABCDEFGH1234567890:admin",
+        "arn": "arn:aws:sts::1234567890:assumed-role/Administrator/admin",
+        "accountId": "1234567890",
+        "accessKeyId": "ABCDEFGH1234567890",
+        "sessionContext": {
+            "sessionIssuer": {
+                "type": "Role",
+                "principalId": "ABCDEFGH1234567890",
+                "arn": "arn:aws:iam::1234567890:role/Administrator",
+                "accountId": "1234567890",
+                "userName": "Administrator"
+            },
+            "webIdFederationData": {},
+            "attributes": {
+                "creationDate": "2022-07-25T15:23:27Z",
+                "mfaAuthenticated": "false"
+            }
+        }
+    },
+    "eventTime": "2022-07-25T18:25:51Z",
+    "eventSource": "apigateway.amazonaws.com",
+    "eventName": "UpdateStage",
+    "awsRegion": "us-east-1",
+    "sourceIPAddress": "127.0.0.1",
+    "userAgent": "Browser",
+    "requestParameters": {
+        "updateStageInput": {
+            "patchOperations": [
+                {
+                    "path": "/deploymentId",
+                    "value": "dda442",
+                    "op": "replace"
+                }
+            ]
+        },
+        "restApiId": "v18j6lahak",
+        "stageName": "tmp",
+        "template": false
+    },
+    "responseElements": {
+        "stageUpdate": {
+            "restApiId": "v18j6lahak",
+            "stageName": "tmp",
+            "template": false
+        },
+        "stageName": "tmp",
+        "createdDate": "Jul 19, 2022 9:05:30 PM",
+        "cacheClusterStatus": "NOT_AVAILABLE",
+        "tracingEnabled": false,
+        "methodSettings": {},
+        "variables": {
+            "readmeid": "*"
+        },
+        "deploymentId": "dda442",
+        "cacheClusterEnabled": false,
+        "lastUpdatedDate": "Jul 25, 2022 6:25:51 PM",
+        "stageFlushAuthorizerCache": {
+            "stageName": "tmp",
+            "restApiId": "v18j6lahak",
+            "template": false
+        },
+        "stageDelete": {
+            "restApiId": "v18j6lahak",
+            "stageName": "tmp",
+            "template": false
+        },
+        "self": {
+            "restApiId": "v18j6lahak",
+            "stageName": "tmp",
+            "template": false
+        }
+    },
+    "requestID": "07bde619-bc48-4a1a-bd1d-06a61e5ea384",
+    "eventID": "24c0ac9b-d841-4cc2-9233-4d40496e4cd7",
+    "readOnly": false,
+    "eventType": "AwsApiCall",
+    "managementEvent": true,
+    "recipientAccountId": "1234567890",
+    "eventCategory": "Management",
+    "sessionCredentialFromConsole": "true"
+}

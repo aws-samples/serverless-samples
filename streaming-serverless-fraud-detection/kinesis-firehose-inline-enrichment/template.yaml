@@ -1,0 +1,179 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: 2010-09-09
+Transform:
+  - AWS::Serverless-2016-10-31
+
+Description: >
+  Serverless fraud detection - streaming data enrichment
+
+Parameters:
+  FraudDetectorID:
+    Description: ID of the Amazon Fraud Detector
+    Type: String
+    Default: transaction_fraud_detector
+
+Resources:
+  # Destination S3 bucket
+  TransactionsDataBucket:
+    Type: AWS::S3::Bucket 
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 30
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  # Amazon Kinesis Firehose for transaction ingestion and archiving
+  TransactionsKinesisFirehose:
+    Type: AWS::KinesisFirehose::DeliveryStream
+    Properties: 
+      DeliveryStreamName: !Sub "${AWS::StackName}-TransactionsFirehose"
+      DeliveryStreamType: DirectPut
+      DeliveryStreamEncryptionConfigurationInput:
+        KeyType: AWS_OWNED_CMK
+      ExtendedS3DestinationConfiguration:
+        BucketARN: !GetAtt TransactionsDataBucket.Arn
+        RoleARN: !GetAtt FirehoseDeliveryRole.Arn
+        BufferingHints:
+          IntervalInSeconds: 60
+          SizeInMBs: 1
+        ProcessingConfiguration:
+          Enabled: true
+          Processors:
+          - Type: Lambda
+            Parameters: 
+              - ParameterName: "LambdaArn"
+                ParameterValue: !GetAtt KinesisTransformationFunction.Arn
+              - ParameterName: "BufferIntervalInSeconds"
+                ParameterValue: "60"
+              - ParameterName: "BufferSizeInMBs"
+                ParameterValue: "3"
+              - ParameterName: "RoleArn"
+                ParameterValue: !GetAtt FirehoseDeliveryRole.Arn
+
+  FirehoseDeliveryRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: "firehose.amazonaws.com"
+            Action: "sts:AssumeRole"
+            Condition:
+              StringEquals:
+                "sts:ExternalId": !Ref "AWS::AccountId"
+      Path: "/"
+      Policies:
+        - PolicyName: !Sub ${AWS::StackName}-FirehoseDeliveryPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "s3:AbortMultipartUpload"
+                  - "s3:GetBucketLocation"
+                  - "s3:GetObject"
+                  - "s3:ListBucket"
+                  - "s3:ListBucketMultipartUploads"
+                  - "s3:PutObject"
+                Resource:
+                  - !Sub "arn:aws:s3:::${TransactionsDataBucket}"
+                  - !Sub "arn:aws:s3:::${TransactionsDataBucket}/*"
+        - PolicyName: !Sub "${AWS::StackName}-TransformationExecutionPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: 
+                  - "lambda:InvokeFunction"
+                Resource: 
+                  - !GetAtt KinesisTransformationFunction.Arn
+
+  # Amazon Kinesis Firehose processor AWS Lambda function
+  KinesisTransformationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Kinesis Firehose data transformation function
+      Handler: src/enricher.lambda_handler
+      Runtime: python3.9
+      MemorySize: 128
+      Timeout: 100
+      Tracing: Active
+      Environment:
+        Variables:
+          FRAUD_DETECTOR_ID: !Sub "${FraudDetectorID}"
+      Policies:
+        - Version: '2012-10-17' 
+          Statement:
+          - Effect: Allow
+            Action:
+              - frauddetector:GetEventPrediction
+            Resource: 
+              - !Sub 'arn:aws:frauddetector:${AWS::Region}:${AWS::AccountId}:event-type/*'
+              - !Sub 'arn:aws:frauddetector:${AWS::Region}:${AWS::AccountId}:detector/${FraudDetectorID}'
+              - !Sub 'arn:aws:frauddetector:${AWS::Region}:${AWS::AccountId}:detector-version/*'
+
+  # KMS key to encrypt Kinesis logs
+  KinesisTransformationLogsKMSKey:
+    Type: AWS::KMS::Key
+    Properties: 
+      Description: CMK for Kinesis transformation function logs
+      Enabled: true
+      EnableKeyRotation: True
+      KeyPolicy: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: 
+              AWS: 
+                - !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action:
+              - "kms:*"
+            Resource: "*"
+          - Effect: Allow
+            Principal:
+              Service:
+                - !Sub logs.${AWS::Region}.amazonaws.com
+            Action:
+              - "kms:Encrypt*"
+              - "kms:Decrypt*"
+              - "kms:ReEncrypt*"
+              - "kms:GenerateDataKey*"
+              - "kms:Describe*"
+            Resource: "*"
+            Condition:
+              ArnEquals: 
+                kms:EncryptionContext:aws:logs:arn: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${KinesisTransformationFunction}"
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyUsage: ENCRYPT_DECRYPT
+
+  # Kinesis Firehose processor AWS Lambda function Amazon CloudWatch Logs log group to override default indefinete log retention period
+  KinesisTransformationFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${KinesisTransformationFunction}"
+      RetentionInDays: 7
+      KmsKeyId: !GetAtt KinesisTransformationLogsKMSKey.Arn 
+
+Outputs:
+  TransactionsKinesisFirehose:
+    Description: Kinesis Data Firehose for data enrichment
+    Value: !Ref TransactionsKinesisFirehose
+  TransactionsDataBucket:
+    Description: Transaction data destination bucket
+    Value: !Ref TransactionsDataBucket

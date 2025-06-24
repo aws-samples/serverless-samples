@@ -1,0 +1,10 @@
+{
+  "name": "fargate-rest-api-lambda-authorizer",
+  "version": "0.0.1",
+  "description": "Lambda authorizer used to authorize requests made to API Gateway",
+  "dependencies": {
+    "jsonwebtoken": "^9.0.0",
+    "jwk-to-pem": "^2.0.5",
+    "request": "^2.88.2"
+  }
+}

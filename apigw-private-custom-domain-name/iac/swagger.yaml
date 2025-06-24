@@ -1,0 +1,43 @@
+openapi: 3.0.1
+info:
+  title: apigw-pcdn
+  description: APIGW private custom domain name implementation
+  version: 0.1.0
+paths:
+  /:
+    get:
+      summary: example
+      description: returns list of examples
+      responses:
+        200:
+          description: ok
+        default:
+          description: error
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        payloadFormatVersion:
+          Fn::Sub: '${pPayloadVersion}'
+        responses:
+          default:
+            statusCode: 200
+        type: AWS_PROXY
+        uri:
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${Fn.Arn}/invocations'
+    post:
+      summary: example
+      description: create example
+      responses:
+        200:
+          description: ok
+        default:
+          description: error
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        payloadFormatVersion:
+          Fn::Sub: '${pPayloadVersion}'
+        responses:
+          default:
+            statusCode: 200
+        type: AWS_PROXY
+        uri:
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${Fn.Arn}/invocations'

@@ -1,0 +1,16 @@
+{
+    "resource": "/locations",
+    "path": "/locations",
+    "httpMethod": "PUT",
+    "headers": null,
+    "multiValueHeaders": null,
+    "queryStringParameters": null,
+    "multiValueQueryStringParameters": null,
+    "pathParameters": null,
+    "stageVariables": null,
+    "requestContext": {
+        "requestId": "be946131-30c4-4396-9c29-f25f8caa91dc"
+    },
+    "body": "{\"imageUrl\":\"https: //s3.amazonaws.com/spacefinder-public-image-repository/encore.jpg\",\"description\":\"Las Vegas\",\"name\":\"Encore\"}",
+    "isBase64Encoded": false
+}

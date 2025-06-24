@@ -1,0 +1,197 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: 2010-09-09
+Transform:
+  - AWS::Serverless-2016-10-31
+
+Description: >
+  Serverless fraud detection - by event bus subscriber
+
+Parameters:
+  FraudDetectorID:
+    Description: ID of the Amazon Fraud Detector
+    Type: String
+    Default: transaction_fraud_detector
+
+Resources:
+  # EventBridge custom bus for incoming data
+  RawDataEventBus: 
+    Type: AWS::Events::EventBus
+    Properties: 
+        Name: !Sub "${AWS::StackName}-RawData"
+
+  # EventBridge custom bus for enriched data  
+  EnrichedDataEventBus: 
+    Type: AWS::Events::EventBus
+    Properties: 
+        Name: !Sub "${AWS::StackName}-EnrichedData"
+
+  # EventBridge rule that will be used to perform fraud detection on all incoming messages
+  IncomingDataEventRule: 
+    Type: AWS::Events::Rule
+    Properties: 
+      Description: Execute fraud detection workflow
+      EventBusName: !Ref RawDataEventBus
+      EventPattern: '{"source": [ { "exists": true } ]}'
+      State: "ENABLED"
+      Targets: 
+        - Arn: !GetAtt FraudDetectionWorkflow.Arn
+          Id: "FraudDetectionWorkflow"
+          RoleArn: !GetAtt WorkflowExecutionRole.Arn
+
+  WorkflowExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "events.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/" 
+      Policies:
+        - PolicyName: WorkflowExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action: "states:StartExecution"
+                Resource: !GetAtt FraudDetectionWorkflow.Arn
+
+  # KMS key to encrypt SNS alerts topic
+  AlertsKMSKey:
+    Type: AWS::KMS::Key
+    Properties: 
+      Description: CMK for SNS alarms topic
+      Enabled: true
+      EnableKeyRotation: True
+      KeyPolicy: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: 
+              Service: 
+                - "cloudwatch.amazonaws.com"
+                - "sns.amazonaws.com"
+            Action:
+              - "kms:GenerateDataKey*"
+              - "kms:Decrypt"
+            Resource: "*"
+          - Effect: Allow
+            Principal: 
+              AWS: 
+                - !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action:
+              - "kms:*"
+            Resource: "*"
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyUsage: ENCRYPT_DECRYPT
+      PendingWindowInDays: 30
+
+  # SNS topic to publish transactions for the further review
+  FraudDetectionAlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId: !Ref AlertsKMSKey
+
+  # Step Functions workflow to analyze incoming events  
+  FraudDetectionWorkflow:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Type: EXPRESS
+      DefinitionUri: src/workflow.yaml
+      DefinitionSubstitutions: 
+        FraudDetectorID: !Sub "${FraudDetectorID}"
+        FraudAlertsTopicArn: !Ref FraudDetectionAlertsTopic
+        EnrichedDataEventBusName: !Ref EnrichedDataEventBus
+      Logging:
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt FraudDetectionWorkflowLogGroup.Arn
+        IncludeExecutionData: False
+        Level: ALL
+      Tracing:
+        Enabled: true
+      Policies: # Find out more about SAM policy templates: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-policy-templates.html
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt FraudDetectionAlertsTopic.TopicName 
+        - EventBridgePutEventsPolicy:
+            EventBusName: !Ref EnrichedDataEventBus
+        - Version: '2012-10-17' # See https://docs.aws.amazon.com/step-functions/latest/dg/cw-logs.html for more details on Step Functions logging using CloudWatch Logs
+          Statement:
+          - Effect: Allow
+            Action:
+              - "logs:CreateLogDelivery"
+              - "logs:GetLogDelivery"
+              - "logs:UpdateLogDelivery"
+              - "logs:DeleteLogDelivery"
+              - "logs:ListLogDeliveries"
+              - "logs:PutLogEvents"
+              - "logs:PutResourcePolicy"
+              - "logs:DescribeResourcePolicies"
+              - "logs:DescribeLogGroups"
+            Resource: 
+              - "*"
+        - Version: '2012-10-17' 
+          Statement:
+          - Effect: Allow
+            Action:
+              - frauddetector:GetEventPrediction
+            Resource: 
+              - !Sub 'arn:aws:frauddetector:${AWS::Region}:${AWS::AccountId}:event-type/*'
+              - !Sub 'arn:aws:frauddetector:${AWS::Region}:${AWS::AccountId}:detector/${FraudDetectorID}'
+              - !Sub 'arn:aws:frauddetector:${AWS::Region}:${AWS::AccountId}:detector-version/*'
+
+  # KMS key to encrypt workflow logs
+  WorkflowLogsKMSKey:
+    Type: AWS::KMS::Key
+    Properties: 
+      Description: CMK for workflow logs
+      Enabled: true
+      EnableKeyRotation: True
+      KeyPolicy: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: 
+              AWS: 
+                - !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action:
+              - "kms:*"
+            Resource: "*"
+          - Effect: Allow
+            Principal:
+              Service:
+                - !Sub logs.${AWS::Region}.amazonaws.com
+            Action:
+              - "kms:Encrypt*"
+              - "kms:Decrypt*"
+              - "kms:ReEncrypt*"
+              - "kms:GenerateDataKey*"
+              - "kms:Describe*"
+            Resource: "*"
+            Condition:
+              ArnEquals: 
+                kms:EncryptionContext:aws:logs:arn: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/${AWS::StackName}/WorkflowLogs"
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyUsage: ENCRYPT_DECRYPT
+
+  # CloudWatch Logs group for Step Functions workflow execution logs
+  FraudDetectionWorkflowLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/${AWS::StackName}/WorkflowLogs"
+      RetentionInDays: 7
+      KmsKeyId: !GetAtt WorkflowLogsKMSKey.Arn
+
+Outputs:
+  IncomingDataBus:
+    Description: EventBridge bus for incoming transactions
+    Value: !Ref RawDataEventBus
+  WorkflowLogsLink:
+    Description: StepFunctions execution logs
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#logsV2:log-groups/log-group/$252Faws$252F${AWS::StackName}$252FWorkflowLogs"

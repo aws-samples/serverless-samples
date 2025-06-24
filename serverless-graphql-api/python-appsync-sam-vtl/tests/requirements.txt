@@ -1,0 +1,6 @@
+pytest
+pytest-freezegun
+pytest-asyncio
+moto
+boto3 >=1.26
+websocket-client

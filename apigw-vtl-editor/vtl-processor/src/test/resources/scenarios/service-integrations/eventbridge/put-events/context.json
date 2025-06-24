@@ -1,0 +1,15 @@
+{
+  "context": {
+    "accountId": "123456789012",
+    "apiId": "api123",
+    "httpMethod": "POST",
+    "resourcePath": "/events",
+    "stage": "prod",
+    "requestId": "req-eb-12345",
+    "eventBusName": "custom-bus"
+  },
+  "stageVariables": {
+    "environment": "prod",
+    "region": "us-east-1"
+  }
+}

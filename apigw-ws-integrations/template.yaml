@@ -1,0 +1,564 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: 2010-09-09
+Transform: 'AWS::Serverless-2016-10-31'
+Description: >
+  Amazon API Gateway WebSocket Endpoint with AWS service integrations  
+  and an Amazon CloudFront CloudFunction that overrides URI
+
+Globals:
+  Function:
+    Runtime: python3.8
+    MemorySize: 128
+    Timeout: 100
+    Tracing: Active
+
+Parameters:
+  ApiStageName:
+    Description: Name of WebSockets API stage
+    Type: String
+    Default: api  
+
+Resources:
+
+#######################################################
+#   API Gateway
+#######################################################
+  WebSocketApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub "${AWS::StackName}-WebSocketApi"
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: "$request.body.action"
+
+  Deployment:
+    Type: AWS::ApiGatewayV2::Deployment
+    DependsOn:
+      - ConnectRoute
+      - DisconnectRoute
+      - DefaultRoute
+      - SFnSyncRoute
+      - SFnAsyncRoute
+    Properties:
+      ApiId: !Ref WebSocketApi
+
+  Stage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      StageName: !Ref ApiStageName
+      DeploymentId: !Ref Deployment
+      ApiId: !Ref WebSocketApi
+
+#######################################################
+#   Default route 
+#######################################################
+  DefaultRouteFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/default.lambda_handler
+
+  DefaultRouteFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref DefaultRouteFunction
+      Principal: apigateway.amazonaws.com
+
+  DefaultRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: $default
+      AuthorizationType: NONE
+      OperationName: DefaultRoute
+      Target: !Join 
+        - /
+        - - integrations
+          - !Ref DefaultRouteIntegration
+
+  DefaultRouteIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WebSocketApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DefaultRouteFunction.Arn}/invocations"
+
+  DefaultRouteResponse: 
+    Type: AWS::ApiGatewayV2::RouteResponse
+    Properties:
+      RouteId: !Ref DefaultRoute
+      ApiId: !Ref WebSocketApi
+      RouteResponseKey: $default
+
+  DefaultRouteIntegrationResponse:
+    Type: AWS::ApiGatewayV2::IntegrationResponse
+    Properties: 
+      ApiId: !Ref WebSocketApi
+      IntegrationId: !Ref DefaultRouteIntegration
+      IntegrationResponseKey: $default
+
+
+#######################################################
+#   Connect route 
+#######################################################
+  ConnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: $connect
+      AuthorizationType: NONE
+      OperationName: ConnectRoute
+      Target: !Join 
+        - /
+        - - integrations
+          - !Ref ConnectRouteIntegration
+
+  ConnectRouteIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WebSocketApi
+      IntegrationType: AWS
+      IntegrationMethod: POST
+      IntegrationUri: !Sub "arn:aws:apigateway:${AWS::Region}:dynamodb:action/PutItem"
+      CredentialsArn: !Sub "${SessionsTableAccessRole.Arn}"
+      TemplateSelectionExpression: \$default
+      RequestTemplates: 
+        "$default" : 
+          Fn::Sub: >
+            #set($ttl = $context.requestTimeEpoch + 86400)
+            { 
+                "TableName": "${SessionsTable}",
+                "Item": {
+              "connectionid": {
+                        "S": "$context.connectionId"
+                        },
+                "path": {
+                        "S": "$input.params('ws-uri')"
+                        },
+              "headers": {
+                        "S": "$input.params().get('header')"
+                        },
+              "querystring": {
+                        "S": "$input.params().get('querystring')"
+                        },
+              "ttl": {
+                        "N": "$ttl"
+                        }
+                }
+            }
+
+  ConnectRouteResponse: 
+    Type: AWS::ApiGatewayV2::RouteResponse
+    Properties:
+      RouteId: !Ref ConnectRoute
+      ApiId: !Ref WebSocketApi
+      RouteResponseKey: $default
+
+  ConnectRouteIntegrationResponse:
+    Type: AWS::ApiGatewayV2::IntegrationResponse
+    Properties: 
+      ApiId: !Ref WebSocketApi
+      IntegrationId: !Ref ConnectRouteIntegration
+      IntegrationResponseKey: /200/
+      TemplateSelectionExpression: \$default
+
+#######################################################
+#   Disconnect route 
+#######################################################
+  DisconnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: $disconnect
+      AuthorizationType: NONE
+      OperationName: DisconnectRoute
+      Target: !Join 
+        - /
+        - - integrations
+          - !Ref DisconnectRouteIntegration
+
+  DisconnectRouteIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WebSocketApi
+      IntegrationType: AWS
+      IntegrationMethod: POST
+      IntegrationUri: !Sub "arn:aws:apigateway:${AWS::Region}:dynamodb:action/DeleteItem"
+      CredentialsArn: !Sub "${SessionsTableAccessRole.Arn}"
+      TemplateSelectionExpression: \$default
+      RequestTemplates: 
+        "$default" : 
+          Fn::Sub: >
+            { 
+                "TableName": "${SessionsTable}",
+                "Key": {
+              "connectionid": {
+                        "S": "$context.connectionId"
+                        }
+                }
+            }
+
+  DisconnectRouteResponse: 
+    Type: AWS::ApiGatewayV2::RouteResponse
+    Properties:
+      RouteId: !Ref DisconnectRoute
+      ApiId: !Ref WebSocketApi
+      RouteResponseKey: $default
+
+  DisconnectRouteIntegrationResponse:
+    Type: AWS::ApiGatewayV2::IntegrationResponse
+    Properties: 
+      ApiId: !Ref WebSocketApi
+      IntegrationId: !Ref DisconnectRouteIntegration
+      IntegrationResponseKey: /200/
+      TemplateSelectionExpression: \$default
+
+#######################################################
+#   Step Functions Express synchronous execution route 
+#######################################################
+  SyncSFn:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Type: EXPRESS
+      Definition:
+        Comment: Sample Expess Workflow for Synchronous Execution by API Gateway
+        StartAt: Wait for 5 Seconds
+        States:
+          Wait for 5 Seconds:
+            Type: Wait
+            Seconds: 5
+            End: true
+      Role: !Sub "${SyncSFnRole.Arn}" 
+      Tracing:
+        Enabled: true
+
+  SyncSFnRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - "sts:AssumeRole"
+            Effect: Allow
+            Principal:
+              Service:
+                - states.amazonaws.com
+      Path: /
+
+  StepFunctionsSyncExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - "sts:AssumeRole"
+            Effect: Allow
+            Principal:
+              Service:
+                - apigateway.amazonaws.com
+      Path: /
+      Policies:
+        - PolicyName: StepFunctionsSyncExecution
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "states:StartSyncExecution"
+                Resource: !Ref SyncSFn
+
+  SFnSyncRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: sync_sfn
+      AuthorizationType: NONE
+      OperationName: SFnSyncRoute
+      Target: !Join 
+        - /
+        - - integrations
+          - !Ref SFnSyncRouteIntegration
+
+  SFnSyncRouteIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WebSocketApi
+      IntegrationType: AWS
+      IntegrationMethod: POST
+      IntegrationUri: !Sub "arn:aws:apigateway:${AWS::Region}:states:action/StartSyncExecution"
+      CredentialsArn: !Sub "${StepFunctionsSyncExecutionRole.Arn}" 
+      TemplateSelectionExpression: \$default
+      RequestTemplates: 
+        "$default" : 
+          Fn::Sub: >
+            #set($sfn_input=$util.escapeJavaScript($input.json("$.data")).replaceAll("\\'","'"))
+            { 
+              "input": "$sfn_input",
+              "stateMachineArn": "${SyncSFn}"
+            }
+
+  SFnSyncRouteResponse: 
+    Type: AWS::ApiGatewayV2::RouteResponse
+    Properties:
+      RouteId: !Ref SFnSyncRoute
+      ApiId: !Ref WebSocketApi
+      RouteResponseKey: $default
+
+  SFnSyncRouteIntegrationResponse:
+    Type: AWS::ApiGatewayV2::IntegrationResponse
+    Properties: 
+      ApiId: !Ref WebSocketApi
+      IntegrationId: !Ref SFnSyncRouteIntegration
+      IntegrationResponseKey: $default
+
+#######################################################
+#   Step Functions Standard asynchronous execution route 
+#######################################################
+  AsyncSFn:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Type: STANDARD
+      Definition:
+        Comment: Sample Standard Workflow for Asynchronous Execution by API Gateway
+        StartAt: Wait for 5 Seconds
+        States:
+          Wait for 5 Seconds:
+            Type: Wait
+            Seconds: 5
+            Next: Send Message to WebSocket Client
+          Send Message to WebSocket Client:
+            Type: Task
+            Resource: arn:aws:states:::apigateway:invoke
+            Parameters:
+              ApiEndpoint: !Sub "${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com"
+              Method: POST
+              Stage: !Sub "${ApiStageName}"
+              Path.$: "States.Format('/@connections/{}', $.ConnectionID)"
+              RequestBody:
+                Message: Hello from asynchronous workflow execution!
+              AuthType: IAM_ROLE
+            End: true
+      Role: !Sub "${AsyncSFnRole.Arn}" 
+      Tracing:
+        Enabled: true
+
+  AsyncSFnRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - "sts:AssumeRole"
+            Effect: Allow
+            Principal:
+              Service:
+                - states.amazonaws.com
+      Path: /
+      Policies:
+        - PolicyName: APIGWConnectionsAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "execute-api:ManageConnections"
+                Resource:
+                  - !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/api/POST/@connections/{connectionId}"
+
+  StepFunctionsAsyncExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - "sts:AssumeRole"
+            Effect: Allow
+            Principal:
+              Service:
+                - apigateway.amazonaws.com
+      Path: /
+      Policies:
+        - PolicyName: StepFunctionsAsyncExecution
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "states:StartExecution"
+                Resource: !Ref AsyncSFn
+
+  SFnAsyncRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: async_sfn
+      AuthorizationType: NONE
+      OperationName: SFnAsyncRoute
+      Target: !Join 
+        - /
+        - - integrations
+          - !Ref SFnAsyncRouteIntegration
+
+  SFnAsyncRouteIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WebSocketApi
+      IntegrationType: AWS
+      IntegrationMethod: POST
+      IntegrationUri: !Sub "arn:aws:apigateway:${AWS::Region}:states:action/StartExecution"
+      CredentialsArn: !Sub "${StepFunctionsAsyncExecutionRole.Arn}" 
+      TemplateSelectionExpression: \$default
+      RequestTemplates: 
+        "$default" : 
+          Fn::Sub: >
+            #set($sfn_input=$util.escapeJavaScript($input.json("$.data")).replaceAll("\\'","'"))
+            { 
+              "input": "{\"data\":$sfn_input, \"ConnectionID\":\"$context.connectionId\"}",
+              "stateMachineArn": "${AsyncSFn}"
+            }
+
+  SFnAsyncRouteResponse: 
+    Type: AWS::ApiGatewayV2::RouteResponse
+    Properties:
+      RouteId: !Ref SFnAsyncRoute
+      ApiId: !Ref WebSocketApi
+      RouteResponseKey: $default
+
+  SFnAsyncRouteIntegrationResponse:
+    Type: AWS::ApiGatewayV2::IntegrationResponse
+    Properties: 
+      ApiId: !Ref WebSocketApi
+      IntegrationId: !Ref SFnAsyncRouteIntegration
+      IntegrationResponseKey: $default
+
+#######################################################
+#   Data storage 
+#######################################################
+  SessionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub  ${AWS::StackName}-Sessions
+      AttributeDefinitions:
+        - AttributeName: connectionid
+          AttributeType: S
+      KeySchema:
+        - AttributeName: connectionid
+          KeyType: HASH
+      TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+      BillingMode: PAY_PER_REQUEST
+
+  SessionsTableAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - "sts:AssumeRole"
+            Effect: Allow
+            Principal:
+              Service:
+                - apigateway.amazonaws.com
+      Path: /
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "dynamodb:DeleteItem"
+                  - "dynamodb:PutItem"
+                Resource:
+                  - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${SessionsTable}"
+
+#######################################################
+#   Edge 
+#######################################################
+  WebSocketsOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Comment: Amazon API Gateway WebSocket origin policy
+        Name: !Sub "${AWS::StackName}-OriginPolicy"
+        CookiesConfig:
+          CookieBehavior: none
+        QueryStringsConfig:
+          QueryStringBehavior: all
+        HeadersConfig:
+          HeaderBehavior: whitelist
+          Headers:
+            - ws-uri
+            - Sec-WebSocket-Key
+            - Sec-WebSocket-Version
+            - Sec-WebSocket-Protocol
+            - Sec-WebSocket-Accept
+
+  UriRewriteFunction:
+    Type: AWS::CloudFront::Function
+    Properties: 
+      Name: !Sub "${AWS::StackName}-UriRewriteFunction"
+      AutoPublish: true
+      FunctionCode: >
+        function handler(event) {
+            var request = event.request;
+            var uri = request.uri;
+            request.headers['ws-uri'] = {value: uri};
+            request.uri='/';
+            return request;
+        }      
+      FunctionConfig:
+        Comment: Move URI to a header
+        Runtime: cloudfront-js-1.0
+
+  CloudfrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        HttpVersion: http2 
+        Origins:
+          - Id: APIWebSocketOrigin
+            DomainName: !Sub "${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com"
+            OriginPath: !Sub "/${ApiStageName}"
+            CustomOriginConfig:
+              HTTPSPort: 443
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols: 
+                - TLSv1
+        Enabled: true
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          TargetOriginId: APIWebSocketOrigin
+          ViewerProtocolPolicy: allow-all
+          OriginRequestPolicyId: !Ref WebSocketsOriginRequestPolicy
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad # AWS managed CachingDisabled policy
+          FunctionAssociations: 
+            - 
+              EventType: viewer-request
+              FunctionARN: !Ref UriRewriteFunction
+
+Outputs:
+  APIEndpoint:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "wss://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/${ApiStageName}"
+
+  Distribution:
+    Description: "CloudFront distribution URL"
+    Value: !Join 
+      - ''
+      - - "wss://"
+        - !GetAtt CloudfrontDistribution.DomainName
+
+  Sessions:
+    Description: "Sessions table"
+    Value: !Ref SessionsTable

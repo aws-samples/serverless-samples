@@ -1,0 +1,94 @@
+S3BUCKET=your_deployment_bucket
+PROFILE=your_aws_cli_profile
+
+## Certificate
+P_DOMAIN_NAME=your_domain_name
+P_HOSTED_ZONE_ID=your_private_hosted_zone_id
+
+CERT_STACK=pcdn-certificate
+CERT_TEMPLATE=iac/certificate.yaml
+CERT_OUTPUT=iac/certificate_output.yaml
+CERT_PARAMS="ParameterKey=pDomainName,ParameterValue=${P_DOMAIN_NAME} ParameterKey=pHostedZoneId,ParameterValue=${P_HOSTED_ZONE_ID}"
+
+O_CERT_ARN=output_certificate_arn
+
+## API Gateway
+P_API_STAGE=dev
+P_VPC_ENDPOINT_ID=your_vpc_endpoint_id
+P_VPC_ID=your_vpc_id
+P_PVERSION=1.0
+P_FN_MEMORY=128
+P_FN_TIMEOUT=15
+
+APIGW_STACK=pcdn-apigw
+APIGW_TEMPLATE=iac/apigw.yaml
+APIGW_OUTPUT=iac/apigw_output.yaml
+APIGW_PARAMS="ParameterKey=pApiStage,ParameterValue=${P_API_STAGE} ParameterKey=pVpcEndpointId,ParameterValue=${P_VPC_ENDPOINT_ID} ParameterKey=pVpcId,ParameterValue=${P_VPC_ID} ParameterKey=pCertificateArn,ParameterValue=${O_CERT_ARN} ParameterKey=pDomainName,ParameterValue=${P_DOMAIN_NAME} ParameterKey=pPayloadVersion,ParameterValue=${P_PVERSION} ParameterKey=pFnMemory,ParameterValue=${P_FN_MEMORY} ParameterKey=pFnTimeout,ParameterValue=${P_FN_TIMEOUT}"
+
+O_API=output_api_id
+O_FN=output_function_id
+
+## Load Balancers
+P_VPC_SUBNET_IDS=your_comma_delimited_subnet_ids
+P_VPC_ENDPOINT_IPS=your_comma_delimited_endpoint_ip_addresses
+
+NLB_STACK=pcdn-nlb
+NLB_TEMPLATE=iac/nlb.yaml
+NLB_OUTPUT=iac/nlb_output.yaml
+NLB_PARAMS="ParameterKey=pCertificateArn,ParameterValue=${O_CERT_ARN} ParameterKey=pSubnetIds,ParameterValue=${P_VPC_SUBNET_IDS} ParameterKey=pVpcEndpointIps,ParameterValue=${P_VPC_ENDPOINT_IPS} ParameterKey=pVpcId,ParameterValue=${P_VPC_ID}"
+
+ALB_STACK=pcdn-alb
+ALB_TEMPLATE=iac/alb.yaml
+ALB_OUTPUT=iac/alb_output.yaml
+ALB_PARAMS="ParameterKey=pCertificateArn,ParameterValue=${O_CERT_ARN} ParameterKey=pSubnetIds,ParameterValue=${P_VPC_SUBNET_IDS} ParameterKey=pVpcEndpointIps,ParameterValue=${P_VPC_ENDPOINT_IPS} ParameterKey=pVpcId,ParameterValue=${P_VPC_ID}"
+
+O_DNS_NAME_NLB=output_nlb_fqdn
+O_DNS_NAME_ALB=output_alb_fqdn
+
+## Alternate Certificate
+P_DOMAIN_NAME_ALT=your_domain_name_alternate
+
+ALT_CERT_STACK=pcdn-certificate-alternate
+ALT_CERT_TEMPLATE=iac/certificate.yaml
+ALT_CERT_OUTPUT=iac/certificate_output.yaml
+ALT_CERT_PARAMS="ParameterKey=pDomainName,ParameterValue=${P_DOMAIN_NAME_ALT} ParameterKey=pHostedZoneId,ParameterValue=${P_HOSTED_ZONE_ID}"
+
+O_CERT_ARN_ALT=output_certificate_arn_alternate
+
+## Alternate API Gateway
+ALT_APIGW_STACK=pcdn-apigw-alternate
+ALT_APIGW_TEMPLATE=iac/apigw.yaml
+ALT_APIGW_OUTPUT=iac/apigw_output.yaml
+ALT_APIGW_PARAMS="ParameterKey=pApiStage,ParameterValue=${P_API_STAGE} ParameterKey=pVpcEndpointId,ParameterValue=${P_VPC_ENDPOINT_ID} ParameterKey=pVpcId,ParameterValue=${P_VPC_ID} ParameterKey=pCertificateArn,ParameterValue=${O_CERT_ARN_ALT} ParameterKey=pDomainName,ParameterValue=${P_DOMAIN_NAME_ALT} ParameterKey=pPayloadVersion,ParameterValue=${P_PVERSION} ParameterKey=pFnMemory,ParameterValue=${P_FN_MEMORY} ParameterKey=pFnTimeout,ParameterValue=${P_FN_TIMEOUT}"
+
+## Alternate NLB
+ALT_NLB_STACK=pcdn-nlb-alternate
+ALT_NLB_TEMPLATE=iac/nlb_multi.yaml
+ALT_NLB_OUTPUT=iac/nlb_multi_output.yaml
+ALT_NLB_PARAMS="ParameterKey=pCertificateArn,ParameterValue=${O_CERT_ARN} ParameterKey=pCertificateArnAlternate,ParameterValue=${O_CERT_ARN_ALT} ParameterKey=pSubnetIds,ParameterValue=${P_VPC_SUBNET_IDS} ParameterKey=pVpcEndpointIps,ParameterValue=${P_VPC_ENDPOINT_IPS} ParameterKey=pVpcId,ParameterValue=${P_VPC_ID}"
+
+O_DNS_NAME_NLB_ALT=output_nlb_fqdn_alternate
+
+## Alternate ALB
+ALT_ALB_STACK=pcdn-alb-alternate
+ALT_ALB_TEMPLATE=iac/alb_multi.yaml
+ALT_ALB_OUTPUT=iac/alb_multi_output.yaml
+ALT_ALB_PARAMS="ParameterKey=pCertificateArn,ParameterValue=${O_CERT_ARN} ParameterKey=pCertificateArnAlternate,ParameterValue=${O_CERT_ARN_ALT} ParameterKey=pSubnetIds,ParameterValue=${P_VPC_SUBNET_IDS} ParameterKey=pVpcEndpointIps,ParameterValue=${P_VPC_ENDPOINT_IPS} ParameterKey=pVpcId,ParameterValue=${P_VPC_ID}"
+
+O_DNS_NAME_ALB_ALT=output_alb_fqdn_alternate
+
+## Route 53
+P_DNS_NAME=${O_DNS_NAME_NLB_ALT}
+
+R53_STACK=pcdn-r53
+R53_TEMPLATE=iac/r53.yaml
+R53_OUTPUT=iac/r53_output.yaml
+R53_PARAMS="ParameterKey=pDnsName,ParameterValue=${P_DNS_NAME} ParameterKey=pHostedZoneId,ParameterValue=${P_HOSTED_ZONE_ID} ParameterKey=pDomainName,ParameterValue=${P_DOMAIN_NAME}"
+
+## Alternate Route 53
+P_DNS_NAME=${O_DNS_NAME_NLB_ALT}
+
+ALT_R53_STACK=pcdn-r53-alternate
+ALT_R53_TEMPLATE=iac/r53.yaml
+ALT_R53_OUTPUT=iac/r53_output.yaml
+ALT_R53_PARAMS="ParameterKey=pDnsName,ParameterValue=${P_DNS_NAME} ParameterKey=pHostedZoneId,ParameterValue=${P_HOSTED_ZONE_ID} ParameterKey=pDomainName,ParameterValue=${P_DOMAIN_NAME_ALT}"
