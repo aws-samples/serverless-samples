@@ -1,8 +1,8 @@
 # AWS CDK Project with OpenAPI defined API Gateway and Powertools for AWS Lambda
 
-This pattern demonstrates how to build a fully typed serverless API using AWS CDK, OpenAPI, and Powertools for AWS Lambda. The pattern leverages an OpenAPI specification to define the API Gateway configuration, including paths, methods, and Lambda integrations. The same OpenAPI specification is used to auto-generate TypeScript types, ensuring type safety and consistency across the API Gateway configuration and Lambda function implementations.
+This sample demonstrates how to build a fully typed serverless API using AWS CDK, OpenAPI, and Powertools for AWS Lambda. The sample leverages an OpenAPI specification to define the API Gateway configuration, including paths, methods, and Lambda integrations. The same OpenAPI specification is used to auto-generate TypeScript types, ensuring type safety and consistency across the API Gateway configuration and Lambda function implementations.
 
-Key features of this pattern:
+Key features of this sample:
 
 - Uses OpenAPI specification as a single source of truth for API definition
 - Auto-generates TypeScript types from OpenAPI spec for Lambda functions
@@ -14,10 +14,8 @@ Key features of this pattern:
 - Demonstrates end-to-end type safety from API definition to function implementation
 - Showcases best practices for building serverless APIs with AWS CDK
 
-The pattern includes a sample Order API that demonstrates CRUD operations and search functionality, complete with authentication via Amazon Cognito. This architecture ensures that API contracts are always in sync between the API Gateway configuration and the Lambda function implementations, reducing runtime errors and improving developer experience.
-Although it covers multiple features, this still remains a pattern, meaning that for production use cases, there are cases that need to be handled (e.g. add more error codes to the API and address in the lambda functions)
-
-Learn more about this pattern at Serverless Land Patterns: << Add the live URL here >>
+The sample includes a sample Order API that demonstrates CRUD operations and search functionality, complete with authentication via Amazon Cognito. This architecture ensures that API contracts are always in sync between the API Gateway configuration and the Lambda function implementations, reducing runtime errors and improving developer experience.
+Although it covers multiple features, this still remains a sample, meaning that for production use cases, there are cases that need to be handled (e.g. add more error codes to the API and address in the lambda functions)
 
 Important: this application uses various AWS services and there are costs associated with these services after the Free Tier usage - please see the [AWS Pricing page](https://aws.amazon.com/pricing/) for details. You are responsible for any AWS costs incurred. No warranty is implied in this example.
 
@@ -32,9 +30,9 @@ Important: this application uses various AWS services and there are costs associ
 
 1. Create a new directory, navigate to that directory in a terminal and clone the GitHub repository:
    ```
-   git clone https://github.com/aws-samples/serverless-patterns
+   git clone https://github.com/aws-samples/serverless-samples
    ```
-1. Change directory to the pattern directory:
+1. Change directory to the sample directory:
    ```
    cd apigw-lambda-powertools-openapi-cdk
    ```
@@ -43,7 +41,7 @@ Important: this application uses various AWS services and there are costs associ
    npm install
    ```
 1. Authenticate to the AWS account you want to deploy in.
-1. From the command line, use AWS SAM to deploy the AWS resources for the pattern as specified in the template.yml file:
+1. From the command line, use AWS SAM to deploy the AWS resources for the sample as specified in the template.yml file:
 
    ```
    cdk deploy
@@ -53,9 +51,9 @@ Important: this application uses various AWS services and there are costs associ
 
 ## How it works
 
-![Diagram of pattern](pattern.png)
+![Diagram of sample](pattern.png)
 
-The pattern demonstrates a modern approach to building type-safe serverless APIs:
+The sample demonstrates a modern approach to building type-safe serverless APIs:
 
 1. **API Definition**
 
