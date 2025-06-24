@@ -4,6 +4,8 @@ API Helper is an Amazon Q extension that provides expert guidance and tools for 
 
 ## Features
 
+![MCP Knowledge Base integration](../assets/kb_mcp_diagram.png)
+
 - **API Expert Consultation**: Get answers to questions about API development, best practices, security, and AWS services like API Gateway and AppSync
 - **OpenAPI Specification Builder**: Generate OpenAPI/Swagger specifications based on your requirements
 - **API Builder**: Create complete API implementations with Infrastructure as Code templates and business logic examples
