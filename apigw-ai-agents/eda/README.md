@@ -4,6 +4,8 @@ This project implements an automated API inspection system using Amazon Bedrock 
 
 ## Architecture Overview
 
+![EDA architecture](../assets/eda_diagram.png)
+
 The solution consists of:
 
 1. **Event-Driven Lambda Function**: Triggered by EventBridge when API Gateway deployments or stage updates occur
