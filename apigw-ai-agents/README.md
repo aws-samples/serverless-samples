@@ -34,6 +34,13 @@ Knowledge base focuses on covering information that is changing, need to be cura
 * API operations on AWS
 * API development best practices
 
+Knowledge Base, along with the agents and tools described in the next session, can be integrated into AI enabled developer environments, such as Amazon Q Developer/CLI:
+
+![MCP Knowledge Base integration](./assets/kb_mcp_diagram.png)
+
+For more details see MCP setup [instructions](./mcp/).
+
+
 ### Agents and tools for specific actions
 
 API Gateway agents have the following features implemented as a multi-agent solution and using tools:
@@ -65,6 +72,8 @@ Components:
 ### Event-driven API improvements recommender
 This feature uses Amazon EventBridge that receives change events whenever you deploy an API Gateway stage. Once EventBridge receives the change event, it will invoke a Lambda function that asks the Bedrock agent to inspect and validate this new configuration. After that, it sends recommendations to the recipient specified in the resource `owner_email` tag using Amazon SES. You may want to modify notification part of the code to match your preferences - use Slack, Amazon SNS, etc.
 
+![EDA architecture](./assets/eda_diagram.png)
+
 This feature does not replace need for governance implementation using controls documented in [Amazon API Gateway governance in depth](https://serverlessland.com/content/guides/api-gateway-governance/introduction), rather augmenting it with more opinionated reactive guidance.
 
 See [README.md](./eda/README.md) for more details.
@@ -73,6 +82,8 @@ See [README.md](./eda/README.md) for more details.
 This example demonstrates that same approach can be used for various resource types, not necessary just API gateway. It shows how Amazon Elastic Kubernetes Service (Amazon EKS) cluster configuration can be inspected on every change.
 
 This feature uses AWS Config that receives change events whenever you deploy any resource. Once Config receives the change event, it will invoke a Lambda function specified in the custom rule configuration. Function asks Bedrock agent to inspect resource configuration. After that, Lambda function checks if there are any critical or high priority findings in the agent response, marks resource compliance status accordingly, and sends recommendations to the recipient specified in the resource `owner_email` tag using Amazon SES. 
+
+![AWS Config architecture](./assets/config_diagram.png)
 
 You may want to modify notification part of the code to match your preferences - use Slack, Amazon SNS, etc.
 
