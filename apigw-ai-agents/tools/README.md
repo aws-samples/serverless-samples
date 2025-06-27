@@ -1,6 +1,6 @@
-# API Agent Tools
+# Agent Tools
 
-Collection of API-related tools for inspection, validation, and management deployed as a single AWS SAM application.
+Collection of the tools for AWS resources inspection, validation, and management deployed as a single AWS SAM application.
 
 ## Tools Included
 
@@ -8,6 +8,7 @@ Collection of API-related tools for inspection, validation, and management deplo
 - **API Account Inspector**: Inspects API Gateway configurations at the account level
 - **API Inspector**: Inspects specific API Gateway configurations
 - **API Definition Retriever**: Exports OpenAPI definitions from API Gateway
+- **EKS Configuration Retriever**: Retrieves EKS cluster configuration
 
 ## Deployment Instructions
 
