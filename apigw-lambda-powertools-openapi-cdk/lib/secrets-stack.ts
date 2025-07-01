@@ -1,6 +1,7 @@
 // lib/secrets-stack.ts
 import * as cdk from "aws-cdk-lib";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
+import { NagSuppressions } from "cdk-nag";
 import { Construct } from "constructs";
 
 export interface SecretsStackProps extends cdk.NestedStackProps {
@@ -22,5 +23,13 @@ export class SecretsStack extends cdk.NestedStack {
           ? cdk.RemovalPolicy.DESTROY
           : cdk.RemovalPolicy.RETAIN,
     });
+
+    NagSuppressions.addResourceSuppressions(this.apiKey, [
+      {
+        id: "AwsSolutions-SMG4",
+        reason:
+          "dummy secret to simulate 3rd party API key, does not need rotation",
+      },
+    ]);
   }
 }
