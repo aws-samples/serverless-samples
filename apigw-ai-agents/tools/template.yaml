@@ -35,6 +35,13 @@ Resources:
     Properties:
       Location: ./api-definition-retriever/template.yaml
       Parameters: {}
+      
+  # EKS Configuration Retriever Application
+  EksConfigRetrieverApplication:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: ./eks-configuration-retriever/template.yaml
+      Parameters: {}
 
 Outputs:
   OpenAPIValidatorFunction:
@@ -60,4 +67,10 @@ Outputs:
     Value: !GetAtt APIDefinitionRetrieverApplication.Outputs.ApiDefinitionRetrieverFunction
     Export:
       Name: !Sub "${AWS::StackName}-ApiDefinitionRetrieverFunctionArn"
+      
+  EksConfigRetrieverFunction:
+    Description: "EKS Configuration Retriever Lambda Function ARN"
+    Value: !GetAtt EksConfigRetrieverApplication.Outputs.EksConfigRetrieverFunction
+    Export:
+      Name: !Sub "${AWS::StackName}-EksConfigRetrieverFunctionArn"
     

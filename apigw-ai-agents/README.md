@@ -1,14 +1,18 @@
-# API developer experience customization and centralized guidance using Amazon Bedrock
+# Developer experience customization and centralized guidance using Amazon Bedrock
 
-This solution provides an intelligent, AI-powered assistant that delivers real-time guidance for API development and governance on AWS. By integrating Amazon Bedrock agents with customizable knowledge bases, it bridges the gap between AWS best practices and your organization's specific governance requirements—creating a seamless, frictionless developer experience. The centralized knowledge base can be consumed by various services, including through a Model Context Protocol (MCP) server that enables developers to access this guidance directly within their existing development tools and IDEs.
+This sample solution provides an intelligent, AI-powered assistant that delivers real-time guidance for development and governance on AWS. 
+
+**Note: This sample focuses on API development, however, you can use any AWS service (or set of services).**
+
+By integrating Amazon Bedrock agents with customizable knowledge bases, this sample bridges the gap between AWS best practices and your organization's specific governance requirements - creating a seamless, frictionless developer experience. The centralized knowledge base can be consumed by various services, including through a Model Context Protocol (MCP) server that enables developers to access this guidance directly within their existing development tools and IDEs.
 
 Key Benefits
- - Developer Acceleration: Provides immediate, contextual advice during API development, reducing cycle times and preventing costly rework by ensuring designs align with both AWS and company standards from the outset.
+ - Developer Acceleration: Provides immediate, contextual advice during development, reducing cycle times and preventing costly rework by ensuring designs align with both AWS and company standards from the outset.
  - Governance as Code: Transforms static documentation and governance frameworks into interactive, real-time guidance embedded within development workflows, increasing compliance without adding friction.
  - Operational Excellence: Automatically reviews deployed API configurations, proactively identifies improvement opportunities, and delivers recommendations to stakeholders, enhancing security posture and performance.
  - Knowledge Centralization: Consolidates organizational wisdom, AWS documentation, and best practices into a unified advisory system that grows smarter with every interaction.
 
-This solution doesn't replace existing governance structures—it amplifies their effectiveness by making them accessible exactly when developers and operators need them most, enabling your organization to implement "golden path" strategies that balance innovation speed with operational stability.
+This solution doesn't replace existing governance structures - it amplifies their effectiveness by making them accessible exactly when developers and operators need them most, enabling your organization to implement "golden path" strategies that balance innovation speed with operational stability.
 
 ## Overview
 Developers use AI enabled development environments daily. As tooling evolves, organizations face the need for centralization of the guidance provided. It does not replace existing governance, rather augmenting it with friendly tooling options that allow organizations to enable "golden path" with less friction, implementing organizational design and development guidelines, internal standards as part of the development process instead of the corrective actions.
@@ -33,6 +37,13 @@ Knowledge base focuses on covering information that is changing, need to be cura
 * API management and governance on AWS
 * API operations on AWS
 * API development best practices
+
+Knowledge Base, along with the agents and tools described in the next session, can be integrated into AI enabled developer environments, such as Amazon Q Developer/CLI:
+
+![MCP Knowledge Base integration](./assets/kb_mcp_diagram.png)
+
+For more details see MCP setup [instructions](./mcp/).
+
 
 ### Agents and tools for specific actions
 
@@ -65,7 +76,22 @@ Components:
 ### Event-driven API improvements recommender
 This feature uses Amazon EventBridge that receives change events whenever you deploy an API Gateway stage. Once EventBridge receives the change event, it will invoke a Lambda function that asks the Bedrock agent to inspect and validate this new configuration. After that, it sends recommendations to the recipient specified in the resource `owner_email` tag using Amazon SES. You may want to modify notification part of the code to match your preferences - use Slack, Amazon SNS, etc.
 
+![EDA architecture](./assets/eda_diagram.png)
+
 This feature does not replace need for governance implementation using controls documented in [Amazon API Gateway governance in depth](https://serverlessland.com/content/guides/api-gateway-governance/introduction), rather augmenting it with more opinionated reactive guidance.
+
+See [README.md](./eda/README.md) for more details.
+
+### AWS Config based improvements recommender
+This example demonstrates that same approach can be used for various resource types, not necessary just API gateway. It shows how Amazon Elastic Kubernetes Service (Amazon EKS) cluster configuration can be inspected on every change.
+
+This feature uses AWS Config that receives change events whenever you deploy any resource. Once Config receives the change event, it will invoke a Lambda function specified in the custom rule configuration. Function asks Bedrock agent to inspect resource configuration. After that, Lambda function checks if there are any critical or high priority findings in the agent response, marks resource compliance status accordingly, and sends recommendations to the recipient specified in the resource `owner_email` tag using Amazon SES. 
+
+![AWS Config architecture](./assets/config_diagram.png)
+
+You may want to modify notification part of the code to match your preferences - use Slack, Amazon SNS, etc.
+
+See [README.md](./aws-config/README.md) for more details.
 
 ### Data
 
@@ -94,6 +120,9 @@ Make sure to request access to the Amazon Bedrock models used in the project if 
 
 ### Knowledge Base
 Before deploying Amazon Bedrock Knowledge Base, you will need content in an Amazon S3 bucket that will be indexed during the deployment process. Create S3 bucket, upload data in the [formats supported](https://docs.aws.amazon.com/bedrock/latest/userguide/knowledge-base-ds.html), you will need it during the deployment. Make sure to include content that is specific to your organization - developer guides, API implementation standards, etc. You can use multiple data sources in the same Knowledge Base to make content management easier.
+
+*Note that stack creates two separate data sources - one based on S3 bucket with your documents and one for publicly available documents (API Gateway documentation, whitepapers, etc.). Modify template accordingly to include/exclude public documents that fit your needs.*
+
 
 To deploy Knowledge Base use following command:
 ```bash

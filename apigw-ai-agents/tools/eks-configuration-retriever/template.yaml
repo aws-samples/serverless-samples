@@ -1,0 +1,64 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. 
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Lambda function to retrieve EKS cluster configurations
+
+Resources:
+  EksConfigRetrieverFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.9
+      Architectures:
+        - x86_64
+      Timeout: 60
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+          # Allow inspection of EKS clusters and related resources in read-only mode
+            - Effect: Allow
+              Action:
+                - eks:DescribeCluster
+                - eks:ListNodegroups
+                - eks:DescribeNodegroup
+                - eks:ListFargateProfiles
+                - eks:DescribeFargateProfile
+                - eks:ListAddons
+                - eks:DescribeAddon
+                - eks:DescribeAddonVersions
+                - ec2:DescribeSecurityGroups
+                - ec2:DescribeInstances
+                - ec2:DescribeAvailabilityZones
+                - ec2:GetEbsEncryptionByDefault
+                - iam:ListRoles
+                - iam:GetOpenIDConnectProvider
+                - iam:ListAttachedRolePolicies
+                - iam:ListRolePolicies
+                - iam:GetRolePolicy
+                - sts:GetCallerIdentity
+                - cloudformation:ListStacks
+              Resource: '*'
+  FunctionInvokePermission:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref EksConfigRetrieverFunction
+      Principal: bedrock.amazonaws.com
+      SourceArn: !Join 
+        - ''
+        - - 'arn:aws:bedrock:'
+          - !Ref 'AWS::Region'
+          - ':'
+          - !Ref 'AWS::AccountId'
+          - ':*'
+
+Outputs:
+  EksConfigRetrieverFunction:
+    Description: "EKS Configuration Retriever Lambda Function ARN"
+    Value: !GetAtt EksConfigRetrieverFunction.Arn
+  EksConfigRetrieverFunctionName:
+    Description: "EKS Configuration Retriever Lambda Function Name"
+    Value: !Ref EksConfigRetrieverFunction

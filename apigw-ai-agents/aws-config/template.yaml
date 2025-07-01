@@ -1,0 +1,125 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  AWS Config driven EKS cluster inspection and recommendations using Amazon Bedrock Agent
+
+Parameters:
+  EksInspectorAgentStackName:
+    Type: String
+    Description: Name of the stack that exports the EKS Inspector Agent ID and Alias ID
+
+  AwsRegionForModelAccess:
+    Type: String
+    Default: us-east-1
+    Description: AWS region where the EKS Inspector agent was deployed
+
+  SesEmailForNotifications:
+    Type: String
+    Description: Email address to be used as the sender for recommendations
+
+  ConfigRuleName:
+    Type: String
+    Default: EksClusterInspectorRule
+    Description: Name for the AWS Config rule that will trigger the EKS inspection workflow
+
+Globals:
+  Function:
+    Timeout: 600
+    MemorySize: 256
+    Runtime: python3.13
+    Architectures:
+      - x86_64
+
+Resources:
+  EksInspectorProxyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Path: /
+
+  EksInspectorProxyPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: EksInspectorProxyPolicy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - bedrock:InvokeAgent
+            Resource: !Sub
+              - "arn:aws:bedrock:${AwsRegionForModelAccess}:${AWS::AccountId}:agent-alias/${AgentId}/${AgentAlias}"
+              - AgentId:
+                  Fn::ImportValue: !Sub "${EksInspectorAgentStackName}-AgentId"
+                AgentAlias:
+                  Fn::ImportValue: !Sub "${EksInspectorAgentStackName}-AgentAliasId"
+          - Effect: Allow
+            Action:
+              - ses:SendEmail
+            Resource: !Sub arn:aws:ses:${AWS::Region}:${AWS::AccountId}:identity/${SesEmailForNotifications}
+          - Effect: Allow
+            Action:
+              - eks:DescribeCluster
+              - eks:ListTagsForResource
+              - tag:GetResources
+              - config:PutEvaluations
+            Resource: "*"
+      Roles:
+        - !Ref EksInspectorProxyRole
+
+  EksInspectorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: eks_inspector_proxy.lambda_handler
+      Description: Lambda function that processes AWS Config events and invokes EKS Inspector Bedrock agent
+      Role: !GetAtt EksInspectorProxyRole.Arn
+      Environment:
+        Variables:
+          REGION_FOR_BEDROCK: !Ref AwsRegionForModelAccess
+          BEDROCK_AGENT_ID:
+            Fn::ImportValue: !Sub "${EksInspectorAgentStackName}-AgentId"
+          BEDROCK_AGENT_ALIAS:
+            Fn::ImportValue: !Sub "${EksInspectorAgentStackName}-AgentAliasId"
+          SES_EMAIL: !Ref SesEmailForNotifications
+
+  EksInspectorConfigRule:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: !Ref ConfigRuleName
+      Description: Evaluates EKS clusters and triggers the EKS Inspector
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::EKS::Cluster
+      Source:
+        Owner: CUSTOM_LAMBDA
+        SourceIdentifier: !GetAtt EksInspectorFunction.Arn
+        SourceDetails:
+          - EventSource: aws.config
+            MessageType: ConfigurationItemChangeNotification
+      MaximumExecutionFrequency: One_Hour
+
+  EksInspectorConfigPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref EksInspectorFunction
+      Action: lambda:InvokeFunction
+      Principal: config.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+
+Outputs:
+  EksInspectorFunction:
+    Description: EKS Inspector Lambda Function ARN
+    Value: !GetAtt EksInspectorFunction.Arn
+
+  EksInspectorConfigRule:
+    Description: AWS Config Rule Name
+    Value: !Ref EksInspectorConfigRule

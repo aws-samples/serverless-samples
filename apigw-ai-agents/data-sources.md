@@ -23,6 +23,7 @@
 - https://aws.amazon.com/blogs/opensource/how-traveloka-uses-backstage-as-an-api-developer-portal-for-amazon-api-gateway/
 - https://aws.amazon.com/blogs/apn/how-to-streamline-api-development-on-amazon-api-gateway-using-smartbear-swaggerhub/
 - https://aws.amazon.com/blogs/devops/automating-your-api-testing-with-aws-codebuild-aws-codepipeline-and-postman/
+- https://aws.amazon.com/blogs/compute/powering-hybrid-workloads-with-amazon-api-gateway/
 ## Code repositories
 - https://serverlessland.com/patterns?services=apigw
 - https://serverlessland.com/repos?services=apigw
