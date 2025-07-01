@@ -230,7 +230,7 @@ The console direct links in this section default to the `us-east-1` region. Ensu
 
 1. View the CloudWatch metrics
 
-   Open the [CloudWatch metrics](https://768942995475-qsphipsa.us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#metricsV2?graph=~()) and notice the **Custom namespaces** on top of the **AWS namespaces**. You can select to graph the metrics from the Custom Namespace but also the managed metrics from the AWS namespaces that correspond to the orderCRUD and/or orderSearch AWS Lambda function(s)
+   Open the [CloudWatch metrics](https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#metricsV2?graph=~()) and notice the **Custom namespaces** on top of the **AWS namespaces**. You can select to graph the metrics from the Custom Namespace but also the managed metrics from the AWS namespaces that correspond to the orderCRUD and/or orderSearch AWS Lambda function(s)
 
 
 1. View the X-Ray traces
