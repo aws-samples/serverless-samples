@@ -1,9 +1,13 @@
-# API developer experience customization and centralized guidance using Amazon Bedrock
+# Developer experience customization and centralized guidance using Amazon Bedrock
 
-This solution provides an intelligent, AI-powered assistant that delivers real-time guidance for API development and governance on AWS. By integrating Amazon Bedrock agents with customizable knowledge bases, it bridges the gap between AWS best practices and your organization's specific governance requirements - creating a seamless, frictionless developer experience. The centralized knowledge base can be consumed by various services, including through a Model Context Protocol (MCP) server that enables developers to access this guidance directly within their existing development tools and IDEs.
+This sample solution provides an intelligent, AI-powered assistant that delivers real-time guidance for development and governance on AWS. 
+
+**Note: This sample focuses on API development, however, you can use any AWS service (or set of services).**
+
+By integrating Amazon Bedrock agents with customizable knowledge bases, this sample bridges the gap between AWS best practices and your organization's specific governance requirements - creating a seamless, frictionless developer experience. The centralized knowledge base can be consumed by various services, including through a Model Context Protocol (MCP) server that enables developers to access this guidance directly within their existing development tools and IDEs.
 
 Key Benefits
- - Developer Acceleration: Provides immediate, contextual advice during API development, reducing cycle times and preventing costly rework by ensuring designs align with both AWS and company standards from the outset.
+ - Developer Acceleration: Provides immediate, contextual advice during development, reducing cycle times and preventing costly rework by ensuring designs align with both AWS and company standards from the outset.
  - Governance as Code: Transforms static documentation and governance frameworks into interactive, real-time guidance embedded within development workflows, increasing compliance without adding friction.
  - Operational Excellence: Automatically reviews deployed API configurations, proactively identifies improvement opportunities, and delivers recommendations to stakeholders, enhancing security posture and performance.
  - Knowledge Centralization: Consolidates organizational wisdom, AWS documentation, and best practices into a unified advisory system that grows smarter with every interaction.
