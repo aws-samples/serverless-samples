@@ -4,6 +4,7 @@ import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as lambdaNodejs from "aws-cdk-lib/aws-lambda-nodejs";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
+import { NagSuppressions } from "cdk-nag";
 import { Construct } from "constructs";
 
 export interface LambdaStackProps extends cdk.NestedStackProps {
@@ -90,5 +91,25 @@ export class LambdaStack extends cdk.NestedStack {
     );
 
     props.table.grantReadData(this.searchLambda);
+
+    [this.crudLambda, this.searchLambda].forEach((lambdaFunction) => {
+      NagSuppressions.addResourceSuppressions(lambdaFunction.role!, [
+        {
+          id: "AwsSolutions-IAM4",
+          reason: "AWSLambdaBasicExecutionRole is fine for demo",
+        },
+      ]);
+      NagSuppressions.addResourceSuppressions(
+        lambdaFunction.role!,
+        [
+          {
+            id: "AwsSolutions-IAM5",
+            reason:
+              "cloudwatch:PutMetricData does not have resource level permissions",
+          },
+        ],
+        true
+      );
+    });
   }
 }
