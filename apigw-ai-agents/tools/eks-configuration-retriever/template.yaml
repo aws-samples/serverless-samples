@@ -28,12 +28,18 @@ Resources:
                 - eks:DescribeFargateProfile
                 - eks:ListAddons
                 - eks:DescribeAddon
+                - eks:DescribeAddonVersions
                 - ec2:DescribeSecurityGroups
+                - ec2:DescribeInstances
+                - ec2:DescribeAvailabilityZones
+                - ec2:GetEbsEncryptionByDefault
+                - iam:ListRoles
                 - iam:GetOpenIDConnectProvider
                 - iam:ListAttachedRolePolicies
                 - iam:ListRolePolicies
                 - iam:GetRolePolicy
                 - sts:GetCallerIdentity
+                - cloudformation:ListStacks
               Resource: '*'
   FunctionInvokePermission:
     Type: "AWS::Lambda::Permission"
