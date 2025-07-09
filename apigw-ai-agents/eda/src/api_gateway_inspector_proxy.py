@@ -4,6 +4,11 @@
 import boto3
 import botocore
 import os
+import logging
+
+# Configure logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 config = botocore.config.Config(
     read_timeout=600,
@@ -17,15 +22,10 @@ def lambda_handler(event, context):
     try:
         # Try REST API event format first
         api_id = event['detail']['requestParameters']['restApiId']
-        print(f"Detected API ID: {api_id}")
+        logger.info(f"Detected API ID: {api_id}")
     except KeyError:
-        # Try HTTP API event format if REST didn't work
-        try:
-            api_id = event['detail']['requestParameters']['4litaeygd5']
-            print(f"Detected API ID: {api_id}")
-        except KeyError:
-            print("Error: Could not extract API ID from event")
-            return
+        logger.error("Could not extract API ID from event")
+        return
 
     try:
         # Initialize the Bedrock Agent Runtime client
@@ -45,9 +45,9 @@ def lambda_handler(event, context):
         for event in response.get("completion"):
             result+=event['chunk']['bytes'].decode('utf-8')
 
-        # print(f"Recommendations: {result}")
+        # logger.info(f"Recommendations: {result}")
     except Exception as e:
-        print(f"Error invoking API Inspector agent: {e}")
+        logger.error(f"Error invoking API Inspector agent: {e}", exc_info=True)
         return 
     
     try:
@@ -55,8 +55,10 @@ def lambda_handler(event, context):
         apigateway = boto3.client('apigateway')
         api_response = apigateway.get_rest_api(restApiId=api_id)
         owner_email = ""
+        # Check for various possible tag names for owner email
+        owner_email_tags = ['owner_email', 'owner-email', 'OwnerEmail', 'ownerEmail', 'email', 'contact', 'owner']
         for key, value in api_response['tags'].items():
-            if key == 'owner_email':
+            if key.lower() in [tag.lower() for tag in owner_email_tags]:
                 owner_email = value
                 break
         # Send email to the owner using SES
@@ -77,6 +79,6 @@ def lambda_handler(event, context):
             # Rise an exception if owner email is not found
             raise Exception("Owner email not found in API tags")
     except Exception as e:
-        print(f"Error sending recommendations to the API owner: {e}")
+        logger.error(f"Error sending recommendations to the API owner: {e}", exc_info=True)
         return 
 

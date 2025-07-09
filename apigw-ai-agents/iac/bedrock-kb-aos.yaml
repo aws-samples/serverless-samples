@@ -180,8 +180,6 @@ Resources:
           }
         ]
 
-
-
   # OpenSearch Serverless data access policy
   OpenSearchDataAccessPolicy:
     Type: AWS::OpenSearchServerless::AccessPolicy
@@ -537,8 +535,8 @@ Resources:
             VectorField: "vector"
           VectorIndexName: "vector-index"
 
-  # Create a data source for the Knowledge Base
-  BedrockKnowledgeBaseDataSource:
+  # Create a data sources for the Knowledge Base
+  BedrockKnowledgeBaseS3DataSource:
     Type: AWS::Bedrock::DataSource
     Properties:
       DataSourceConfiguration:
@@ -546,16 +544,35 @@ Resources:
         S3Configuration:
           BucketArn: !Sub 'arn:aws:s3:::${ExistingS3BucketName}'
       KnowledgeBaseId: !GetAtt BedrockKnowledgeBase.KnowledgeBaseId
-      Name: !Sub "kb-${AWS::StackName}-ds"
+      Name: !Sub "kb-${AWS::StackName}-ds-s3"
+  
+  BedrockKnowledgeBaseDocsDataSource:
+    Type: AWS::Bedrock::DataSource
+    Properties:
+      DataSourceConfiguration:
+        Type: WEB
+        WebConfiguration:
+          SourceConfiguration:
+            UrlConfiguration:
+              SeedUrls:
+                - Url: "https://docs.aws.amazon.com/apigateway/latest/developerguide/welcome.html"
+                - Url: "https://docs.aws.amazon.com/apigateway/latest/api/API_Operations.html"
+                - Url: "https://docs.aws.amazon.com/whitepapers/latest/best-practices-api-gateway-private-apis-integration/best-practices-api-gateway-private-apis-integration.html"
+                - Url: "https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/what-is-sam.html"
+                - Url: "https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/Welcome.html"
+                - Url: "https://docs.aws.amazon.com/whitepapers/latest/security-overview-amazon-api-gateway/abstract-and-introduction.html"
+                - Url: "https://docs.aws.amazon.com/wellarchitected/latest/serverless-applications-lens/welcome.html"
+      KnowledgeBaseId: !GetAtt BedrockKnowledgeBase.KnowledgeBaseId
+      Name: !Sub "kb-${AWS::StackName}-ds-docs"
 
-  # Lambda function to create ingestion job
-  CreateIngestionJobFunction:
+  # Lambda function to create ingestion jobs
+  CreateIngestionJobsFunction:
     Type: AWS::Lambda::Function
     Properties:
       Handler: index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: python3.9
-      Timeout: 300
+      Timeout: 900
       Code:
         ZipFile: |
           import boto3
@@ -602,18 +619,37 @@ Resources:
                 
                 # Get parameters from the event
                 kb_id = event['ResourceProperties']['KnowledgeBaseId']
-                ds_id = event['ResourceProperties']['DataSourceId']
+                ds_ids = event['ResourceProperties']['DataSourceIds']
                 job_name = event['ResourceProperties']['Name']
                 job_description = event['ResourceProperties'].get('Description', 'Created by CloudFormation')
                 
-                # Create the ingestion job
-                response = bedrock.start_ingestion_job(
-                  knowledgeBaseId=kb_id,
-                  dataSourceId=ds_id,
-                  description=job_description
-                )
+                # Total of data sources to process
+                ds_total = len(ds_ids.split(','))
+                job_counter = 0
+                # Create the ingestion job for each data source
+                for ds_id in ds_ids.split(','):
+                  response = bedrock.start_ingestion_job(
+                    knowledgeBaseId=kb_id,
+                    dataSourceId=ds_id.strip(),
+                    description=job_description
+                  )
+                  job_counter += 1
+                  ingestion_job_id=response['ingestionJob']['ingestionJobId']
+                  print(f"Ingestion job #{job_counter} started: {ingestion_job_id} for data source {ds_id}")
+                  # Wait for ingestion job to complete before proceeding to the next one unless it is the last job
+                  if job_counter < ds_total:
+                    max_retries = 60  # 5 minutes with 5-second intervals
+                    retry_count = 0
+                    while True:
+                      job = bedrock.get_ingestion_job(knowledgeBaseId=kb_id, ingestionJobId=ingestion_job_id, dataSourceId=ds_id.strip())
+                      if job['ingestionJob']['status'] == 'COMPLETE':
+                        break
+                      if retry_count >= max_retries:
+                        raise Exception(f"Ingestion job did not complete after {max_retries * 5} seconds")
+                      retry_count += 1
+                      time.sleep(5)
                
-                response_data['Message'] = f"Successfully started sync job."
+                response_data['Message'] = f"Successfully started sync jobs."
                 send_response(event, context, "SUCCESS", response_data)
               elif event['RequestType'] == 'Delete':
                 # Optionally handle deletion
@@ -624,14 +660,14 @@ Resources:
               send_response(event, context, "FAILED", response_data)
 
   # Custom resource to create ingestion job
-  BedrockIngestionJob:
+  BedrockIngestionJobs:
     Type: Custom::BedrockIngestionJob
     Properties:
-      ServiceToken: !GetAtt CreateIngestionJobFunction.Arn
+      ServiceToken: !GetAtt CreateIngestionJobsFunction.Arn
       KnowledgeBaseId: !GetAtt BedrockKnowledgeBase.KnowledgeBaseId
-      DataSourceId: !GetAtt BedrockKnowledgeBaseDataSource.DataSourceId
+      DataSourceIds: !Join [",", [!GetAtt BedrockKnowledgeBaseS3DataSource.DataSourceId, !GetAtt BedrockKnowledgeBaseDocsDataSource.DataSourceId]]      
       Name: !Sub "kb-${AWS::StackName}-InitialSync"
-      Description: 'Initial sync of documents from S3 to Knowledge Base'
+      Description: 'Initial sync of documents to Knowledge Base'
 
 Outputs:
   KnowledgeBaseId:
@@ -640,10 +676,3 @@ Outputs:
     Export:
       Name: !Sub "${AWS::StackName}-KnowledgeBaseId"
   
-  DataSourceId:
-    Description: ID of the created Data Source
-    Value: !GetAtt BedrockKnowledgeBaseDataSource.DataSourceId
-  
-  VectorStoreId:
-    Description: ID of the created Vector Store
-    Value: !Ref VectorStore

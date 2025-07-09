@@ -1,6 +1,6 @@
 # API Helper
 
-API Helper is an Amazon Q extension that provides expert guidance and tools for API development, operations, management, and governance on AWS. It leverages Amazon Bedrock agents to deliver specialized assistance for API-related tasks.
+API Helper is an extension that provides expert guidance and tools for API development, operations, management, and governance on AWS. It leverages Amazon Bedrock agents to deliver specialized assistance for API-related tasks.
 
 ## Features
 

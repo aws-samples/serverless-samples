@@ -36,7 +36,7 @@ To deploy Knowledge Base use following command:
 aws cloudformation deploy --template-file ./iac/bedrock-kb-aos.yaml --stack-name api-agent-kb --capabilities CAPABILITY_IAM --parameter-overrides ExistingS3BucketName=gpk-api-kb
 ```
 
-*Note that stack creates two separate data sources - one for S3 bucket with your documents and one for publicly available documents (API Gateway documentation, whitepapers, etc.). Modify template accordingly to include/exclude public documents that fit your needs. You may also implement scheduled task to re-synchronize data source on a regular basis to keep those public documents in the knowledge base up to date.*
+*Note that stack creates two separate data sources - one for S3 bucket with your documents and one for publicly available documents (API Gateway documentation, white papers, etc.). Modify template accordingly to include/exclude public documents that fit your needs. You may also implement scheduled task to re-synchronize data source on a regular basis to keep those public documents in the knowledge base up to date.*
 
 ### API Builder Agent
 Creates an agent specialized in building APIs with Infrastructure as Code templates and business logic examples.
@@ -101,20 +101,6 @@ aws cloudformation create-stack \
   --capabilities CAPABILITY_IAM
 ```
 
-### EKS Inspector Agent
-Creates an agent that can analyze and provide feedback on EKS configuration.
-
-To deploy this agent:
-
-```bash
-aws cloudformation create-stack \
-  --stack-name eks-inspector-agent \
-  --template-body file://eks-inspector-agent.yaml \
-  --parameters ParameterKey=ToolsStackName,ParameterValue=api-agent-tools \
-  --capabilities CAPABILITY_IAM
-```
-
-
 ### Bedrock Flow
 Creates a Bedrock Flow with multiple agents collaborating. Uses knowledge base and agents deployed in the previous steps.
 
@@ -130,4 +116,3 @@ aws cloudformation create-stack \
     ParameterKey=APIBuilderAgentStackName,ParameterValue=api-builder-agent \
   --capabilities CAPABILITY_IAM
 ```
-

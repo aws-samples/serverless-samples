@@ -85,7 +85,7 @@ Resources:
               !Sub "${APIInspectorAgentStackName}-ApiInspectorAgentAliasId"
           SES_EMAIL: !Ref SesEmailForNotifications
       CodeUri: src/
-      Handler: inspector_proxy.lambda_handler
+      Handler: api_gateway_inspector_proxy.lambda_handler
       Description: API Gateway inspector agent proxy function
       Role: !GetAtt APIInspectorProxyRole.Arn
       Events:

@@ -3,10 +3,10 @@
 
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Lambda function to inspect API Gateway configurations
+Description: Lambda function to retrieve API Gateway configurations
 
 Resources:
-  APIGatewayInspectorFunction:
+  APIConfigurationRetrieverFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ./
@@ -33,7 +33,7 @@ Resources:
     Type: "AWS::Lambda::Permission"
     Properties:
       Action: lambda:InvokeFunction
-      FunctionName: !Ref APIGatewayInspectorFunction
+      FunctionName: !Ref APIConfigurationRetrieverFunction
       Principal: bedrock.amazonaws.com
       SourceArn: !Join 
         - ''
@@ -44,9 +44,9 @@ Resources:
           - ':*'
 
 Outputs:
-  APIGatewayInspectorFunction:
-    Description: "API Gateway Inspector Lambda Function ARN"
-    Value: !GetAtt APIGatewayInspectorFunction.Arn
-  APIGatewayInspectorFunctionName:
-    Description: "API Gateway Inspector Lambda Function Name"
-    Value: !Ref APIGatewayInspectorFunction
+  APIConfigurationRetrieverFunction:
+    Description: "API Configuration Retriever Lambda Function ARN"
+    Value: !GetAtt APIConfigurationRetrieverFunction.Arn
+  APIConfigurationRetrieverFunctionName:
+    Description: "API Configuration Retriever Lambda Function Name"
+    Value: !Ref APIConfigurationRetrieverFunction
