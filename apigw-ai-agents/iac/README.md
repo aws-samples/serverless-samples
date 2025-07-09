@@ -31,12 +31,23 @@ Each agent template creates:
 ### Knowledge Base
 Before deploying Amazon Bedrock Knowledge Base, you will need content in an Amazon S3 bucket that will be indexed during the deployment process. Create S3 bucket in the same AWS region you are deploying rest of your resources, upload data in the [formats supported](https://docs.aws.amazon.com/bedrock/latest/userguide/knowledge-base-ds.html), you will need it during the deployment.
 
-To deploy Knowledge Base use following command:
+To deploy Knowledge Base for the API Expert agent use following command:
 ```bash
-aws cloudformation deploy --template-file ./iac/bedrock-kb-aos.yaml --stack-name api-agent-kb --capabilities CAPABILITY_IAM --parameter-overrides ExistingS3BucketName=gpk-api-kb
+aws cloudformation deploy --template-file ./bedrock-kb-aos.yaml --stack-name api-expert-kb --capabilities CAPABILITY_IAM --parameter-overrides ExistingS3BucketName=<your-expert-s3-bucket-name-here>
 ```
 
-*Note that stack creates two separate data sources - one for S3 bucket with your documents and one for publicly available documents (API Gateway documentation, white papers, etc.). Modify template accordingly to include/exclude public documents that fit your needs. You may also implement scheduled task to re-synchronize data source on a regular basis to keep those public documents in the knowledge base up to date.*
+By default, the Knowledge Base includes both your S3 documents and publicly available AWS documentation (API Gateway documentation, white papers, etc.). You can control whether to include the public documentation by using the `IncludePublicDocs` parameter:
+
+```bash
+aws cloudformation deploy --template-file ./bedrock-kb-aos.yaml --stack-name api-expert-kb --capabilities CAPABILITY_IAM --parameter-overrides ExistingS3BucketName=<your-expert-s3-bucket-name-here> IncludePublicDocs=false
+```
+
+The template uses a conditional resource creation pattern:
+1. When `IncludePublicDocs` is set to "true" (default), both S3 and public documentation data sources are created
+2. When `IncludePublicDocs` is set to "false", only the S3 data source is created
+3. The ingestion job automatically adapts to include only the data sources that were created
+
+*Note: You may implement a scheduled task to re-synchronize data sources on a regular basis to keep those public documents in the knowledge base up to date.*
 
 ### API Builder Agent
 Creates an agent specialized in building APIs with Infrastructure as Code templates and business logic examples.
@@ -59,20 +70,43 @@ To deploy this agent:
 aws cloudformation create-stack \
   --stack-name api-expert-agent \
   --template-body file://api-expert-agent.yaml \
-  --parameters ParameterKey=KnowledgeBaseStackName,ParameterValue=api-agent-kb \
+  --parameters ParameterKey=KnowledgeBaseStackName,ParameterValue=api-expert-kb \
   --capabilities CAPABILITY_IAM
 ```
 
 ### API Inspector Agent
 Creates an agent that can analyze and provide feedback on API designs and implementations.
 
-To deploy this agent:
+The API Inspector Agent can optionally use a Knowledge Base that includes internal best practices, style guides, requirements, etc. The Knowledge Base integration is conditional based on the `KnowledgeBaseStackName` parameter:
+
+- If set to `None` (default), the agent will not use a Knowledge Base
+- If set to a valid stack name, the agent will import the Knowledge Base ID from that stack
+
+To create a Knowledge Base for the Inspector agent:
+
+```bash
+aws cloudformation deploy --template-file ./bedrock-kb-aos.yaml --stack-name api-inspector-kb --capabilities CAPABILITY_IAM --parameter-overrides ExistingS3BucketName=<your-inspector-s3-bucket-name-here> IncludePublicDocs=false
+```
+*Note: You can use the same Knowledge Base as the Expert agent if desired, though recommendations may be less organization-specific.*
+
+To deploy this agent without a Knowledge Base:
 
 ```bash
 aws cloudformation create-stack \
   --stack-name api-inspector-agent \
   --template-body file://api-inspector-agent.yaml \
   --parameters ParameterKey=ToolsStackName,ParameterValue=api-agent-tools \
+  --capabilities CAPABILITY_IAM
+```
+
+To deploy this agent with a Knowledge Base:
+
+```bash
+aws cloudformation create-stack \
+  --stack-name api-inspector-agent \
+  --template-body file://api-inspector-agent.yaml \
+  --parameters ParameterKey=ToolsStackName,ParameterValue=api-agent-tools \
+    ParameterKey=KnowledgeBaseStackName,ParameterValue=api-inspector-kb \
   --capabilities CAPABILITY_IAM
 ```
 
@@ -110,7 +144,7 @@ To deploy this flow:
 aws cloudformation create-stack \
   --stack-name api-expert-flow \
   --template-body file://bedrock-flow.yaml \
-  --parameters ParameterKey=KnowledgeBaseStackName,ParameterValue=api-agent-kb \
+  --parameters ParameterKey=KnowledgeBaseStackName,ParameterValue=api-expert-kb \
     ParameterKey=RequirementsGathererAgentStackName,ParameterValue=api-requirements-gatherer-agent \
     ParameterKey=APIInspectorAgentStackName,ParameterValue=api-inspector-agent \
     ParameterKey=APIBuilderAgentStackName,ParameterValue=api-builder-agent \

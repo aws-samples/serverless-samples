@@ -13,6 +13,17 @@ Parameters:
     Type: String
     Description: Bedrock model ID to use for embeddings
     Default: "amazon.titan-embed-text-v2:0"
+    
+  IncludePublicDocs:
+    Type: String
+    Description: Whether to include public AWS documentation in the knowledge base
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+
+Conditions:
+  CreatePublicDocsDataSource: !Equals [!Ref IncludePublicDocs, "true"]
 
 Resources:
   # IAM Policies for Bedrock Knowledge Base Role
@@ -518,7 +529,7 @@ Resources:
     Type: AWS::Bedrock::KnowledgeBase
     DependsOn: VectorIndex
     Properties:
-      Name: !Sub "kb-${AWS::StackName}"
+      Name: !Sub "${AWS::StackName}"
       Description: "Knowledge Base created with data from S3"
       KnowledgeBaseConfiguration:
         Type: VECTOR
@@ -548,6 +559,7 @@ Resources:
   
   BedrockKnowledgeBaseDocsDataSource:
     Type: AWS::Bedrock::DataSource
+    Condition: CreatePublicDocsDataSource
     Properties:
       DataSourceConfiguration:
         Type: WEB
@@ -628,6 +640,8 @@ Resources:
                 job_counter = 0
                 # Create the ingestion job for each data source
                 for ds_id in ds_ids.split(','):
+                  if not ds_id.strip():  # Skip empty data source IDs
+                    continue
                   response = bedrock.start_ingestion_job(
                     knowledgeBaseId=kb_id,
                     dataSourceId=ds_id.strip(),
@@ -665,7 +679,10 @@ Resources:
     Properties:
       ServiceToken: !GetAtt CreateIngestionJobsFunction.Arn
       KnowledgeBaseId: !GetAtt BedrockKnowledgeBase.KnowledgeBaseId
-      DataSourceIds: !Join [",", [!GetAtt BedrockKnowledgeBaseS3DataSource.DataSourceId, !GetAtt BedrockKnowledgeBaseDocsDataSource.DataSourceId]]      
+      DataSourceIds: !If 
+        - CreatePublicDocsDataSource
+        - !Join [",", [!GetAtt BedrockKnowledgeBaseS3DataSource.DataSourceId, !GetAtt BedrockKnowledgeBaseDocsDataSource.DataSourceId]]
+        - !GetAtt BedrockKnowledgeBaseS3DataSource.DataSourceId
       Name: !Sub "kb-${AWS::StackName}-InitialSync"
       Description: 'Initial sync of documents to Knowledge Base'
 
@@ -676,3 +693,6 @@ Outputs:
     Export:
       Name: !Sub "${AWS::StackName}-KnowledgeBaseId"
   
+  IncludesPublicDocs:
+    Description: Whether public AWS documentation is included in the knowledge base
+    Value: !Ref IncludePublicDocs

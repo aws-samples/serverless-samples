@@ -9,10 +9,17 @@ Parameters:
     Type: String
     Description: Name of the stack that contains the Lambda function tools
     Default: api-tools-stack
+  KnowledgeBaseStackName:
+    Type: String
+    Description: Name of the stack that contains the pre-existing knowledge base to associate with the agent (use 'None' to skip knowledge base integration)
+    Default: None
   AliasName:
     Type: String
     Description: Name for the agent alias
     Default: prod
+
+Conditions:
+  UseKnowledgeBase: !Not [!Equals [!Ref KnowledgeBaseStackName, "None"]]
 
 Resources:
   # IAM Policy for Lambda invocation
@@ -164,6 +171,12 @@ Resources:
       FoundationModel: !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.anthropic.claude-3-7-sonnet-20250219-v1:0"
       IdleSessionTTLInSeconds: 600
       AgentResourceRoleArn: !GetAtt BedrockAgentRole.Arn
+      KnowledgeBases: !If
+        - UseKnowledgeBase
+        - - KnowledgeBaseId: !ImportValue 
+              Fn::Sub: "${KnowledgeBaseStackName}-KnowledgeBaseId"
+            Description: Knowledge base includes style guides, organizational best practices and requirements for API development and implementation
+        - !Ref AWS::NoValue
       ActionGroups:
         - ActionGroupName: api_account_info_retriever
           Description: Tool for getting API account configuration details
@@ -210,3 +223,8 @@ Outputs:
     Value: !GetAtt ApiInspectorAgentAlias.AgentAliasId
     Export:
       Name: !Sub "${AWS::StackName}-ApiInspectorAgentAliasId"
+  UsesKnowledgeBase:
+    Description: Whether the agent is using a knowledge base
+    Value: !If [UseKnowledgeBase, "true", "false"]
+    Export:
+      Name: !Sub "${AWS::StackName}-UsesKnowledgeBase"
