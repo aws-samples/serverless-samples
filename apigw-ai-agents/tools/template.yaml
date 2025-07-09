@@ -22,11 +22,11 @@ Resources:
       Location: ./api-account-inspector/template.yaml
       Parameters: {}
 
-  # API Inspector Application
-  APIInspectorApplication:
+  # API Configuration Retriever Application
+  APIConfigurationRetrieverApplication:
     Type: AWS::Serverless::Application
     Properties:
-      Location: ./api-inspector/template.yaml
+      Location: ./api-configuration-retriever/template.yaml
       Parameters: {}
 
   # API Definition Retriever Application
@@ -36,12 +36,6 @@ Resources:
       Location: ./api-definition-retriever/template.yaml
       Parameters: {}
       
-  # EKS Configuration Retriever Application
-  EksConfigRetrieverApplication:
-    Type: AWS::Serverless::Application
-    Properties:
-      Location: ./eks-configuration-retriever/template.yaml
-      Parameters: {}
 
 Outputs:
   OpenAPIValidatorFunction:
@@ -56,11 +50,11 @@ Outputs:
     Export:
       Name: !Sub "${AWS::StackName}-APIAccountInspectorFunctionArn"
   
-  APIGatewayInspectorFunction:
-    Description: "API Gateway Inspector Lambda Function ARN"
-    Value: !GetAtt APIInspectorApplication.Outputs.APIGatewayInspectorFunction
+  APIConfigurationRetrieverFunction:
+    Description: "API Configuration Retriever Lambda Function ARN"
+    Value: !GetAtt APIConfigurationRetrieverApplication.Outputs.APIConfigurationRetrieverFunction
     Export:
-      Name: !Sub "${AWS::StackName}-APIGatewayInspectorFunctionArn"
+      Name: !Sub "${AWS::StackName}-APIConfigurationRetrieverFunctionArn"
   
   ApiDefinitionRetrieverFunction:
     Description: "API Definition Retriever Lambda Function ARN"
@@ -68,9 +62,3 @@ Outputs:
     Export:
       Name: !Sub "${AWS::StackName}-ApiDefinitionRetrieverFunctionArn"
       
-  EksConfigRetrieverFunction:
-    Description: "EKS Configuration Retriever Lambda Function ARN"
-    Value: !GetAtt EksConfigRetrieverApplication.Outputs.EksConfigRetrieverFunction
-    Export:
-      Name: !Sub "${AWS::StackName}-EksConfigRetrieverFunctionArn"
-    

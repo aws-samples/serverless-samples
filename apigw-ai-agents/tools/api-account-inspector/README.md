@@ -1,6 +1,6 @@
 # API Gateway Account Inspector Lambda Function
 
-This Lambda function collects and returns detailed information about AWS API Gateway account settings and resources. It can be used as a standalone Lambda function or integrated with Amazon Q API Expert Agent.
+This Lambda function collects and returns detailed information about AWS API Gateway account settings and resources. It can be used as a standalone Lambda function or integrated with API Expert Agent.
 
 ## Project Overview
 
@@ -93,12 +93,12 @@ The function accepts requests with the following structure:
 }
 ```
 
-## Integration with Amazon Q API Expert Agent
+## Integration with API Expert Agent
 
-This Lambda function can be integrated with Amazon Q API Expert Agent to provide API Gateway account inspection capabilities. To integrate:
+This Lambda function can be integrated with API Expert Agent to provide API Gateway account inspection capabilities. To integrate:
 
 1. Deploy this Lambda function using the SAM template
-2. Configure the Amazon Q API Expert Agent to use this function as a tool
+2. Configure the API Expert Agent to use this function as a tool
 
 ## Required IAM Permissions
 

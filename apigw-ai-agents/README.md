@@ -38,7 +38,7 @@ Knowledge base focuses on covering information that is changing, need to be cura
 * API operations on AWS
 * API development best practices
 
-Knowledge Base, along with the agents and tools described in the next session, can be integrated into AI enabled developer environments, such as Amazon Q Developer/CLI:
+Knowledge Base, along with the agents and tools described in the next session, can be integrated into AI enabled developer environments:
 
 ![MCP Knowledge Base integration](./assets/kb_mcp_diagram.png)
 
@@ -108,7 +108,7 @@ Note that all agents use their own dedicated AWS IAM roles, so you can track the
 
 ### Code 
 - IaC - Infrastructure as Code templates for Amazon Bedrock knowledge base, agents, and flows.
-- MCP - MCP (Model Context Protocol) servers to be used by agents, such as Q Developer CLI (see [documentation](https://docs.aws.amazon.com/en_us/amazonq/latest/qdeveloper-ug/command-line-mcp.html) for more details).
+- MCP - MCP (Model Context Protocol) servers to be used by agents.
 - EDA - API improvements recommender: Amazon EventBridge based integration for tracking Amazon API Gateway changes, inspecting it and providing recommendations to the owners
 - Tools - code of the tools used by the Bedrock Agents. They can be refactored and used by any agentic workflow, just modify input/output formats.
 
@@ -147,14 +147,14 @@ Follow steps documented in the API improvements recommender [README.md](./eda/) 
 
 ## Taking it for a spin...
 
-There are few ways to try this out - using your favorite AI-enabled IDE with MCP client support (such as Amazon Q CLI), directly in the AWS management Console [Agents](https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/agents), [Flows](https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/flows), or [Knowledge Bases](https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/knowledge-bases). You can also use [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector) to try it out as well.
+There are few ways to try this out - using your favorite AI-enabled IDE with MCP client support, directly in the AWS management Console [Agents](https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/agents), [Flows](https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/flows), or [Knowledge Bases](https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/knowledge-bases). You can also use [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector) to try it out as well.
 
-### AI-enabled development environment (Q Developer CLI)
-To try it in Q Developer CLI, configure MCP client using installation [instructions](./mcp/README.md). Next, start Q Developer CLI chat and confirm that MCP server started and `api_helper` is listed in the tools available:
+### AI-enabled development environment
+To try it in AI-enabled development environment, configure MCP client using installation [instructions](./mcp/README.md). Next, start development environment and confirm that MCP server started and `api_helper` is listed in the tools available:
 
 ![MCP tools](./assets/q-cli-tools.png)
 
-Ask an API related question and confirm that Q Developer CLI is using MCP to get the answer:
+Ask an API related question and confirm that development environment is using MCP to get the answer:
 
 ![MCP usage](./assets/q-cli-question.png)
 

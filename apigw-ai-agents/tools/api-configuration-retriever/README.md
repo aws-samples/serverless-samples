@@ -1,15 +1,15 @@
-# API Gateway Inspector Lambda Function
+# API Gateway Configuration Retriever Lambda Function
 
-This Lambda function collects and returns detailed information about AWS API Gateway REST APIs. It can be used as a standalone Lambda function or integrated with Amazon Q API Expert Agent.
+This Lambda function collects and returns detailed information about AWS API Gateway REST APIs. It can be used as a standalone Lambda function or integrated with API Expert Agent.
 
 ## Project Overview
 
-The API Gateway Inspector retrieves comprehensive information about a specified API Gateway REST API, including resources, stages, authorizers, WAF configurations, models, integrations, and more. This information can be used for auditing, documentation, or analysis purposes.
+The API Gateway Configuration Retriever retrieves comprehensive information about a specified API Gateway REST API, including resources, stages, authorizers, WAF configurations, models, integrations, and more. This information can be used for auditing, documentation, or analysis purposes.
 
 ## Directory Structure
 
 ```
-api-inspector/
+api-configuration-retriever/
 ├── lambda_function.py    # Lambda function handler
 ├── requirements.txt      # Python dependencies
 └── template.yaml         # AWS SAM template
@@ -69,8 +69,8 @@ The function accepts requests with the following structure:
       "value": "your-api-gateway-id"
     }
   ],
-  "actionGroup": "APIGatewayInspector",
-  "function": "inspectAPI",
+  "actionGroup": "APIConfigurationRetriever",
+  "function": "retrieveAPIConfiguration",
   "sessionAttributes": {},
   "promptSessionAttributes": {}
 }
@@ -82,8 +82,8 @@ The function accepts requests with the following structure:
 {
   "messageVersion": "1.0",
   "response": {
-    "actionGroup": "APIGatewayInspector",
-    "function": "inspectAPI",
+    "actionGroup": "APIConfigurationRetriever",
+    "function": "retrieveAPIConfiguration",
     "functionResponse": {
       "responseBody": {
         "TEXT": {
@@ -97,12 +97,14 @@ The function accepts requests with the following structure:
 }
 ```
 
-## Integration with Amazon Q API Expert Agent
+## Integration with API Expert Agent
 
-This Lambda function can be integrated with Amazon Q API Expert Agent to provide API Gateway inspection capabilities. To integrate:
+This Lambda function can be integrated with API Expert Agent to provide API Gateway configuration retrieval capabilities. To integrate:
 
 1. Deploy this Lambda function using the SAM template
-2. Configure the Amazon Q API Expert Agent to use this function as a tool
+2. Configure the API Expert Agent to use this function as a tool
+
+Note: This tool is used by the API Inspector Agent (defined in `iac/api-inspector-agent.yaml`) to retrieve API Gateway configurations for analysis.
 
 ## Required IAM Permissions
 
@@ -131,7 +133,7 @@ The Lambda function requires the following minimum IAM permissions:
 
 ## Error Handling
 
-If an error occurs during API inspection, the function will return an appropriate error message in the response body.
+If an error occurs during API configuration retrieval, the function will return an appropriate error message in the response body.
 
 
 ## Cleanup

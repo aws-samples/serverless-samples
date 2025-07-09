@@ -1,6 +1,6 @@
 # OpenAPI Validator Lambda Function
 
-This Lambda function validates OpenAPI definitions using the Spectral validator. It can be used as a standalone Lambda function or integrated with Amazon Q API Expert Agent.
+This Lambda function validates OpenAPI definitions using the Spectral validator. It can be used as a standalone Lambda function or integrated with API Expert Agent.
 
 ## Project Overview
 
