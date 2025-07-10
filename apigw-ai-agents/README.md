@@ -42,6 +42,8 @@ Knowledge base focuses on covering information that is changing, need to be cura
 
 Knowledge Base, along with the agents and tools described in the next session, can be integrated into AI enabled developer environments:
 
+![Knowledge Base diagram](./assets/kb_mcp_diagram.png)
+
 For more details see MCP setup [instructions](./mcp/).
 
 
