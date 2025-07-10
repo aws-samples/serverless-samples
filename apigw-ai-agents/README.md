@@ -19,6 +19,8 @@ Developers use AI enabled development environments daily. As tooling evolves, or
 
 This sample focuses on developing a set of Amazon Bedrock agents, tools, knowledge bases for RAG that focus on APIs and integration services. Implementation should be tailored to follow your internal best practices, guidance, and governance requirements. You should add your organization specific content to the knowledge bases, modify agent prompts and their configurations to fit your use case, add your organizational logic to the tools' logic, or introduce additional agents and tools to be used by the agents.
 
+![implementation overview](./assets/centralized_guidance.png)
+
 Sample solution provides the following features:
 
 * General advice on API implementation - selecting correct endpoint type, integration patterns, multi-account networking advice, security features, observability settings
@@ -26,7 +28,7 @@ Sample solution provides the following features:
 * OpenAPI specification generation, enhancing with documentation/descriptions and examples, payload schemas, adding missing operation IDs, OpenAPI extensions for API Gateway
 * IaC template generation using AWS SAM
 * Amazon API Gateway endpoint inspection and configuration review
-* Event-driven API improvements recommender - deployment review with improvement suggestions
+* Event-driven (or AWS Config based) API improvements recommender - deployment review with improvement suggestions
 
 ## Implementation
 
@@ -39,8 +41,6 @@ Knowledge base focuses on covering information that is changing, need to be cura
 * API development best practices
 
 Knowledge Base, along with the agents and tools described in the next session, can be integrated into AI enabled developer environments:
-
-![MCP Knowledge Base integration](./assets/kb_mcp_diagram.png)
 
 For more details see MCP setup [instructions](./mcp/).
 
