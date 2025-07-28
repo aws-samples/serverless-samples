@@ -104,7 +104,7 @@ You will create an Amazon Cogntio user for authenticating against the API. Then,
    USER_POOL_CLIENT_ID=<Value of the "UserPoolClientId" Output>
    USER_NAME=testuser
    USER_EMAIL=user@example.com
-   USER_PASSWORD=MyUserPassword123!
+   USER_PASSWORD=<choose a random password>
    ```
 
 1. Create a user in Cognito that will be used for authenticating test requests:
