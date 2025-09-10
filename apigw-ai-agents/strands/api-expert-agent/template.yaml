@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'SAM template for API Expert Agent Lambda function using Strands framework'
+
+Parameters:
+  KnowledgeBaseStackName:
+    Type: String
+    Description: Name of the stack that contains the pre-existing knowledge base to associate with the function
+    Default: api-expert-kb
+  BedrockModel:
+    Type: String
+    Description: Amazon Bedrock model to be used by the agent
+    Default: amazon.nova-pro-v1:0
+
+Globals:
+  Function:
+    Timeout: 300
+    MemorySize: 512
+    Runtime: python3.13
+
+Resources:
+  ApiExpertAgentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: main.lambda_handler
+      Description: API Expert Agent Lambda function that provides API guidance using Bedrock Knowledge Base
+      Environment:
+        Variables:
+          BEDROCK_MODEL: !Ref BedrockModel
+          KNOWLEDGE_BASE_ID: !ImportValue 
+            Fn::Sub: "${KnowledgeBaseStackName}-KnowledgeBaseId"
+          MIN_SCORE: '0.4'
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: 
+                - "arn:aws:bedrock:*:*:*"
+            - Effect: Allow
+              Action:
+                - bedrock:Retrieve
+              Resource: !Sub
+                - 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/${KnowledgeBaseId}'
+                - KnowledgeBaseId: !ImportValue 
+                    Fn::Sub: "${KnowledgeBaseStackName}-KnowledgeBaseId"
+Outputs:
+  ApiExpertAgentFunctionArn:
+    Description: ARN of the API Expert Agent Lambda function
+    Value: !GetAtt ApiExpertAgentFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiExpertAgentFunctionArn"
+  
+  ApiExpertAgentFunctionName:
+    Description: Name of the API Expert Agent Lambda function
+    Value: !Ref ApiExpertAgentFunction
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiExpertAgentFunctionName"
