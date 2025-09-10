@@ -136,6 +136,8 @@ Follow steps documented in the tools [README.md](./tools/) file.
 ### Agents
 Follow steps documented in the agents/flow [README.md](./iac/) file.
 
+*Note: Alternative implementation of the agents, built with the [Strands framework](https://github.com/strands-agents), available in [strands](./strands/) directory*
+
 ### MCP Server
 To install MCP server and configure client, follow instructions in [README.md](./mcp/) file. 
 

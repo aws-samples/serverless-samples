@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'SAM template for API Builder Agent Lambda function using Strands framework'
+
+Parameters:
+  BedrockModel:
+    Type: String
+    Description: Amazon Bedrock model to be used by the agent
+    Default: us.anthropic.claude-3-7-sonnet-20250219-v1:0
+
+Globals:
+  Function:
+    Timeout: 300
+    MemorySize: 512
+    Runtime: python3.13
+
+Resources:
+  ApiBuilderAgentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: main.lambda_handler
+      Description: API Builder Agent Lambda function that builds APIs
+      Environment:
+        Variables:
+          BEDROCK_MODEL: !Ref BedrockModel
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+              Resource: 
+                - "arn:aws:bedrock:*:*:*"
+
+Outputs:
+  ApiBuilderAgentFunctionArn:
+    Description: ARN of the API Builder Agent Lambda function
+    Value: !GetAtt ApiBuilderAgentFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiBuilderAgentFunctionArn"
+  
+  ApiBuilderAgentFunctionName:
+    Description: Name of the API Builder Agent Lambda function
+    Value: !Ref ApiBuilderAgentFunction
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiBuilderAgentFunctionName"
