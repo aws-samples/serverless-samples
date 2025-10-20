@@ -29,7 +29,7 @@
     "eslint-plugin-react-hooks": "4.6.0",
     "eslint-plugin-react-refresh": "0.4.3",
     "typescript": "5.0.2",
-    "vite": "7.1.5"
+    "vite": "7.1.11"
   },
   "overrides": {
     "esbuild": "0.25.0"
