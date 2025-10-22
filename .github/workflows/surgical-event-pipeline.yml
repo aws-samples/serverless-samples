@@ -10,7 +10,7 @@ name: Update API Gateway model with latest schema
 on:
 
   # Uncomment the next two lines to run the GitHub Actions workflow on pushes to main branch
-    push:
+  push:
       branches: [ "main" ]
 
   # allows you to run workflow manually - https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/manually-running-a-workflow
