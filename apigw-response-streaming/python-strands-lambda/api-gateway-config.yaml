@@ -1,0 +1,34 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+openapi: "3.0.1"
+info:
+  title: "strands-streaming-lambda-api"
+  version: "1.0.0"
+paths:
+  /ask:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                request:
+                  type: string
+                  description: "The request to send to the Strands agent"
+              required:
+                - request
+      responses:
+        "200":
+          description: "Streaming response from Strands agent"
+          content:
+            text/html:
+              schema:
+                type: string
+      x-amazon-apigateway-integration:
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2021-11-15/functions/${StreamingResponseFunction.Arn}/response-streaming-invocations"
+        httpMethod: "POST"
+        responseTransferMode: "STREAM"
+        type: "aws_proxy"
