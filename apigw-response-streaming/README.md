@@ -2,7 +2,7 @@
 
 This repository contains example implementations of Amazon API Gateway response streaming using different architectures and technologies.
 
-See Amazon API Gateway feature launch blog post.
+See Amazon API Gateway feature launch [blog post](https://aws.amazon.com/blogs/compute/building-responsive-apis-with-amazon-api-gateway-response-streaming/) for more details.
 
 ## Overview
 
