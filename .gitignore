@@ -38,3 +38,6 @@ cdk.out/*
 
 # Automated Security Helper output directory
 ash_output
+
+*.env
+*.bedrock_agentcore*
