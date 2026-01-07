@@ -42,13 +42,13 @@ A serverless implementation using AWS Lambda with FastAPI and Strands agents for
 [View Python Lambda Implementation →](./python-strands-lambda/)
 
 
-### 4. Python on Bedrock AgentCore (`python-strands-agentcore/`)
+### 4. Python on AgentCore (`python-strands-agentcore/`)
 
 A serverless implementation using Strands agents for AI responses on Amazon Bedrock AgentCore Runtime. 
 
 **Architecture:**
-- API Gateway → Amazon Bedrock AgentCore Runtime → Strands → Amazon Bedrock Nova Lite Model
-- Streaming responses from AgentCore to client
+- API Gateway → Bedrock AgentCore Runtime → Strands 
+- Streaming responses from Bedrock model through AgentCore and Strands agents to client
 
 [View Python AgentCore Implementation →](./python-strands-agentcore/)
 

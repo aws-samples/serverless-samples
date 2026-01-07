@@ -1,4 +1,4 @@
-# API Gateway Streaming Example Agent - Strands Agents + Amazon Bedrock AgentCore
+# Strands response streaming on Amazon Bedrock AgentCore
 
 This project demonstrates how to stream responses in Amazon API Gateway using a simple AI agent hosted on Amazon Bedrock AgentCore runtime as an integration. The agent uses Strands Agents and a foundational model on Bedrock.
 
