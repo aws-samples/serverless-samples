@@ -1,0 +1,46 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+openapi: "3.0.1"
+info:
+  title: "$API_NAME"
+
+paths:
+  /ask:
+    post:
+      summary: "Invoke Bedrock Agent"
+      description: "Sends a request to an agent in the Bedrock AgentCore runtime and returns the agent's response"
+      parameters:
+      - name: "Authorization"
+        in: "header"
+        description: "AWS authorization header for API authentication"
+        required: true
+        schema:
+          type: "string"
+      responses:
+        "200":
+          description: "Successful agent invocation response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Empty"
+      x-amazon-apigateway-integration:
+        uri: "https://bedrock-agentcore.$AWS_REGION.amazonaws.com/runtimes/{arn}/invocations"
+        httpMethod: "POST"
+        responseTransferMode: "STREAM"
+        responses:
+          default:
+            statusCode: "200"
+        requestParameters:
+          integration.request.querystring.qualifier: "'DEFAULT'"
+          integration.request.header.Authorization: "method.request.header.Authorization"
+          integration.request.path.arn: "'$AGENT_ID'"
+          integration.request.querystring.accountId: "'$ACCOUNT_ID'"
+        passthroughBehavior: "when_no_match"
+        type: "http_proxy"
+components:
+  schemas:
+    Empty:
+      title: "Empty Schema"
+      description: "Empty response object for successful agent invocations"
+      type: "object"

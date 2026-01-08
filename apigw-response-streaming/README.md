@@ -42,6 +42,17 @@ A serverless implementation using AWS Lambda with FastAPI and Strands agents for
 [View Python Lambda Implementation →](./python-strands-lambda/)
 
 
+### 4. Python on AgentCore (`python-strands-agentcore/`)
+
+A serverless implementation using Strands agents for AI responses on Amazon Bedrock AgentCore Runtime. 
+
+**Architecture:**
+- API Gateway → Bedrock AgentCore Runtime → Strands 
+- Streaming responses from Bedrock model through AgentCore and Strands agents to client
+
+[View Python AgentCore Implementation →](./python-strands-agentcore/)
+
+
 ## Prerequisites
 
 Both implementations require:
@@ -56,3 +67,4 @@ For detailed deployment and testing instructions, please refer to the individual
 - **Node.js Lambda**: See [`node-bedrock-lambda/README.md`](./node-bedrock-lambda/README.md)
 - **Python ECS**: See [`python-strands-ecs/README.md`](./python-strands-ecs/README.md)
 - **Python Lambda**: See [`python-strands-lambda/README.md`](./python-strands-lambda/README.md)
+- **Python AgentCore**: See [`python-strands-agentcore/README.md`](./python-strands-lambda/README.md)
