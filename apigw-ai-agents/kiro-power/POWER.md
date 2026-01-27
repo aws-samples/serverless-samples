@@ -1,8 +1,8 @@
 ---
 name: "centralized-developer-guidance"
 displayName: "Centralized Developer Guidance"
-description: "Organization-wide developer guidance powered by AI agents and Amazon Bedrock Knowledge Base. Provides API expertise, best practices, and configuration inspection directly in your IDE."
-keywords: ["api-gateway", "bedrock", "knowledge-base", "governance", "best-practices", "api-expert"]
+description: "Provides organization-wide, centralized developer guidance. API expertise, best practices, and configuration inspection directly in your IDE."
+keywords: ["api-gateway", "governance", "best-practices", "api-expert"]
 author: "Your Organization"
 ---
 
@@ -31,26 +31,16 @@ This power includes steering files that provide detailed workflow guidance:
 ## When to Use This Power
 
 Use this power when you need:
-- Guidance on API development patterns and best practices
+- Organization-specific development standards and best practices
+- Guidance on API development, management, and governance
 - Help with Amazon API Gateway configuration
-- Security recommendations for APIs
-- Advice on API governance and compliance
 - Inspection of existing API configurations
-- Organization-specific development standards
 
 ## Onboarding
 
 ### Prerequisites
 
 Before using this power, your organization needs to deploy the backend infrastructure:
-
-1. **Amazon Bedrock Knowledge Base** - Contains your organization's documentation, best practices, and AWS guidance
-2. **Amazon Bedrock AgentCore Runtime Agent** - The AI agent that processes requests
-3. **AWS credentials** - Configured with permissions to invoke the AgentCore agent
-
-### Infrastructure Setup
-
-Your platform team should deploy:
 
 1. **Knowledge Base** - See [strands-agentcore/iac](../strands-agentcore/iac/README.md) for deployment instructions:
    - CloudFormation template: [bedrock-kb-s3.yaml](../strands-agentcore/iac/bedrock-kb-s3.yaml)
@@ -66,52 +56,12 @@ Your platform team should deploy:
    - Python-based FastMCP server
    - Requirements: [api-helper/requirements.txt](../strands-agentcore/mcp/api-helper/requirements.txt)
 
+> **Important:** For production environments, organizations should deploy a remote MCP server with appropriate authentication and authorization instead of running locally on each developer's machine.
+
 ### Local Setup
 
 1. Ensure AWS CLI is configured with appropriate credentials
-2. Verify you have access to invoke the AgentCore agent
-3. Install this power from your organization's shared location
-
-## Common Workflows
-
-### Workflow 1: Get API Development Guidance
-
-When you need advice on API design, implementation, or AWS services:
-
-**Example questions:**
-- "What's the best way to implement authentication for my REST API?"
-- "How should I configure throttling for my API Gateway endpoint?"
-- "What are the security best practices for API Gateway?"
-- "How do I set up observability for my APIs?"
-
-The API Expert will provide guidance based on:
-- AWS documentation and best practices
-- Your organization's specific standards (from the Knowledge Base)
-- Well-Architected Framework principles
-
-### Workflow 2: Inspect API Configuration
-
-When you have an existing API Gateway endpoint and want to review its configuration:
-
-**Steps:**
-1. Get your API Gateway API ID from the AWS Console or CLI
-2. Ask the inspector to analyze it: "Inspect API with ID abc123xyz"
-3. Review the recommendations for:
-   - Security configurations
-   - Throttling settings
-   - Request validation
-   - WAF integration
-   - Observability setup
-   - Documentation completeness
-
-### Workflow 3: Organization Standards Compliance
-
-When you want to ensure your API design follows organization standards:
-
-**Example questions:**
-- "Does my API design follow our organization's naming conventions?"
-- "What governance controls should I implement for this API?"
-- "How should I document this API according to our standards?"
+2. Install this power from your organization's shared location
 
 ## Best Practices
 
@@ -207,30 +157,6 @@ After updating `mcp.json`, reconnect the MCP server from the Kiro MCP Server pan
 |----------|-------------|----------|
 | `AWS_REGION` | AWS region where AgentCore agent is deployed | Yes |
 | `AGENTCORE_AGENT_ARN` | ARN of the Bedrock AgentCore Runtime agent | Yes |
-
-## Architecture
-
-This power connects to a centralized AI agent architecture:
-
-```
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────────┐
-│   Kiro IDE      │────▶│   MCP Server     │────▶│  Bedrock AgentCore  │
-│   (Developer)   │     │   (api-helper)   │     │  Runtime Agent      │
-└─────────────────┘     └──────────────────┘     └──────────┬──────────┘
-                                                            │
-                                                            ▼
-                                                 ┌─────────────────────┐
-                                                 │  Bedrock Knowledge  │
-                                                 │  Base (S3 Vectors)  │
-                                                 └─────────────────────┘
-                                                            │
-                                    ┌───────────────────────┼───────────────────────┐
-                                    ▼                       ▼                       ▼
-                             ┌─────────────┐        ┌─────────────┐        ┌─────────────┐
-                             │ Org Docs &  │        │ AWS Public  │        │ Governance  │
-                             │ Standards   │        │ Docs        │        │ Policies    │
-                             └─────────────┘        └─────────────┘        └─────────────┘
-```
 
 ## Sharing This Power
 
