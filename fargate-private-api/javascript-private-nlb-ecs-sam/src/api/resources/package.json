@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Resources Service REST API",
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.385.0",
+    "@aws-sdk/client-dynamodb": "^3.965.0",
     "@aws-sdk/lib-dynamodb": "^3.43.0",
     "@aws-sdk/util-dynamodb": "^3.43.0",
     "aws-embedded-metrics": "^2.0.4",
