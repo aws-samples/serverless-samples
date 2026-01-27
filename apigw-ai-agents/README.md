@@ -39,6 +39,10 @@ This set of samples includes three different implementations of the AI agents us
 
 All implementations follow the same core architecture and implement similar components.
 
+### Kiro Power
+
+In addition to the agents, sample includes sample custom [Kiro Power](./kiro-power/POWER.md) which allows organizations to provide centralized guidance in [Kiro](https://kiro.dev/) - agentic AI with an IDE and CLI. The power uses Knowledge Base and MCP server implemented in the [Strands framework and Amazon Bedrock AgentCore](./strands-agentcore/) example.
+
 ### Knowledge base
 
 Knowledge base focuses on covering information that is changing, need to be curated, and may include sources that aren't available publicly (or need processing, such as re:Invent video transcriptions)
