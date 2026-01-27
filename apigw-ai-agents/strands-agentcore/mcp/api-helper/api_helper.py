@@ -114,7 +114,7 @@ async def inspect_API(request: str) -> str:
     )
     try:
         logger.debug(f"API Inspector tool request: {request}")
-        session_id= "api_inspector_session_"+api_id+str(uuid.uuid4())
+        session_id= "api_inspector_session_"+str(uuid.uuid4())
         payload = json.dumps({"request": f"Inspect API with ID {request} and provide improvement recommendations"}).encode()
 
         # Invoke bedrock API Expert agent and get response
