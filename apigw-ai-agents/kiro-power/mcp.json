@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "api-expert-server": {
+      "command": "python",
+      "args": [
+        "<path to helper directory>/api_helper.py"
+      ],
+      "disabled": false,
+      "env": {
+        "AWS_REGION": "us-east-1",
+        "AGENTCORE_AGENT_ARN": "XXXX"
+      }
+    }
+  }
+}
