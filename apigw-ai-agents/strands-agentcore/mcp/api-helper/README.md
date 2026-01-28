@@ -1,6 +1,6 @@
 # API Helper
 
-API Helper is an Amazon Q and Kiro extension that provides expert guidance and tools for API development, operations, management, and governance on AWS. It leverages AI agent running on Amazon Bedrock AgentCore to deliver specialized assistance for API-related tasks.
+API Helper is a Kiro extension that provides expert guidance and tools for API development, operations, management, and governance on AWS. It leverages AI agent running on Amazon Bedrock AgentCore to deliver specialized assistance for API-related tasks.
 
 ## Features
 
@@ -14,20 +14,32 @@ API Helper is an Amazon Q and Kiro extension that provides expert guidance and t
 ### Prerequisites
 
 - Python 3.13 or higher
+- [uv](https://docs.astral.sh/uv/) - Fast Python package manager
 - AWS CLI configured with appropriate permissions
 - Amazon Bedrock agents configured and accessible
 
-### Setup
+### Setup with uv
 
 1. Clone the repository
-2. Set up a virtual environment:
+
+2. Install uv (if not already installed):
    ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   # macOS/Linux
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   
+   # Or with Homebrew
+   brew install uv
    ```
-3. Install the package:
+
+3. Sync dependencies:
    ```bash
-   pip install -r requirements.txt
+   cd strands-agentcore/mcp/api-helper
+   uv sync
+   ```
+
+4. Run the MCP server:
+   ```bash
+   uv run api_helper.py
    ```
 
 ### Environment Variables
@@ -35,20 +47,34 @@ API Helper is an Amazon Q and Kiro extension that provides expert guidance and t
 The following environment variables must be configured for MCP server to function:
 
 - `AWS_REGION`: AWS region where Bedrock agents are deployed
-- `EXPERT_AGENT_ARN`: ID of the API Expert Bedrock AgentCore Runtime agent
+- `AGENTCORE_AGENT_ARN`: ARN of the API Expert Bedrock AgentCore Runtime agent
 
 ## MCP Client Configuration
 
 This directory contains a configuration file [example](../config/mcp.json) for the MCP client.
 
+Example configuration using uv:
+```json
+{
+  "mcpServers": {
+    "api-helper": {
+      "command": "uv",
+      "args": ["--directory", "/path/to/strands-agentcore/mcp/api-helper", "run", "api_helper.py"],
+      "env": {
+        "AWS_REGION": "us-east-1",
+        "AGENTCORE_AGENT_ARN": "arn:aws:bedrock:us-east-1:123456789012:agent-runtime/your-agent-id"
+      }
+    }
+  }
+}
+```
 
 ## Implementation
 
-API Helper is built as a FastMCP server that integrates with Amazon Q. It provides three main tools that invoke Amazon Bedrock agents:
+API Helper is built as a FastMCP server that integrates with Amazon Q. It provides tools that invoke Amazon Bedrock agents:
 
 1. **ask_api_expert**: Connects to an API Expert Bedrock agent to answer questions and provide guidance
-2. **build_openapi_specification**: Invokes a specialized Bedrock agent to generate OpenAPI specifications
-3. **build_API**: Leverages a Bedrock agent to create complete API implementations with IaC templates
+2. **inspect_API**: Retrieves and analyzes API Gateway configurations against best practices
 
 Each tool follows a similar pattern:
 - Accept a request string from Amazon Q
@@ -57,8 +83,9 @@ Each tool follows a similar pattern:
 
 ### Project Structure
 
-- `api_helper.py`: Main module containing the FastMCP server and tool implementations.
-- `pyproject.toml`: Project metadata and dependencies
+- `api_helper.py`: Main module containing the FastMCP server and tool implementations
+- `pyproject.toml`: Project metadata and dependencies (uv/pip compatible)
+- `.python-version`: Python version specification for uv
 
 ### Adding New Features
 
@@ -67,6 +94,5 @@ To add new API-related tools:
 1. Create a new function in `api_helper.py` decorated with `@mcp.tool()`
 2. Implement the logic to invoke the appropriate Bedrock agent
 3. Update documentation
-
 
 
