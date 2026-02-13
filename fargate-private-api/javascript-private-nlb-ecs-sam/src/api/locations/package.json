@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Locations Service REST API",
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.965.0",
+    "@aws-sdk/client-dynamodb": "^3.989.0",
     "@aws-sdk/lib-dynamodb": "^3.43.0",
     "@aws-sdk/util-dynamodb": "^3.43.0",
     "@aws-sdk/smithy-client": "^3.370.0",
