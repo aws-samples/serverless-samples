@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "cross-env": "^7.0.3",
-    "jest": "^27.4.3",
+    "jest": "^30.2.0",
     "mockdate": "^3.0.5",
     "supertest": "^6.1.6"
   }
