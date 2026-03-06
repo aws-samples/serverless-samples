@@ -14,7 +14,7 @@
   "devDependencies": {
     "@aws-lambda-powertools/metrics": "^2.18.0",
     "@aws-lambda-powertools/tracer": "^2.18.0",
-    "@aws-sdk/client-secrets-manager": "^3.787.0",
+    "@aws-sdk/client-secrets-manager": "^3.1003.0",
     "@types/aws-lambda": "^8.10.149",
     "@types/jest": "^29.5.14",
     "@types/js-yaml": "^4.0.9",
@@ -32,8 +32,8 @@
   "dependencies": {
     "@aws-lambda-powertools/logger": "^2.18.0",
     "@aws-lambda-powertools/parameters": "^2.18.0",
-    "@aws-sdk/client-dynamodb": "^3.788.0",
-    "@aws-sdk/lib-dynamodb": "^3.789.0",
+    "@aws-sdk/client-dynamodb": "^3.1003.0",
+    "@aws-sdk/lib-dynamodb": "^3.1003.0",
     "aws-cdk-lib": "2.240.0",
     "constructs": "^10.4.2",
     "esbuild": "^0.25.2",
