@@ -100,7 +100,7 @@ This solution implements the following security best practices:
         - **VPCEndpointServiceId2**: VPC Endpoint Service ID from AccountB deployment
 
     - Allow SAM CLI to create IAM roles with the required permissions.
-    
+    ```bash
     sam deploy --guided --profile CentralAccount
     ```
 3. Note the outputs from the SAM deployment process. This contains `ApiEndpoint1` and `ApiEndpoint2`. 
