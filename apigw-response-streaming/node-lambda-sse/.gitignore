@@ -1,0 +1,7 @@
+.build/
+frontend/dist/
+*.tfvars
+!terraform.tfvars.example
+frontend/.env.local
+!frontend/vite.config.js
+!frontend/src/**/*.js
