@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sam build*)",
+      "Bash(sam validate*)",
+      "Bash(sam local*)",
+      "Bash(pytest*)",
+      "Bash(python -m pytest*)"
+    ]
+  }
+}

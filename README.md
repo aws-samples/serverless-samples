@@ -1,6 +1,12 @@
 # Serverless Samples
 
-This repository contains samples of Serverless application code.
+
+## [claude-hub](./claude-hub/)
+
+Claude Hub is a reference implementation for centralized Claude Code configuration management. It syncs CLAUDE.md files, skills, MCP server connections, and plugin configurations from a single Git repository to every developer's machine and project. Teams get different guidance layered on a shared organizational baseline, while org-level policies can be enforced through MDM-managed system paths that users cannot override. The included sync script, plugin hooks, and deployment scripts are functional and tested, but designed to be forked and adapted to your infrastructure.
+
+  [README](./claude-hub/README.md)
+
 
 ## [apigw-response-streaming](./apigw-response-streaming)
 
