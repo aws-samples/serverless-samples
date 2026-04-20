@@ -1,0 +1,2 @@
+aws_profile = "your-profile"
+aws_region  = "your-region"
