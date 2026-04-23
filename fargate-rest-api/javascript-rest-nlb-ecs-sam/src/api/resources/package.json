@@ -3,14 +3,14 @@
   "version": "1.0.0",
   "description": "Resources Service REST API",
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.43.0",
+    "@aws-sdk/client-dynamodb": "^3.1035.0",
     "@aws-sdk/lib-dynamodb": "^3.43.0",
     "@aws-sdk/util-dynamodb": "^3.43.0",
     "aws-embedded-metrics": "^2.0.4",
     "aws-xray-sdk": "^3.3.4",
     "body-parser": "^1.20.4",
     "express": "^4.22.1",
-    "uuid": "^8.3.2"
+    "uuid": "^14.0.0"
   },
   "scripts": {
     "start": "cross-env AWS_EMF_ENVIRONMENT=Local node server.js",
