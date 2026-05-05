@@ -1,0 +1,27 @@
+{
+  "name": "lambda-sse-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest --run"
+  },
+  "dependencies": {
+    "motion": "^12.36.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^9.0.3"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "fast-check": "^3.23.2",
+    "jsdom": "^25.0.1",
+    "vite": "^6.0.5",
+    "vitest": "^2.1.8"
+  }
+}
