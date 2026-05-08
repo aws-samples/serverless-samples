@@ -38,6 +38,6 @@
     "constructs": "^10.4.2",
     "esbuild": "^0.25.2",
     "openapi-typescript": "^7.6.1",
-    "uuid": "^10.0.0"
+    "uuid": "^14.0.0"
   }
 }
