@@ -1,0 +1,109 @@
+{
+  "Comment": "Queries API usage from Athena, generates per-customer reports, and compiles a consolidated billing file",
+  "StartAt": "QueryUsage",
+  "States": {
+    "QueryUsage": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${QueryUsageFunctionArn}",
+        "Payload.$": "$"
+      },
+      "ResultPath": "$.usageData",
+      "ResultSelector": {
+        "customers.$": "$.Payload.customers",
+        "billingPeriod.$": "$.Payload.billingPeriod"
+      },
+      "Next": "HasCustomers",
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 30,
+          "MaxAttempts": 2,
+          "BackoffRate": 2
+        }
+      ]
+    },
+    "HasCustomers": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.usageData.customers[0]",
+          "IsPresent": true,
+          "Next": "GenerateReports"
+        }
+      ],
+      "Default": "NoUsageFound"
+    },
+    "GenerateReports": {
+      "Type": "Map",
+      "ItemsPath": "$.usageData.customers",
+      "Parameters": {
+        "customer.$": "$$.Map.Item.Value",
+        "billingPeriod.$": "$.usageData.billingPeriod"
+      },
+      "ResultPath": "$.reportSummaries",
+      "MaxConcurrency": 5,
+      "Iterator": {
+        "StartAt": "GenerateReport",
+        "States": {
+          "GenerateReport": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "Parameters": {
+              "FunctionName": "${GenerateReportFunctionArn}",
+              "Payload.$": "$"
+            },
+            "ResultSelector": {
+              "reportId.$": "$.Payload.reportId",
+              "customerId.$": "$.Payload.customerId",
+              "pricingModel.$": "$.Payload.pricingModel",
+              "estimatedTotal.$": "$.Payload.estimatedTotal"
+            },
+            "End": true,
+            "Retry": [
+              {
+                "ErrorEquals": ["States.TaskFailed"],
+                "IntervalSeconds": 10,
+                "MaxAttempts": 2,
+                "BackoffRate": 2
+              }
+            ]
+          }
+        }
+      },
+      "Next": "CompileReport"
+    },
+    "CompileReport": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${CompileReportFunctionArn}",
+        "Payload": {
+          "billingPeriod.$": "$.usageData.billingPeriod",
+          "reportSummaries.$": "$.reportSummaries"
+        }
+      },
+      "ResultSelector": {
+        "billingPeriod.$": "$.Payload.billingPeriod",
+        "totalCustomers.$": "$.Payload.totalCustomers",
+        "grandTotal.$": "$.Payload.grandTotal",
+        "files.$": "$.Payload.files"
+      },
+      "End": true,
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 10,
+          "MaxAttempts": 2,
+          "BackoffRate": 2
+        }
+      ]
+    },
+    "NoUsageFound": {
+      "Type": "Pass",
+      "Result": { "message": "No customer usage found for this period" },
+      "End": true
+    }
+  }
+}

@@ -4,7 +4,7 @@
 
 Use these logs to populate a business intelligence service, such as [Amazon QuickSight](https://aws.amazon.com/quicksight/), to analyze and report on usage patterns across your APIs and customers.
 
-In this repo, I will show how to visualize and analyze API Gateway access logs using [Amazon QuickSight dahboard](https://docs.aws.amazon.com/quicksight/latest/user/example-create-a-dashboard.html). With this pre-built dashboard, you can analyze API usage by visualizing these components:
+In this repo, I will show how to visualize and analyze API Gateway access logs using [Amazon QuickSight dashboard](https://docs.aws.amazon.com/quicksight/latest/user/example-create-a-dashboard.html). With this pre-built dashboard, you can analyze API usage by visualizing these components:
 
 * 30 days of API usage by domain
 * API routes showing popular API paths
@@ -29,7 +29,7 @@ As we are using QuickSight for the visualization part, you have the flexibility 
 
 ## Solution Overview 
 
-The integration works by forwarding API Gateway access logs from your API Gateway to Amazon S3 bucket via [Amazon Data Firehose](https://www.google.com/search?client=firefox-b-1-d&q=Amazon+Kinesis+Data+Firehose). This solution uses the following AWS services to provide near real-time logging analytics:
+The integration works by forwarding API Gateway access logs from your API Gateway to Amazon S3 bucket via [Amazon Data Firehose](https://aws.amazon.com/firehose/). This solution uses the following AWS services to provide near real-time logging analytics:
 
 * Amazon S3 bucket ensures durable and secure storage.
 * Amazon Data Firehose is used to deliver logs into an S3 bucket.
@@ -67,6 +67,10 @@ If you have not activated QuickSight in your AWS account, follow the steps below
 
  ![Pre-requisites1](./assets/apigw-log-analytic-prerequisite2.jpg)
 
+> **Important:** Note the AWS Region where you created the QuickSight group. You must deploy the SAM template to the **same region**. QuickSight groups are regional — deploying to a different region will fail with a "principals not valid" error.
+
+> **Note:** When deploying, enter only the project name (e.g., `apiaccesslogs`), not the full group name. Do **not** include the `-Admins` suffix in the ProjectName parameter.
+
 ## Implementation
 
 Note: This solution supports the [REST API Gateway](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-rest-api.html).
@@ -82,15 +86,15 @@ Once deployment is complete, configure existing API Gateway to deliver access lo
 From your local terminal, run the following commands:
 
 ```
-git clone https://github.com/aws-samples/apigw-log-analytic.git
-cd apigw-log-analytic
+git clone https://github.com/aws-samples/serverless-samples.git
+cd serverless-samples/apigw-log-analytic
 sam build
 sam deploy -g 
 ```
 
 Enter the following parameters for deployment:
 
-- Stack Name: Use it for stack name. For example, apgwaccesslogs.
+- Stack Name: Use it for stack name. For example, apigwaccesslogs.
 - ProjectName: use the project name without '-Admins'. Ensure it matches the one created in the Prerequisites section 6.
 - DataRefreshFrequency: leave as default (every 10 minutes) or customize it based on your requirement.
 
@@ -135,7 +139,7 @@ This pre-built dashboard allows you to analyze API usage by providing visualizat
 
 **Cognito based access control**
 
-If you are using [Amazon Cognito](https://aws.amazon.com/pm/cognito/?gclid=CjwKCAjw74e1BhBnEiwAbqOAjNsHPd0SoVxdGF33x27NozfK-9PWWQ2_1x62VdHIAajb2B9XUcjCzhoC8hYQAvD_BwE&trk=f5fef02c-2926-48d3-898a-b4d668742a20&sc_channel=ps&ef_id=CjwKCAjw74e1BhBnEiwAbqOAjNsHPd0SoVxdGF33x27NozfK-9PWWQ2_1x62VdHIAajb2B9XUcjCzhoC8hYQAvD_BwE:G:s&s_kwcid=AL!4422!3!651737511575!e!!g!!amazon%20cognito!19845796024!146736269189) to control access to REST APIs, this visual can help you understand which users are interacting with your APIs.
+If you are using [Amazon Cognito](https://aws.amazon.com/cognito/) to control access to REST APIs, this visual can help you understand which users are interacting with your APIs.
 
 ![dashboard overview](./assets/apigw-log-analytic-cognito.jpg)
 
@@ -157,6 +161,20 @@ This visual shows latency metrics such as response latency, integration latency,
 
 ![Latency metrics](./assets/apigw-log-analytic-latency.jpg)
 
+
+## API Monetization (Usage Reports) — Optional
+
+Once access logs are flowing, you can optionally generate per-customer usage reports for billing purposes. The [monetization module](./monetization/) is a separate add-on that queries the same access logs via Athena and applies configurable pricing plans to produce reports showing estimated charges per API key/tenant. It deploys as its own SAM stack and does not affect the core analytics pipeline.
+
+Supported pricing models:
+* **Consumption** — flat per-request rate
+* **Tiered** — volume-based rate tiers
+* **Subscription** — fixed fee with profitability analysis
+* **Freemium** — free quota with paid overage
+
+If you need usage-based billing or cost reporting, see [monetization/README.md](./monetization/README.md) for deployment instructions and details.
+
+
 ## How to open the dashboard
 
 1. Navigate to the QuickSight console.
@@ -168,12 +186,21 @@ This visual shows latency metrics such as response latency, integration latency,
 
 The SAM delete command deletes an AWS SAM application by deleting the AWS CloudFormation stack and the artifacts.
 
-Note - API Gateway access logs are retained in the S3 bucket for future reference. You may need to manually delete the bucket if necessary.
+If you deployed the monetization module, delete that stack first:
 
 ```
-cd apigw-log-analytic
+cd monetization
+sam delete
+cd ..
+```
+
+Then delete the main stack:
+
+```
 sam delete
 ```
+
+Note - API Gateway access logs are retained in the S3 bucket for future reference. You may need to manually delete the bucket if necessary.
 
 ## Conclusion
 

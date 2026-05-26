@@ -1,0 +1,285 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  API monetization — generates per-customer usage reports from API Gateway
+  access logs, supporting consumption, tiered, subscription, and freemium
+  pricing models.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: Must match the ProjectName from the parent apigw-log-analytic stack
+  AccessLogsBucketName:
+    Type: String
+    Description: S3 bucket containing API Gateway access logs (from parent stack)
+  GlueDatabaseName:
+    Type: String
+    Description: Glue database name (typically same as ProjectName)
+  ReportSchedule:
+    Type: String
+    Default: "cron(0 2 1 * ? *)"
+    Description: When to generate reports (default is 1st of each month at 2am UTC)
+
+Globals:
+  Function:
+    Runtime: python3.13
+    MemorySize: 256
+    Timeout: 300
+    Environment:
+      Variables:
+        PRICING_TABLE: !Ref PricingPlansTable
+        REPORTS_TABLE: !Ref ReportsTable
+        REPORTS_BUCKET: !Ref ReportsBucket
+        GLUE_DATABASE: !Ref GlueDatabaseName
+        ACCESS_LOGS_BUCKET: !Ref AccessLogsBucketName
+        PROJECT_NAME: !Ref ProjectName
+
+Resources:
+  # ---- Storage ----
+  PricingPlansTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${ProjectName}-pricing-plans"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: planId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: planId
+          KeyType: HASH
+
+  ReportsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${ProjectName}-reports"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: reportId
+          AttributeType: S
+        - AttributeName: customerId
+          AttributeType: S
+        - AttributeName: billingPeriod
+          AttributeType: S
+      KeySchema:
+        - AttributeName: reportId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: customer-period-index
+          KeySchema:
+            - AttributeName: customerId
+              KeyType: HASH
+            - AttributeName: billingPeriod
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  ReportsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "${ProjectName}-reports-${AWS::AccountId}"
+
+  AthenaResultsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "${ProjectName}-athena-results-${AWS::AccountId}"
+      LifecycleConfiguration:
+        Rules:
+          - Id: CleanupQueryResults
+            Status: Enabled
+            ExpirationInDays: 7
+
+  # ---- Lambda Functions ----
+  QueryUsageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: query_usage.handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - athena:StartQueryExecution
+                - athena:GetQueryExecution
+                - athena:GetQueryResults
+              Resource: "*"
+            - Effect: Allow
+              Action:
+                - glue:GetTable
+                - glue:GetDatabase
+                - glue:GetPartitions
+              Resource: "*"
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:ListBucket
+                - s3:GetBucketLocation
+                - s3:PutObject
+              Resource:
+                - !Sub "arn:aws:s3:::${AccessLogsBucketName}"
+                - !Sub "arn:aws:s3:::${AccessLogsBucketName}/*"
+                - !Sub "arn:aws:s3:::${ProjectName}-athena-results-${AWS::AccountId}"
+                - !Sub "arn:aws:s3:::${ProjectName}-athena-results-${AWS::AccountId}/*"
+
+  GenerateReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: generate_report.handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+                - dynamodb:GetItem
+                - dynamodb:Scan
+              Resource:
+                - !GetAtt ReportsTable.Arn
+                - !GetAtt PricingPlansTable.Arn
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+              Resource:
+                - !Sub "arn:aws:s3:::${ProjectName}-reports-${AWS::AccountId}/*"
+
+  CompileReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: compile_report.handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+              Resource:
+                - !GetAtt ReportsTable.Arn
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+                - s3:GetObject
+              Resource:
+                - !Sub "arn:aws:s3:::${ProjectName}-reports-${AWS::AccountId}/*"
+
+  ManagePricingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: manage_pricing.handler
+      Events:
+        GetPlans:
+          Type: Api
+          Properties:
+            Path: /pricing
+            Method: GET
+        CreatePlan:
+          Type: Api
+          Properties:
+            Path: /pricing
+            Method: POST
+        GetPlan:
+          Type: Api
+          Properties:
+            Path: /pricing/{planId}
+            Method: GET
+        UpdatePlan:
+          Type: Api
+          Properties:
+            Path: /pricing/{planId}
+            Method: PUT
+        DeletePlan:
+          Type: Api
+          Properties:
+            Path: /pricing/{planId}
+            Method: DELETE
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+                - dynamodb:GetItem
+                - dynamodb:Scan
+                - dynamodb:UpdateItem
+                - dynamodb:DeleteItem
+              Resource:
+                - !GetAtt PricingPlansTable.Arn
+
+  GetReportsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: get_reports.handler
+      Events:
+        ListReports:
+          Type: Api
+          Properties:
+            Path: /reports
+            Method: GET
+        GetReport:
+          Type: Api
+          Properties:
+            Path: /reports/{reportId}
+            Method: GET
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:Query
+                - dynamodb:Scan
+              Resource:
+                - !GetAtt ReportsTable.Arn
+                - !Sub "${ReportsTable.Arn}/index/*"
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+              Resource:
+                - !Sub "arn:aws:s3:::${ProjectName}-reports-${AWS::AccountId}/*"
+
+  # ---- Step Functions Workflow ----
+  ReportWorkflow:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub "${ProjectName}-report-workflow"
+      DefinitionUri: statemachine/billing.asl.json
+      DefinitionSubstitutions:
+        QueryUsageFunctionArn: !GetAtt QueryUsageFunction.Arn
+        GenerateReportFunctionArn: !GetAtt GenerateReportFunction.Arn
+        CompileReportFunctionArn: !GetAtt CompileReportFunction.Arn
+      Events:
+        Schedule:
+          Type: Schedule
+          Properties:
+            Schedule: !Ref ReportSchedule
+            Enabled: true
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref QueryUsageFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref GenerateReportFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref CompileReportFunction
+
+Outputs:
+  ApiUrl:
+    Description: API endpoint for pricing plans and reports
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+  ReportsBucket:
+    Description: S3 bucket storing generated reports
+    Value: !Ref ReportsBucket
+  ReportWorkflowArn:
+    Description: Step Functions workflow ARN (for manual triggers)
+    Value: !Ref ReportWorkflow
