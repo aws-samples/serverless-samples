@@ -27,7 +27,7 @@ resource "aws_iam_role_policy" "bedrock_invoke" {
       {
         Action   = "bedrock:InvokeModelWithResponseStream"
         Effect   = "Allow"
-        Resource = "arn:aws:bedrock:eu-west-2::foundation-model/amazon.nova-lite-v1:0"
+        Resource = "arn:aws:bedrock:${var.aws_region}::foundation-model/amazon.nova-lite-v1:0"
       }
     ]
   })

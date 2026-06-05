@@ -20,7 +20,7 @@ Client
 ## Project Structure
 
 ```
-lambda-sse/
+node-lambda-sse/
 ├── frontend/          # React frontend (Vite)
 │   ├── public/
 │   │   └── favicon.svg
@@ -33,6 +33,7 @@ lambda-sse/
 │   │   ├── App.jsx           # Main UI component
 │   │   └── main.jsx
 │   ├── index.html
+│   ├── package-lock.json
 │   ├── package.json
 │   └── vite.config.js
 ├── lambda/
@@ -56,7 +57,7 @@ lambda-sse/
 
 ## Deploy
 
-First, from the `lambda-sse/terraform/` directory, create your own `terraform.tfvars` from the example:
+First, from the `node-lambda-sse/terraform/` directory, create your own `terraform.tfvars` from the example:
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars
@@ -84,7 +85,7 @@ chat_endpoint_url = "https://<api-id>.execute-api.<region>.amazonaws.com/demo/ch
 
 ## Frontend Development
 
-From the `lambda-sse/frontend/` directory:
+From the `node-lambda-sse/frontend/` directory:
 
 ```bash
 npm install
@@ -112,7 +113,7 @@ The demo includes a couple of features to help you see how SSE streaming behaves
 curl -X POST --no-buffer \
   -H "Content-Type: application/json" \
   -d '{"messages":[{"role":"user","content":"Hello!"}]}' \
-  "$(terraform -chdir=lambda-sse/terraform output -raw chat_endpoint_url)"
+  "$(terraform -chdir=node-lambda-sse/terraform output -raw chat_endpoint_url)"
 ```
 
 You should see SSE events streaming in:
@@ -128,5 +129,5 @@ data: [DONE]
 ## Teardown
 
 ```bash
-terraform -chdir=lambda-sse/terraform destroy
+terraform -chdir=node-lambda-sse/terraform destroy
 ```

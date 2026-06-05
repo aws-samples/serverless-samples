@@ -3,7 +3,7 @@ import {
   ConverseStreamCommand,
 } from "@aws-sdk/client-bedrock-runtime";
 
-const client = new BedrockRuntimeClient({ region: "eu-west-2" });
+const client = new BedrockRuntimeClient();
 
 export const handler = awslambda.streamifyResponse(
   async (event, responseStream, _context) => {
