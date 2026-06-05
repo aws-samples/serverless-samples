@@ -6,7 +6,7 @@ See Amazon API Gateway feature launch [blog post](https://aws.amazon.com/blogs/c
 
 ## Overview
 
-This repository demonstrates three different approaches to implementing streaming responses with API Gateway:
+This repository demonstrates different approaches to implementing streaming responses with API Gateway:
 
 ### 1. Node.js Lambda with Bedrock (`node-bedrock-lambda/`)
 
@@ -53,9 +53,22 @@ A serverless implementation using Strands agents for AI responses on Amazon Bedr
 [View Python AgentCore Implementation →](./python-strands-agentcore/)
 
 
+### 5. Node.js Lambda with SSE (`node-lambda-sse/`)
+
+A serverless implementation using AWS Lambda response streaming with Server-Sent Events (SSE) to stream LLM responses chunk by chunk. Includes a React frontend with TTFB tracking and an SSE event log for inspecting streaming behavior.
+
+**Architecture:**
+- API Gateway → Lambda Function (streamifyResponse) → Amazon Bedrock ConverseStream
+- SSE-formatted streaming responses (`data: {"text":"..."}\n\n`)
+- React frontend (Vite) with real-time chunk visualization
+- Infrastructure as Code with Terraform
+
+[View Node.js Lambda SSE Implementation →](./node-lambda-sse/)
+
+
 ## Prerequisites
 
-Both implementations require:
+All implementations require:
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html) installed and configured
 - [AWS SAM CLI](https://aws.amazon.com/serverless/sam/) for deployment
 - Access to Amazon Bedrock models in your AWS account
@@ -67,4 +80,5 @@ For detailed deployment and testing instructions, please refer to the individual
 - **Node.js Lambda**: See [`node-bedrock-lambda/README.md`](./node-bedrock-lambda/README.md)
 - **Python ECS**: See [`python-strands-ecs/README.md`](./python-strands-ecs/README.md)
 - **Python Lambda**: See [`python-strands-lambda/README.md`](./python-strands-lambda/README.md)
-- **Python AgentCore**: See [`python-strands-agentcore/README.md`](./python-strands-lambda/README.md)
+- **Python AgentCore**: See [`python-strands-agentcore/README.md`](./python-strands-agentcore/README.md)
+- **Node.js Lambda SSE**: See [`node-lambda-sse/README.md`](./node-lambda-sse/README.md)
