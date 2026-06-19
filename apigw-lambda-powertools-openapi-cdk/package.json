@@ -36,7 +36,7 @@
     "@aws-sdk/lib-dynamodb": "^3.1003.0",
     "aws-cdk-lib": "2.240.0",
     "constructs": "^10.4.2",
-    "esbuild": "^0.25.2",
+    "esbuild": "^0.28.1",
     "openapi-typescript": "^7.6.1",
     "uuid": "^14.0.0"
   }
