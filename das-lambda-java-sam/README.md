@@ -55,7 +55,7 @@ evaluate which apply to your deployment.
 | VPC Flow Logs | ~$0.50/GB ingested | AwsSolutions-VPC7 |
 | KMS encryption on CloudWatch Log Groups | ~$1/key/month + API call costs; logs use AWS-managed encryption by default | CKV_AWS_158 |
 | Custom domain + ACM certificate with TLSv1.2 minimum on CloudFront | Sample uses the default CloudFront cert (supports TLSv1) | CKV_AWS_174, AwsSolutions-CFR4 |
-| Secrets Manager rotation for OpenSearch and Aurora master passwords | Rotation Lambdas would need to coordinate updates across OpenSearch FGAC, Aurora, and the reverse proxy | AwsSolutions-SMG4 |
+| Secrets Manager rotation for OpenSearch and Aurora admin passwords | Rotation Lambdas would need to coordinate updates across OpenSearch FGAC, Aurora, and the reverse proxy | AwsSolutions-SMG4 |
 | IAM database authentication for Aurora | **Not compatible with Database Activity Streams** — DAS requires native PostgreSQL authentication | CKV_AWS_162, AwsSolutions-RDS6 |
 | S3 access logging on data buckets | Adds storage cost; the access-logging bucket itself is excluded by design | CKV_AWS_18 |
 | ALB and CloudFront access logging | Adds storage cost; ALB is internal to VPC and only reached via CloudFront | CKV_AWS_91, CKV_AWS_86, AwsSolutions-ELB2, AwsSolutions-CFR3 |
@@ -465,7 +465,7 @@ select * from persons;
 
 When the Lambda function gets a Database Activity Streams event, it parses the event, filters out heartbeat events and write out the unfiltered events to an S3 bucket. S3 Object Notifications get triggered when a new object is created and generates a new message in an SQS queue. An OpenSearch Ingestion (OSI) Pipeline gets triggered whenever there are new messages in the SQS queue. The OSI pipeline then reads the object from the S3 bucket and writes out the records to an OpenSearch domain in an index called "das-records". In order to validate that the Database Activity Streams records are being written to OpenSearch, you need to log in to the OpenSearch domain.
 
-If you have access to the AWS console for IAM users, you can take a look at the outputs tab of the CloudFormation stack. You will need the following output parameters - AOSDashboardsPublicIP (CloudFront URL), AOSDomainUserName and AOSDomainPassword.
+If you have access to the AWS console for IAM users, you can take a look at the outputs tab of the CloudFormation stack. You will need the following output parameters - AOSDashboardsPublicIP (CloudFront URL) and AOSDomainUserName. The OpenSearch admin password is intentionally **not** exposed as a stack output; retrieve it securely from AWS Secrets Manager using the `AOSAdminPasswordSecretArn` output (shown below).
 
 If you don't have access to the AWS console for IAM users, you can find out the values of the above output parameters using AWS CLI commands:
 
@@ -481,7 +481,11 @@ AOS_DASHBOARD_USERNAME=$(aws cloudformation describe-stacks --stack-name $STACK_
 
 echo "AOS_DASHBOARD_USERNAME=$AOS_DASHBOARD_USERNAME"
 
-AOS_DASHBOARD_PASSWORD=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --profile $AWS_USER --query "Stacks[*].Outputs[?OutputKey=='AOSDomainPassword'].OutputValue" --output text)
+# The OpenSearch admin password is stored in AWS Secrets Manager (it is not exposed as a
+# stack output). Retrieve the secret ARN from the stack outputs, then fetch the password.
+AOS_PASSWORD_SECRET_ARN=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --profile $AWS_USER --query "Stacks[*].Outputs[?OutputKey=='AOSAdminPasswordSecretArn'].OutputValue" --output text)
+
+AOS_DASHBOARD_PASSWORD=$(aws secretsmanager get-secret-value --secret-id $AOS_PASSWORD_SECRET_ARN --profile $AWS_USER --query SecretString --output text | jq -r '.password')
 
 echo "AOS_DASHBOARD_PASSWORD=$AOS_DASHBOARD_PASSWORD"
 

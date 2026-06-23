@@ -574,11 +574,12 @@ if [ -n "$CANDIDATES" ]; then
     done
 fi
 
-# Also include the SAM child stack and OpenSearch / OSI vendedlogs prefixes.
-# Space-delimited list iterated by a POSIX for loop (no bash arrays). These
-# prefixes contain no spaces or glob characters, so word-splitting is safe and
-# the loop stays in the current shell (so MATCHED_GROUPS persists).
-EXTRA_PREFIXES="/aws/lambda/das-lambda-stack- /aws/vendedlogs/OpenSearchService/${STACK_NAME}- /aws/osis/${STACK_NAME}-"
+# Also include the SAM child stack, OpenSearch/OSI vendedlogs, and the RDS
+# cluster log groups for this stack. Space-delimited list iterated by a POSIX
+# for loop (no bash arrays). These prefixes contain no spaces or glob
+# characters, so word-splitting is safe and the loop stays in the current
+# shell (so MATCHED_GROUPS persists).
+EXTRA_PREFIXES="/aws/lambda/das-lambda-stack- /aws/vendedlogs/OpenSearchService/${STACK_NAME}- /aws/osis/${STACK_NAME}- /aws/rds/cluster/${STACK_NAME}-"
 for PREFIX in $EXTRA_PREFIXES; do
     LOG_GROUPS=$(aws logs describe-log-groups \
         --log-group-name-prefix "$PREFIX" \
@@ -587,6 +588,21 @@ for PREFIX in $EXTRA_PREFIXES; do
         | jq -r '.[]?' 2>/dev/null || echo "")
     [ -n "$LOG_GROUPS" ] && MATCHED_GROUPS="$MATCHED_GROUPS $LOG_GROUPS"
 done
+
+# OpenSearch domain log groups live at /aws/opensearch/<DomainName>/* where
+# DomainName is NOT prefixed by the stack name, so a stack-scoped prefix can't
+# match them. Enumerate the /aws/opensearch/ namespace and keep only the
+# das-lambda domains (mirrors the orphaned-domain sweep below). These groups
+# have DeletionPolicy: Delete in the template but persist after a force-deleted
+# or failed parent-stack deletion, and their fixed names then cause a
+# NAME_CONFLICT pre-deployment validation error on the next deploy.
+OS_LOG_GROUPS=$(aws logs describe-log-groups \
+    --log-group-name-prefix "/aws/opensearch/" \
+    --profile "$AWS_USER" --region "$AWS_REGION" \
+    --query "logGroups[?contains(logGroupName, 'das-lambda')].logGroupName" \
+    --output json --no-cli-pager 2>/dev/null \
+    | jq -r '.[]?' 2>/dev/null || echo "")
+[ -n "$OS_LOG_GROUPS" ] && MATCHED_GROUPS="$MATCHED_GROUPS $OS_LOG_GROUPS"
 
 # Delete each matched log group (deduplicated)
 DELETED_COUNT=0
@@ -647,6 +663,16 @@ CFT_BUCKETS=$(aws s3api list-buckets \
 if [ -n "$CFT_BUCKETS" ]; then
     for B in $CFT_BUCKETS; do
         empty_bucket "$B"
+        # CFT packaging buckets are created with `aws s3 mb` and are NOT
+        # versioned. empty_bucket targets object *versions*, so the current
+        # (non-versioned) objects — the uploaded template and code archive —
+        # can remain, which makes delete-bucket fail with BucketNotEmpty. A
+        # plain recursive remove reliably clears current objects here. (Safe
+        # for this bucket because it is deleted directly by the script, not by
+        # CloudFormation, so the delete-marker concern in empty_bucket does not
+        # apply.)
+        aws s3 rm "s3://$B" --recursive \
+            --profile "$AWS_USER" --region "$AWS_REGION" --no-cli-pager >/dev/null 2>&1 || true
         if aws s3api delete-bucket --bucket "$B" --region "$AWS_REGION" \
                 --profile "$AWS_USER" 2>/dev/null; then
             echo "  ✓ Deleted CFT bucket: $B"

@@ -88,7 +88,7 @@ Parameters:
     Type: String
     Default: "r6g.large.search"
 
-  OpenSearchMasterUserName:
+  OpenSearchAdminUserName:
     Description: Amazon OpenSearch Service - Username
     Default: "aosadmin"
     Type: String
@@ -178,7 +178,7 @@ Metadata:
           - DomainName
           - EngineVersion
           - InstanceType
-          - OpenSearchMasterUserName
+          - OpenSearchAdminUserName
       - Label:
           default: "Reverse Proxy Configuration"
         Parameters:
@@ -626,149 +626,17 @@ Resources:
  
 
   ################## GENERATE OPENSEARCH PASSWORD ###################
-  AOSMasterPasswordSecret:
+  AOSAdminPasswordSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
       Description: This secret has a dynamically generated secret password.
       KmsKeyId: !Ref SecretsManagerKMSKey
       GenerateSecretString:
         SecretStringTemplate:
-          !Join ["", ['{"username": "', !Ref OpenSearchMasterUserName, '"}']]
+          !Join ["", ['{"username": "', !Ref OpenSearchAdminUserName, '"}']]
         GenerateStringKey: "password"
         PasswordLength: 10
         ExcludeCharacters: "\" ' ( ) $ % & * + , - . / : ; < = > ! # ? [ \\ ] ^ _ ` ~ { | } ~"
-
-  RetrieveAOSPasswordLambdaPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      PolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Action:
-              - logs:CreateLogGroup
-              - logs:CreateLogStream
-              - logs:PutLogEvents
-            Effect: Allow
-            Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/RetrieveAOSPassword*'
-            Sid: AllowCWLogsWrite
-          - Action:
-              - secretsmanager:GetSecretValue
-            Effect: Allow
-            Resource: !Ref AOSMasterPasswordSecret
-          - Action:
-              - kms:Decrypt
-              - kms:DescribeKey
-            Effect: Allow
-            Resource: !GetAtt SecretsManagerKMSKey.Arn
-            Sid: AllowKMSDecrypt
-          - Action:
-              - sqs:SendMessage
-            Effect: Allow
-            Resource: !GetAtt LambdaDLQ.Arn
-            Sid: AllowDLQAccess
-
-  RetrieveAOSPasswordLambdaExecutionRole:
-    Type: AWS::IAM::Role
-    DependsOn: RetrieveAOSPasswordLambdaPolicy
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Action:
-              - sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-      ManagedPolicyArns:
-        - !Ref RetrieveAOSPasswordLambdaPolicy
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      Path: /
-
-  RetrieveAOSPasswordLambdaFunction:
-    Type: AWS::Lambda::Function
-    DependsOn: 
-      - AOSMasterPasswordSecret
-      - LambdaDLQ
-    Properties:
-      Handler: index.lambda_handler
-      Role: !GetAtt RetrieveAOSPasswordLambdaExecutionRole.Arn
-      Runtime: python3.11
-      Timeout: 30
-      ReservedConcurrentExecutions: 5
-      DeadLetterConfig:
-        TargetArn: !GetAtt LambdaDLQ.Arn
-      Code:
-        ZipFile: |
-          import json
-          import boto3
-          import base64
-          import os
-          import cfnresponse
-          from botocore.exceptions import ClientError
-
-
-          SECRET_ARN = os.getenv('SECRET_ARN')
-          REGION = os.getenv('REGION')
-
-          def lambda_handler(event, context):
-              print(f"Request Type: {event['RequestType']}")
-              
-              # Handle Delete requests - return success immediately
-              if event['RequestType'] == 'Delete':
-                  print("Delete request - sending success response")
-                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
-                  return
-              
-              # Handle Create and Update requests
-              try:
-                  # Create a Secrets Manager client
-                  session = boto3.session.Session()
-                  client = session.client(
-                      service_name='secretsmanager',
-                      region_name=REGION
-                  )
-                  
-                  secret = ""
-                  
-                  try:
-                      get_secret_value_response = client.get_secret_value(
-                          SecretId=SECRET_ARN
-                      )
-                  except ClientError as err:
-                      print(err)
-                      cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": str(err)})
-                      return
-                  
-                  # Decrypts secret using the associated KMS key.
-                  if 'SecretString' in get_secret_value_response:
-                      secret = get_secret_value_response['SecretString']
-                  else:
-                      decoded_binary_secret = base64.b64decode(get_secret_value_response['SecretBinary'])
-                      secret = decoded_binary_secret
-
-                  password_secret = json.loads(secret)
-                  responseData = {"OpenSearchMasterPassword": password_secret["password"]}
-                  print(responseData)
-                  
-                  if responseData:
-                      cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
-                  else:
-                      cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": "Internal Error"})
-              except Exception as e:
-                  print(f"Unexpected error: {e}")
-                  cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": str(e)})
-      Environment:
-        Variables:
-          SECRET_ARN: !Ref AOSMasterPasswordSecret
-          REGION: !Ref AWS::Region
-
-  RetrieveAOSPassword:
-    Type: Custom::RetrieveAOSPassword
-    DependsOn: RetrieveAOSPasswordLambdaFunction
-    Properties:
-      ServiceToken:
-        Fn::GetAtt: RetrieveAOSPasswordLambdaFunction.Arn
 
   # CloudWatch Log Groups for OpenSearch logging
   OpenSearchAuditLogGroup:
@@ -877,7 +745,8 @@ Resources:
         Iops: "0"
         VolumeSize: "100"
         VolumeType: "gp2"
-      # Log publishing is enabled post-deployment via EnableOpenSearchLogging custom resource.
+      # PCSR suppression CKV_AWS_84 / CKV_AWS_317 (accepted): log publishing is enabled
+      # post-deployment via the EnableOpenSearchLogging custom resource.
       # Enabling audit logging + FGAC during initial domain creation causes CloudFormation
       # handler timeout (>60 min provisioning). Enabling via update after domain is active
       # completes in ~10 min and avoids the timeout.
@@ -914,11 +783,11 @@ Resources:
         Enabled: true
         InternalUserDatabaseEnabled: true
         MasterUserOptions:
-          MasterUserName: !Ref OpenSearchMasterUserName
+          MasterUserName: !Ref OpenSearchAdminUserName
           MasterUserPassword: !Join
             - ""
             - - "{{resolve:secretsmanager:"
-              - !Ref AOSMasterPasswordSecret
+              - !Ref AOSAdminPasswordSecret
               - ":SecretString:password}}"
       VPCOptions:
         SubnetIds:
@@ -956,6 +825,9 @@ Resources:
                   - 'es:UpdateDomainConfig'
                   - 'es:DescribeDomain'
                 Resource: !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/${DomainName}'
+              # PCSR suppression CKV_AWS_111 (accepted): logs:PutResourcePolicy /
+              # DescribeResourcePolicies and CreateLogGroup are account-level APIs that
+              # do not support resource-level constraints, so Resource '*' is required.
               - Effect: Allow
                 Action:
                   - 'logs:CreateLogGroup'
@@ -1166,7 +1038,7 @@ Resources:
       - SourceBucket
       - CredentialsKMSKey
       - OSIIAMRole
-      - RetrieveAOSPassword
+      - AOSAdminPasswordSecret
     Properties:
       ImageId: !Ref LatestAmiId
       InstanceType: !Ref ReverseProxyInstanceType
@@ -1411,10 +1283,13 @@ Resources:
             echo "export DBHOST=$DBHOST" >> /home/ec2-user/.bash_profile
             echo "export DBPORT=$DBPORT" >> /home/ec2-user/.bash_profile
             echo "export DBUSERNAME=$DBUSERNAME" >> /home/ec2-user/.bash_profile
-            echo "export DBPASSWORD=$DBPASSWORD" >> /home/ec2-user/.bash_profile
             
+            # db_connect.sh fetches the DB password from Secrets Manager at runtime
+            # (via the instance role) instead of baking the plaintext password into the
+            # script or persisting it to .bash_profile.
             echo "#!/bin/bash" > /home/ec2-user/db_connect.sh
-            echo "export PGPASSWORD=$DBPASSWORD; psql -h $DBHOST -d postgres -U $DBUSERNAME -p $DBPORT" >> /home/ec2-user/db_connect.sh
+            echo "export PGPASSWORD=\$(aws secretsmanager get-secret-value --secret-id $DB_SECRET --region ${aws_region} --query SecretString --output text | jq -r '.password')" >> /home/ec2-user/db_connect.sh
+            echo "psql -h $DBHOST -d postgres -U $DBUSERNAME -p $DBPORT" >> /home/ec2-user/db_connect.sh
             sudo chmod +x /home/ec2-user/db_connect.sh
             
             # Create sample SQL commands file
@@ -1448,13 +1323,18 @@ Resources:
             OSI_IAM_ROLE=${osi_iam_role}
             echo "export OSI_IAM_ROLE=$OSI_IAM_ROLE" >> /home/ec2-user/.bash_profile
             
-            OS_MASTER_USERNAME=${os_master_username}
-            OS_MASTER_PASSWORD=${os_master_password}
-            echo "export OS_MASTER_USERNAME=$OS_MASTER_USERNAME" >> /home/ec2-user/.bash_profile
-            echo "export OS_MASTER_PASSWORD=$OS_MASTER_PASSWORD" >> /home/ec2-user/.bash_profile
-            
-            BASE64_USERNAME_PWD=$(echo -n $OS_MASTER_USERNAME:$OS_MASTER_PASSWORD | base64)
-            echo "export BASE64_USERNAME_PWD=$BASE64_USERNAME_PWD" >> /home/ec2-user/.bash_profile
+            # OpenSearch admin credentials are exported into the current UserData shell
+            # only. The password and its base64 form are NOT persisted to .bash_profile,
+            # so UpdateOSIRole.sh below inherits them via the environment without leaving
+            # the secret on disk or in shell history on the instance.
+            export OS_ADMIN_USERNAME=${os_admin_username}
+            # Fetch the OpenSearch admin password directly from Secrets Manager (via the
+            # instance role) instead of receiving it through a custom resource. This keeps
+            # the plaintext password out of CloudFormation custom-resource responses,
+            # stack outputs, and CloudWatch logs.
+            export OS_ADMIN_PASSWORD=$(aws secretsmanager get-secret-value --secret-id ${aos_password_secret_arn} --region ${aws_region} --query SecretString --output text | jq -r '.password')
+            echo "export OS_ADMIN_USERNAME=$OS_ADMIN_USERNAME" >> /home/ec2-user/.bash_profile
+            export BASE64_USERNAME_PWD=$(echo -n $OS_ADMIN_USERNAME:$OS_ADMIN_PASSWORD | base64)
             
             source /home/ec2-user/.bash_profile
             sudo chmod +x /home/ec2-user/serverless-samples/das-lambda-java-sam/UpdateOSIRole.sh
@@ -1516,8 +1396,8 @@ Resources:
             osi_iam_role: !GetAtt OSIIAMRole.Arn
             osi_subnet_ids: !Join [',', [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]
             osi_security_group_id: !GetAtt OpenSearchIngressSecurityGroup.GroupId
-            os_master_username: !Ref OpenSearchMasterUserName
-            os_master_password: !GetAtt RetrieveAOSPassword.OpenSearchMasterPassword
+            os_admin_username: !Ref OpenSearchAdminUserName
+            aos_password_secret_arn: !Ref AOSAdminPasswordSecret
 
   # ALB Security Group - only allows HTTPS from CloudFront (managed prefix list)
   ALBSecurityGroup:
@@ -1682,6 +1562,10 @@ Resources:
       Port: 5432
       StorageType: aurora-iopt1
       StorageEncrypted: true
+      # PCSR fix CKV_AWS_162: enable IAM database authentication. This is additive to
+      # the master-user password auth that DAS setup requires, allowing applications to
+      # connect with short-lived IAM auth tokens instead of long-lived credentials.
+      EnableIAMDatabaseAuthentication: true
       DeletionProtection: true
       EnableCloudwatchLogsExports:
         - postgresql
@@ -1761,6 +1645,10 @@ Resources:
               StringEquals:
                 'kms:ViaService': !Sub 's3.${AWS::Region}.amazonaws.com'
                 'kms:CallerAccount': !Ref 'AWS::AccountId'
+          # PCSR suppression CKV_AWS_33 (accepted): Principal AWS '*' is scoped by the
+          # kms:CallerAccount and aws:PrincipalArn conditions below (Lambda roles in this
+          # account only) — the AWS-recommended condition-scoped key policy pattern, not
+          # an unconditioned wildcard principal.
           - Sid: Allow Lambda to use the key for S3 access
             Effect: Allow
             Principal:
@@ -1788,6 +1676,9 @@ Resources:
       PendingWindowInDays: 7
 
   # S3 Access Logging Bucket
+  # PCSR suppression CKV_AWS_18 / S3_BUCKET_LOGGING_ENABLED (accepted): this bucket IS the
+  # terminal access-log destination for the other S3 buckets and for CloudFront. Enabling
+  # access logging on it would create a self-referential logging loop.
   S3LoggingBucket:
     Type: 'AWS::S3::Bucket'
     DeletionPolicy: Delete
@@ -1839,6 +1730,55 @@ Resources:
             Condition:
               StringEquals:
                 'aws:SourceAccount': !Ref 'AWS::AccountId'
+          # PCSR fix S3_BUCKET_SSL_REQUESTS_ONLY: deny any request not using TLS.
+          - Sid: DenyNonSSL
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt S3LoggingBucket.Arn
+              - !Sub '${S3LoggingBucket.Arn}/*'
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'false'
+
+  # PCSR fix S3_BUCKET_SSL_REQUESTS_ONLY: enforce TLS-only access on the DAS events bucket.
+  SourceBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SourceBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyNonSSL
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt SourceBucket.Arn
+              - !Sub '${SourceBucket.Arn}/*'
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'false'
+
+  # PCSR fix S3_BUCKET_SSL_REQUESTS_ONLY: enforce TLS-only access on the SAM deployment bucket.
+  SAMBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SAMBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyNonSSL
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt SAMBucket.Arn
+              - !Sub '${SAMBucket.Arn}/*'
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'false'
 
   ## S3 bucket for DAS events
   SourceBucket:
@@ -1963,7 +1903,7 @@ Resources:
   StandardQueue:
     Type: 'AWS::SQS::Queue'
     Properties:
-      # Note: Using SQS-managed encryption (SSE-SQS) instead of KMS-CMK
+      # PCSR suppression CKV_AWS_27 (accepted): using SQS-managed encryption (SSE-SQS) instead of KMS-CMK
       # KMS-CMK encryption on SQS is incompatible with OpenSearch Ingestion pipelines
       # that read from the queue via VPC endpoints. SSE-SQS provides encryption at rest
       # without the KMS key management overhead.
@@ -2238,6 +2178,12 @@ Resources:
         HttpCode: 200-399
 
   OpenSearchALBListener:
+    # PCSR findings CKV_AWS_2 / CKV_AWS_103 (documented suppression): this ALB is
+    # internal (private subnets) and only reachable from CloudFront via the CloudFront
+    # managed prefix list. TLS terminates at CloudFront and the CloudFront->ALB hop
+    # stays within the AWS network inside the VPC. Production deployments that require
+    # end-to-end encryption should switch this listener to HTTPS:443 with an ACM
+    # certificate and SslPolicy ELBSecurityPolicy-TLS13-1-2-2021-06.
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       LoadBalancerArn: !Ref OpenSearchALB
@@ -2255,6 +2201,13 @@ Resources:
       DistributionConfig:
         Enabled: true
         Comment: !Sub "CloudFront for OpenSearch Dashboards - ${AWS::StackName}"
+        # PCSR fix CKV_AWS_86: enable CloudFront standard access logging to the
+        # dedicated S3 logging bucket (ACLs are enabled on it via BucketOwnerPreferred
+        # so CloudFront's log-delivery account can write).
+        Logging:
+          Bucket: !GetAtt S3LoggingBucket.RegionalDomainName
+          IncludeCookies: false
+          Prefix: cloudfront-logs/
         DefaultCacheBehavior:
           TargetOriginId: opensearch-alb
           ViewerProtocolPolicy: https-only
@@ -2279,6 +2232,11 @@ Resources:
               HTTPPort: 80
               OriginProtocolPolicy: http-only
         ViewerCertificate:
+          # PCSR finding CKV_AWS_174 (documented suppression): enforcing a TLS 1.2+
+          # MinimumProtocolVersion requires a custom domain + ACM certificate, which
+          # CloudFront does not allow together with CloudFrontDefaultCertificate. This
+          # sample ships without a custom domain; production deployments should add a
+          # custom domain with an ACM cert and MinimumProtocolVersion: TLSv1.2_2021.
           CloudFrontDefaultCertificate: true
         HttpVersion: http2
 
@@ -2332,6 +2290,8 @@ Resources:
             Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*'
             Sid: AllowLambdaFunctionOperations
           # Lambda Event Source Mapping Operations
+          # PCSR suppression CKV_AWS_111 (accepted): the EventSourceMapping APIs do not
+          # support resource-level permissions, so Resource '*' is required per AWS docs.
           - Effect: Allow
             Action:
               - 'lambda:CreateEventSourceMapping'
@@ -2464,7 +2424,7 @@ Resources:
               - 'secretsmanager:UpdateSecret'
               - 'secretsmanager:DeleteSecret'
             Resource:
-              - !Ref AOSMasterPasswordSecret
+              - !Ref AOSAdminPasswordSecret
               - !Ref DbActivityStreamsStackDatabaseSecret
             Condition:
               Bool:
@@ -2595,6 +2555,10 @@ Resources:
                   - ':root'
             Action: 'kms:*'
             Resource: '*'
+          # PCSR suppression CKV_AWS_33 (accepted): the RDS and Lambda statements below
+          # use Principal AWS '*' scoped by kms:CallerAccount and kms:ViaService
+          # conditions (AWS-recommended condition-scoped service-integration pattern),
+          # not an unconditioned wildcard principal.
           - Sid: Enable RDS Permissions
             Effect: Allow
             Principal:
@@ -2668,13 +2632,9 @@ Outputs:
     Export:
       Name: AOSDomainEndpoint
   AOSDomainUserName:
-    Value: !Ref OpenSearchMasterUserName
+    Value: !Ref OpenSearchAdminUserName
     Export:
       Name: AOSDomainUserName
-  AOSDomainPassword:
-    Value: !GetAtt RetrieveAOSPassword.OpenSearchMasterPassword
-    Export:
-      Name: AOSDomainPassword
   AOSDashboardsPublicIP:
     Description: CloudFront URL for Amazon Opensearch Dashboards
     Value:
@@ -2685,10 +2645,10 @@ Outputs:
           - /_dashboards
     Export:
       Name: AOSDashboardsPublicIP
-  AOSMasterPasswordSecretArn:
-    Value: !Ref AOSMasterPasswordSecret
+  AOSAdminPasswordSecretArn:
+    Value: !Ref AOSAdminPasswordSecret
     Export:
-      Name: AOSMasterPasswordSecretArn
+      Name: AOSAdminPasswordSecretArn
   OpenSearchIngressSecurityGroup:
     Value: !Ref OpenSearchIngressSecurityGroup
     Export:

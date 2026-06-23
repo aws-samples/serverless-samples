@@ -131,8 +131,9 @@ public class HandlerAuroraStream implements RequestHandler<KinesisEvent, String>
 							logger.log(correlationId + "remotePort = " + databaseActivityEvent.getRemotePort());
 							logger.log(correlationId + "sessionId = " + databaseActivityEvent.getSessionId());
 							logger.log(correlationId + "rowCount = " + databaseActivityEvent.getRowCount());
-							// Note: commandText may contain sensitive data - consider redacting in production
-							logger.log(correlationId + "commandText = " + databaseActivityEvent.getCommandText());
+							// commandText is intentionally NOT logged to CloudWatch: it can contain raw
+							// SQL text and data values. The full event (including commandText) is still
+							// delivered to the S3/OpenSearch audit sink via the JSON record built below.
 							logger.log(correlationId + "pid = " + databaseActivityEvent.getPid());
 							logger.log(correlationId + "clientApplication = "
 									+ databaseActivityEvent.getClientApplication());
@@ -148,13 +149,9 @@ public class HandlerAuroraStream implements RequestHandler<KinesisEvent, String>
 							logger.log(correlationId + "startTime = " + databaseActivityEvent.getStartTime());
 							logger.log(correlationId + "endTime = " + databaseActivityEvent.getEndTime());
 							logger.log(correlationId + "errorMessage = " + databaseActivityEvent.getErrorMessage());
-							// Note: params may contain sensitive data - consider redacting in production
-							List<String> params = databaseActivityEvent.getParamList();
-							if (null != params) {
-								for (String param : params) {
-									logger.log(correlationId + "param = " + param);
-								}
-							}
+							// Query parameters are intentionally NOT logged to CloudWatch: they can
+							// contain PII / sensitive values. They remain part of the event delivered
+							// to the S3/OpenSearch audit sink via the JSON record built below.
 							logger.log(correlationId + "Finished Printing Incoming Record");
 							//log only events that are not by the rdsamin user
 							if (!(databaseActivityEvent.getDbUserName().strip().equalsIgnoreCase("rdsadmin"))) {

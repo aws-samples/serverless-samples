@@ -1,6 +1,20 @@
 # Creating script for bootstrapping of secrets needed for DAS to work
 #!/bin/bash
 
+# =============================================================================
+# SECURITY NOTICE (sample / workshop setup script - NON-PRODUCTION)
+# -----------------------------------------------------------------------------
+# For convenience in a disposable workshop account, this CloudShell helper
+# creates an IAM user with the AWS-managed AdministratorAccess policy and
+# generates long-lived access keys (stored in Secrets Manager for the
+# no-console-access flow). This is acceptable ONLY for a personally-owned
+# sandbox account used to run this sample. For any real/shared/production
+# account you MUST grant least-privilege permissions instead of
+# AdministratorAccess and prefer short-lived credentials (IAM Identity Center /
+# STS) over long-lived access keys. Delete the IAM user and its access key as
+# soon as you finish the walkthrough.
+# =============================================================================
+
 username=$1
 # Variable name to check
 region=$AWS_REGION
