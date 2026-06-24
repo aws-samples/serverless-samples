@@ -42,29 +42,6 @@ This solution implements AWS security best practices including:
 - CloudFront distribution for secure internet access to OpenSearch Dashboards (no direct EC2 exposure)
 - VPC endpoints for S3, Secrets Manager, KMS, and SQS
 
-## Production hardening
-
-This is a sample focused on demonstrating the DAS → Lambda → OpenSearch flow.
-The items below were intentionally deferred to keep the sample affordable and
-self-contained. Before any production use, work with your security team to
-evaluate which apply to your deployment.
-
-| Deferred item | Why it's off in the sample | Suppression rule(s) |
-| --- | --- | --- |
-| AWS WAF in front of CloudFront / ALB | ~$5/month base + per-request cost | CKV_AWS_68, AwsSolutions-CFR2 |
-| VPC Flow Logs | ~$0.50/GB ingested | AwsSolutions-VPC7 |
-| KMS encryption on CloudWatch Log Groups | ~$1/key/month + API call costs; logs use AWS-managed encryption by default | CKV_AWS_158 |
-| Custom domain + ACM certificate with TLSv1.2 minimum on CloudFront | Sample uses the default CloudFront cert (supports TLSv1) | CKV_AWS_174, AwsSolutions-CFR4 |
-| Secrets Manager rotation for OpenSearch and Aurora admin passwords | Rotation Lambdas would need to coordinate updates across OpenSearch FGAC, Aurora, and the reverse proxy | AwsSolutions-SMG4 |
-| IAM database authentication for Aurora | **Not compatible with Database Activity Streams** — DAS requires native PostgreSQL authentication | CKV_AWS_162, AwsSolutions-RDS6 |
-| S3 access logging on data buckets | Adds storage cost; the access-logging bucket itself is excluded by design | CKV_AWS_18 |
-| ALB and CloudFront access logging | Adds storage cost; ALB is internal to VPC and only reached via CloudFront | CKV_AWS_91, CKV_AWS_86, AwsSolutions-ELB2, AwsSolutions-CFR3 |
-| Explicit EBS encryption on the EC2 reverse proxy | Instance is stateless (nginx); uses default EBS encryption | AwsSolutions-EC26 |
-| EC2 termination protection on the reverse proxy | Instance is ephemeral, recreated on stack updates | AwsSolutions-EC29 |
-| CloudFront geo restrictions | Not applicable for a public sample | AwsSolutions-CFR1 |
-
-Suppression rationale for each item lives in [.ash.yaml](.ash.yaml).
-
 ## Deployment troubleshooting
 
 ### Local development overrides (pre-PR / fork testing)
@@ -793,6 +770,33 @@ The cleanup script handles everything automatically including:
 ---
 
 Replace `<LOCAL_PATH_TO>`, `<YOUR_AWS_PROFILE>`, and `<YOUR_AWS_REGION>` with your actual values before providing the prompt to your AI assistant.
+
+---
+
+## Production hardening
+
+This is a sample focused on demonstrating the DAS → Lambda → OpenSearch flow.
+The items below were intentionally deferred to keep the sample affordable and
+self-contained. Before any production use, work with your security team to
+evaluate which apply to your deployment.
+
+| Deferred item | Why it's off in the sample | Scanner rule(s) |
+| --- | --- | --- |
+| AWS WAF in front of CloudFront / ALB | ~$5/month base + per-request cost | CKV_AWS_68, AwsSolutions-CFR2 |
+| VPC Flow Logs | ~$0.50/GB ingested | AwsSolutions-VPC7 |
+| KMS encryption on CloudWatch Log Groups | ~$1/key/month + API call costs; logs use AWS-managed encryption by default | CKV_AWS_158 |
+| Custom domain + ACM certificate with TLSv1.2 minimum on CloudFront | Sample uses the default CloudFront cert (supports TLSv1) | CKV_AWS_174, AwsSolutions-CFR4 |
+| Secrets Manager rotation for OpenSearch and Aurora admin passwords | Rotation Lambdas would need to coordinate updates across OpenSearch FGAC, Aurora, and the reverse proxy | AwsSolutions-SMG4 |
+| IAM database authentication for Aurora | **Not compatible with Database Activity Streams** — DAS requires native PostgreSQL authentication | CKV_AWS_162, AwsSolutions-RDS6 |
+| S3 access logging on data buckets | Adds storage cost; the access-logging bucket itself is excluded by design | CKV_AWS_18 |
+| ALB and CloudFront access logging | Adds storage cost; ALB is internal to VPC and only reached via CloudFront | CKV_AWS_91, CKV_AWS_86, AwsSolutions-ELB2, AwsSolutions-CFR3 |
+| Explicit EBS encryption on the EC2 reverse proxy | Instance is stateless (nginx); uses default EBS encryption | AwsSolutions-EC26 |
+| EC2 termination protection on the reverse proxy | Instance is ephemeral, recreated on stack updates | AwsSolutions-EC29 |
+| CloudFront geo restrictions | Not applicable for a public sample | AwsSolutions-CFR1 |
+
+The rule IDs above reference the open-source scanners that flag each deferred
+item: [Checkov](https://www.checkov.io/) (`CKV_AWS_*`) and
+[cdk-nag](https://github.com/cdklabs/cdk-nag) (`AwsSolutions-*`).
 
 ---
 
