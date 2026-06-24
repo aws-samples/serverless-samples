@@ -59,34 +59,29 @@
     },
     "authors": [
       {
+        "name": "Angelo Spagnolo",
+        "bio": "AWS - Senior Technical Account Manager",
+        "linkedin": "https://www.linkedin.com/in/aspagnolo/"
+      },      
+      {
         "name": "Indranil Banerjee",
         "bio": "AWS - Senior Solutions Architect",
         "linkedin": "https://www.linkedin.com/in/indranil-banerjee-b00a261/"
       },
       {
-        "name": "Arnab Sinha",
+        "name": "Arghya Banerjee",
         "bio": "AWS - Senior Solutions Architect",
-        "linkedin": "https://www.linkedin.com/in/arnab-sinha-1735772/"
+        "linkedin": "https://www.linkedin.com/in/arghya-b-6130b57/"
+      },
+      {
+        "name": "Greg Medard",
+        "bio": "AWS - Senior Solutions Architect",
+        "linkedin": "https://www.linkedin.com/in/gregorymedard"
       },
       {
         "name": "Ajjay Govindaram",
         "bio": "AWS - Senior Solutions Architect",
         "linkedin": "https://www.linkedin.com/in/ajjaykumar/"
-      }, 
-      {
-        "name": "Akhilesh Dube",
-        "bio": "AWS - Senior Analytics Solutions Architect",
-        "linkedin": "https://www.linkedin.com/in/akhilesh-d-12baa4b/"
-      },
-      {
-        "name": "Angelo Spagnolo",
-        "bio": "AWS - Senior Technical Account Manager",
-        "linkedin": "https://www.linkedin.com/in/aspagnolo/"
-      },
-      {
-        "name": "Arghya Banerjee",
-        "bio": "AWS - Senior Technical Account Manager",
-        "linkedin": "https://www.linkedin.com/in/arghya-b-6130b57/"
       }
     ]
   }

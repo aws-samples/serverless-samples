@@ -793,3 +793,15 @@ The cleanup script handles everything automatically including:
 ---
 
 Replace `<LOCAL_PATH_TO>`, `<YOUR_AWS_PROFILE>`, and `<YOUR_AWS_REGION>` with your actual values before providing the prompt to your AI assistant.
+
+---
+
+## Authors
+
+This sample was contributed by:
+
+- [Angelo Spagnolo](https://www.linkedin.com/in/aspagnolo/) — AWS, Senior Technical Account Manager
+- [Indranil Banerjee](https://www.linkedin.com/in/indranil-banerjee-b00a261/) — AWS, Senior Solutions Architect
+- [Arghya Banerjee](https://www.linkedin.com/in/arghya-b-6130b57/) — AWS, Senior Solutions Architect
+- [Greg Medard](https://www.linkedin.com/in/gregorymedard) — AWS, Senior Solutions Architect
+- [Ajjay Govindaram](https://www.linkedin.com/in/ajjaykumar/) — AWS, Senior Solutions Architect
