@@ -132,6 +132,12 @@ This is example implementation of the Amazon API Gateway routing rules based on 
   [[README]](./apigw-vtl-editor/)
 
 
+## [das-lambda-java-sam](./das-lambda-java-sam)
+  This sample demonstrates an end-to-end pipeline for processing Amazon Aurora (PostgreSQL-compatible) Database Activity Streams (DAS) using AWS SAM. A Java AWS Lambda function consumes the Database Activity Streams, decrypts the records with AWS KMS, and delivers the audit events to Amazon S3 and Amazon OpenSearch Service for search and visualization. It includes a CloudFront + Application Load Balancer + private Amazon EC2 reverse-proxy architecture for secure access to OpenSearch Dashboards, along with deployment and cleanup automation scripts.
+
+  [[README]](./das-lambda-java-sam)
+
+
 ## Security
 
 See [CONTRIBUTING](./CONTRIBUTING.md#security-issue-notifications) for more information.
