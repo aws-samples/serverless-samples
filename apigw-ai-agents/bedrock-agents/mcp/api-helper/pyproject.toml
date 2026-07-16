@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "boto3>=1.37.26",
-    "mcp>=1.6.0",
+    "mcp>=1.27.2",
 ]
 
 [build-system]
