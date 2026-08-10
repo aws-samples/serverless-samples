@@ -132,6 +132,12 @@ This is example implementation of the Amazon API Gateway routing rules based on 
   [[README]](./apigw-vtl-editor/)
 
 
+## [apigw-mtls-multi-tenant](./apigw-mtls-multi-tenant)
+  This sample demonstrates how to build and operate multi-tenant mTLS on Amazon API Gateway at scale. It covers full certificate chain validation, intermediate CA rotation without downtime, expiry enforcement behavior, and tenant routing via Lambda Authorizer. The project includes a deployable SAM stack, an automated CLI test suite validating 7 scenarios, and an interactive demo web app for visual presentation of each mTLS behavior.
+
+  [[README]](./apigw-mtls-multi-tenant)
+
+
 ## [das-lambda-java-sam](./das-lambda-java-sam)
   This sample demonstrates an end-to-end pipeline for processing Amazon Aurora (PostgreSQL-compatible) Database Activity Streams (DAS) using AWS SAM. A Java AWS Lambda function consumes the Database Activity Streams, decrypts the records with AWS KMS, and delivers the audit events to Amazon S3 and Amazon OpenSearch Service for search and visualization. It includes a CloudFront + Application Load Balancer + private Amazon EC2 reverse-proxy architecture for secure access to OpenSearch Dashboards, along with deployment and cleanup automation scripts.
 
