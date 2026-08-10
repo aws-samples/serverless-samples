@@ -1,0 +1,5 @@
+{
+  "executionArn": "arn:aws:states:us-east-1:123456789012:execution:MyStateMachine:MyExecution-12345",
+  "cause": "Manual stop requested by API Gateway",
+  "error": "ExecutionManuallyTerminated"
+}

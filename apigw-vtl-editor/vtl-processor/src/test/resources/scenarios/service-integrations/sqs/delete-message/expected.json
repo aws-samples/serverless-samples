@@ -1,0 +1,4 @@
+{
+  "QueueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/orders-queue",
+  "ReceiptHandle": "AQEBmhDGqMe1+PSaEEBwQIQKRnuAqh+dN/NW7q0xz1WsUCh+ddc/G7q0xz1WsUCh+ddc"
+}

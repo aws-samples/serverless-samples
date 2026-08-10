@@ -6,7 +6,7 @@
     "test:integration": "jest"
   },
   "devDependencies": {
-    "jest": "^27.4.7",
+    "jest": "^30.2.0",
     "supertest": "^6.1.6"
   }
 }

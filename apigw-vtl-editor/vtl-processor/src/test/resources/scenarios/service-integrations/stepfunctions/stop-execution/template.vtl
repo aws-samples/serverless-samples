@@ -1,0 +1,10 @@
+{
+  #set($params = $util.parseJson($input.body))
+  "executionArn": "$params.executionArn"
+  #if($params.cause)
+  ,"cause": "$util.escapeJavaScript($params.cause)"
+  #end
+  #if($params.error)
+  ,"error": "$util.escapeJavaScript($params.error)"
+  #end
+}

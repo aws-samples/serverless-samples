@@ -1,0 +1,314 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. 
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Template for Amazon Bedrock Knowledge Base using an existing S3 bucket and S3 Vectors'
+
+Parameters:
+  ExistingS3BucketName:
+    Type: String
+    Description: Name of the existing S3 bucket containing documents
+  
+  VectorIndexName:
+    Type: String
+    Description: Name for the S3 vector index
+    Default: "bedrock-kb-vector-index"
+    
+  BedrockEmbeddingModelId:
+    Type: String
+    Description: Bedrock model ID to use for embeddings
+    Default: "amazon.titan-embed-text-v2:0"
+
+  IncludePublicDocs:
+    Type: String
+    Description: Whether to include public AWS documentation in the knowledge base
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+
+Conditions:
+  CreatePublicDocsDataSource: !Equals [!Ref IncludePublicDocs, "true"]
+
+Resources:
+  # S3 Vector Bucket for storing vector embeddings
+  VectorStorageBucket:
+    Type: AWS::S3Vectors::VectorBucket
+    Properties:
+      VectorBucketName: !Sub "${AWS::StackName}-vectors"
+  
+  # Vector Index for the S3 Vector Bucket
+  VectorIndex:
+    Type: AWS::S3Vectors::Index
+    Properties:
+      VectorBucketArn: !GetAtt VectorStorageBucket.VectorBucketArn
+      IndexName: !Ref VectorIndexName
+      DataType: float32
+      Dimension: 1024  # Matches amazon.titan-embed-text-v2:0 embedding dimension
+      DistanceMetric: euclidean
+      MetadataConfiguration:
+        NonFilterableMetadataKeys:
+          - AMAZON_BEDROCK_TEXT
+          - AMAZON_BEDROCK_METADATA
+
+  # IAM Policies for Bedrock Knowledge Base Role
+  S3AccessForKnowledgeBasePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Policy for S3 access for Bedrock Knowledge Base
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 's3:GetObject'
+              - 's3:ListBucket'
+            Resource:
+              - !Sub 'arn:aws:s3:::${ExistingS3BucketName}'
+              - !Sub 'arn:aws:s3:::${ExistingS3BucketName}/*'
+          - Effect: Allow
+            Action:
+              - 's3vectors:*'
+            Resource:
+              - !GetAtt VectorStorageBucket.VectorBucketArn
+              - !GetAtt VectorIndex.IndexArn
+
+  StartIngestionJobPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Policy for starting Bedrock ingestion jobs
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'bedrock:StartIngestionJob'
+              - 'bedrock:GetIngestionJob'
+            Resource: 
+              - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*'
+              - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*/data-source/*'
+
+  # IAM Policies for Lambda Execution Role
+  LambdaBedrockAgentAccessPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Policy for Lambda to access Bedrock Agent
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - "bedrock:GetIngestionJob"
+              - "bedrock:StartIngestionJob"
+            Resource: 
+              - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*'
+              - !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:knowledge-base/*/data-source/*'
+
+  # IAM Role for Bedrock Knowledge Base
+  BedrockKnowledgeBaseRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonBedrockFullAccess'
+        - !Ref S3AccessForKnowledgeBasePolicy
+        - !Ref StartIngestionJobPolicy
+
+  # IAM role for Lambda function
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+        - !Ref LambdaBedrockAgentAccessPolicy
+
+  # Create the Bedrock Knowledge Base with S3 Vectors
+  BedrockKnowledgeBase:
+    Type: AWS::Bedrock::KnowledgeBase
+    DependsOn: VectorIndex
+    Properties:
+      Name: !Sub "${AWS::StackName}"
+      Description: "Knowledge Base created with data from S3 using S3 Vectors"
+      KnowledgeBaseConfiguration:
+        Type: VECTOR
+        VectorKnowledgeBaseConfiguration:
+          EmbeddingModelArn: !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/${BedrockEmbeddingModelId}'
+      RoleArn: !GetAtt BedrockKnowledgeBaseRole.Arn
+      StorageConfiguration:
+        Type: S3_VECTORS
+        S3VectorsConfiguration:
+          IndexArn: !GetAtt VectorIndex.IndexArn
+
+  # Create a data sources for the Knowledge Base
+  BedrockKnowledgeBaseS3DataSource:
+    Type: AWS::Bedrock::DataSource
+    Properties:
+      DataSourceConfiguration:
+        Type: S3
+        S3Configuration:
+          BucketArn: !Sub 'arn:aws:s3:::${ExistingS3BucketName}'
+      KnowledgeBaseId: !GetAtt BedrockKnowledgeBase.KnowledgeBaseId
+      Name: !Sub "kb-${AWS::StackName}-ds-s3"
+  
+  BedrockKnowledgeBaseDocsDataSource:
+    Type: AWS::Bedrock::DataSource
+    Condition: CreatePublicDocsDataSource
+    Properties:
+      DataSourceConfiguration:
+        Type: WEB
+        WebConfiguration:
+          SourceConfiguration:
+            UrlConfiguration:
+              SeedUrls:
+                - Url: "https://docs.aws.amazon.com/apigateway/latest/developerguide/welcome.html"
+                - Url: "https://docs.aws.amazon.com/apigateway/latest/api/API_Operations.html"
+                - Url: "https://docs.aws.amazon.com/whitepapers/latest/best-practices-api-gateway-private-apis-integration/best-practices-api-gateway-private-apis-integration.html"
+                - Url: "https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/what-is-sam.html"
+                - Url: "https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/Welcome.html"
+                - Url: "https://docs.aws.amazon.com/whitepapers/latest/security-overview-amazon-api-gateway/abstract-and-introduction.html"
+                - Url: "https://docs.aws.amazon.com/wellarchitected/latest/serverless-applications-lens/welcome.html"
+      KnowledgeBaseId: !GetAtt BedrockKnowledgeBase.KnowledgeBaseId
+      Name: !Sub "kb-${AWS::StackName}-ds-docs"
+
+  # Lambda function to create ingestion jobs
+  CreateIngestionJobsFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Timeout: 900
+      Code:
+        ZipFile: |
+          import boto3
+          import time
+          import urllib.request
+          import json
+
+          def send_response(event, context, response_status, response_data):
+              response_body = {
+                  'Status': response_status,
+                  'Reason': f'See details in CloudWatch Log Stream: {context.log_stream_name}',
+                  'PhysicalResourceId': context.log_stream_name,
+                  'StackId': event['StackId'],
+                  'RequestId': event['RequestId'],
+                  'LogicalResourceId': event['LogicalResourceId'],
+                  'Data': response_data
+              }
+              
+              response_body_json = json.dumps(response_body)
+              headers = {
+                  'Content-Type': '',
+                  'Content-Length': str(len(response_body_json))
+              }
+              
+              try:
+                  req = urllib.request.Request(
+                      url=event['ResponseURL'],
+                      data=response_body_json.encode('utf-8'),
+                      headers=headers,
+                      method='PUT'
+                  )
+                  response = urllib.request.urlopen(req)
+                  print(f"Status code: {response.getcode()}")
+                  print("CFN response sent successfully")
+              except Exception as e:
+                  print(f"Error sending CFN response: {str(e)}")
+
+          def handler(event, context):
+            print(event)
+            response_data = {}
+            try:
+              if event['RequestType'] == 'Create' or event['RequestType'] == 'Update':
+                bedrock = boto3.client('bedrock-agent')
+                
+                # Get parameters from the event
+                kb_id = event['ResourceProperties']['KnowledgeBaseId']
+                ds_ids = event['ResourceProperties']['DataSourceIds']
+                job_name = event['ResourceProperties']['Name']
+                job_description = event['ResourceProperties'].get('Description', 'Created by CloudFormation')
+                
+                # Total of data sources to process
+                ds_total = len(ds_ids.split(','))
+                job_counter = 0
+                # Create the ingestion job for each data source
+                for ds_id in ds_ids.split(','):
+                  if not ds_id.strip():  # Skip empty data source IDs
+                    continue
+                  response = bedrock.start_ingestion_job(
+                    knowledgeBaseId=kb_id,
+                    dataSourceId=ds_id.strip(),
+                    description=job_description
+                  )
+                  job_counter += 1
+                  ingestion_job_id=response['ingestionJob']['ingestionJobId']
+                  print(f"Ingestion job #{job_counter} started: {ingestion_job_id} for data source {ds_id}")
+                  # Wait for ingestion job to complete before proceeding to the next one unless it is the last job
+                  if job_counter < ds_total:
+                    max_retries = 60  # 5 minutes with 5-second intervals
+                    retry_count = 0
+                    while True:
+                      job = bedrock.get_ingestion_job(knowledgeBaseId=kb_id, ingestionJobId=ingestion_job_id, dataSourceId=ds_id.strip())
+                      if job['ingestionJob']['status'] == 'COMPLETE':
+                        break
+                      if retry_count >= max_retries:
+                        raise Exception(f"Ingestion job did not complete after {max_retries * 5} seconds")
+                      retry_count += 1
+                      time.sleep(5)
+               
+                response_data['Message'] = f"Successfully started sync jobs."
+                send_response(event, context, "SUCCESS", response_data)
+              elif event['RequestType'] == 'Delete':
+                # Optionally handle deletion
+                send_response(event, context, "SUCCESS", response_data)
+            except Exception as e:
+              print(f"Error: {str(e)}")
+              response_data['Error'] = str(e)
+              send_response(event, context, "FAILED", response_data)
+
+  # Custom resource to create ingestion job
+  BedrockIngestionJobs:
+    Type: Custom::BedrockIngestionJob
+    Properties:
+      ServiceToken: !GetAtt CreateIngestionJobsFunction.Arn
+      KnowledgeBaseId: !GetAtt BedrockKnowledgeBase.KnowledgeBaseId
+      DataSourceIds: !If 
+        - CreatePublicDocsDataSource
+        - !Join [",", [!GetAtt BedrockKnowledgeBaseS3DataSource.DataSourceId, !GetAtt BedrockKnowledgeBaseDocsDataSource.DataSourceId]]
+        - !GetAtt BedrockKnowledgeBaseS3DataSource.DataSourceId
+      Name: !Sub "kb-${AWS::StackName}-InitialSync"
+      Description: 'Initial sync of documents to Knowledge Base'
+
+Outputs:
+  KnowledgeBaseId:
+    Description: ID of the created Knowledge Base
+    Value: !GetAtt BedrockKnowledgeBase.KnowledgeBaseId
+    Export:
+      Name: !Sub "${AWS::StackName}-KnowledgeBaseId"
+  
+  VectorStorageBucketName:
+    Description: Name of the S3 bucket storing vector embeddings
+    Value: !Ref VectorStorageBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-VectorBucket"
+  
+  VectorIndexName:
+    Description: Name of the vector index
+    Value: !Ref VectorIndexName
+  
+  IncludesPublicDocs:
+    Description: Whether public AWS documentation is included in the knowledge base
+    Value: !Ref IncludePublicDocs

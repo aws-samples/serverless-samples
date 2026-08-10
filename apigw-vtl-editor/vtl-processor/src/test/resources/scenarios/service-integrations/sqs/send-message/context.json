@@ -1,0 +1,15 @@
+{
+  "context": {
+    "accountId": "123456789012",
+    "apiId": "api123",
+    "httpMethod": "POST",
+    "resourcePath": "/queue/send",
+    "stage": "prod",
+    "requestId": "req-sqs-12345",
+    "queueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/orders-queue"
+  },
+  "stageVariables": {
+    "environment": "prod",
+    "region": "us-east-1"
+  }
+}

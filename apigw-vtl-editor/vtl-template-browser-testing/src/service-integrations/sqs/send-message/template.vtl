@@ -1,0 +1,24 @@
+{
+  #set($messageBody = $util.parseJson($input.body))
+  "MessageBody": "$util.escapeJavaScript($messageBody.body)",
+  #if($messageBody.delaySeconds)
+  "DelaySeconds": $messageBody.delaySeconds,
+  #end
+  #if($messageBody.messageAttributes && $messageBody.messageAttributes.size() > 0)
+  "MessageAttributes": {
+    #foreach($attrName in $messageBody.messageAttributes.keySet())
+      #set($attr = $messageBody.messageAttributes.get($attrName))
+      "$attrName": {
+        "DataType": "$attr.dataType",
+        #if($attr.dataType == "String" || $attr.dataType.startsWith("String."))
+        "StringValue": "$attr.stringValue"
+        #elseif($attr.dataType == "Binary" || $attr.dataType.startsWith("Binary."))
+        "BinaryValue": "$attr.binaryValue"
+        #else
+        "StringValue": "$attr.stringValue"
+        #end
+      }#if($foreach.hasNext),#end
+    #end
+  }
+  #end
+}

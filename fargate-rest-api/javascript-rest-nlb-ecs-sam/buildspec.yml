@@ -4,6 +4,8 @@
 version: 0.2
 phases:
   install:
+    runtime-versions:
+        nodejs: 18
     commands:
       # Move to the Lambda authorizer root directory
       - cd ./src/api/authorizer

@@ -1,0 +1,7 @@
+{
+  "StreamName": "MyKinesisStream",
+  "Data": "eyJ1c2VySWQiOiJ1c2VyMTIzIiwiZXZlbnQiOiJwYWdlVmlldyIsInBhZ2UiOiIvcHJvZHVjdHMiLCJ0aW1lc3RhbXAiOiIyMDI1LTA1LTE1VDE2OjMxOjAwWiJ9",
+  "PartitionKey": "user123",
+  "SequenceNumberForOrdering": "1234567890",
+  "ExplicitHashKey": "0"
+}

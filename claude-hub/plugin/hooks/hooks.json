@@ -1,0 +1,17 @@
+{
+  "description": "Syncs org+team CLAUDE.md and skills on session start",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/sync.sh",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

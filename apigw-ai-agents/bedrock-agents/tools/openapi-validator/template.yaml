@@ -1,0 +1,31 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. 
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  OpenAPI Validator Lambda function
+  Validates OpenAPI definitions using the Spectral validator
+
+Resources:
+  OpenAPIValidatorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: index.handler
+      Runtime: nodejs18.x
+      MemorySize: 256
+      Timeout: 30
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          NODE_OPTIONS: --enable-source-maps
+
+Outputs:
+  OpenAPIValidatorFunction:
+    Description: "OpenAPI Validator Lambda Function ARN"
+    Value: !GetAtt OpenAPIValidatorFunction.Arn
+  OpenAPIValidatorFunctionName:
+    Description: "OpenAPI Validator Lambda Function Name"
+    Value: !Ref OpenAPIValidatorFunction

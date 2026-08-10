@@ -1,0 +1,14 @@
+{
+  #set($params = $util.parseJson($input.body))
+  "Application": "$params.application",
+  "Environment": "$params.environment",
+  "Configuration": "$params.configuration",
+  #if($params.clientId)
+  "ClientId": "$params.clientId"
+  #else
+  "ClientId": "$context.requestId"
+  #end
+  #if($params.clientConfigurationVersion)
+  ,"ClientConfigurationVersion": "$params.clientConfigurationVersion"
+  #end
+}

@@ -19,7 +19,7 @@ Parameters:
   CognitoStackName:
     Description: An environment name for Cognito stack
     Type: String
-    Default: apigw-samples-cognito-shared
+    Default: serverless-api-cognito
 
 Resources:
   LocationsFunction:

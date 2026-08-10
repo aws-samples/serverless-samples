@@ -1,0 +1,14 @@
+POST /appconfig/configuration HTTP/1.1
+Host: appconfig.us-east-1.amazonaws.com
+Content-Type: application/json
+X-Amz-Target: AmazonAppConfig.GetConfiguration
+X-Amz-Date: 20250515T163000Z
+
+
+{
+  "application": "MyApplication",
+  "environment": "Production",
+  "configuration": "MyConfigurationProfile",
+  "clientId": "client-12345",
+  "clientConfigurationVersion": "1"
+}

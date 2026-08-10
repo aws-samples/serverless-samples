@@ -10,7 +10,7 @@ There are various blog posts and code examples for serverless APIs available, ho
  - API access logging as part of SAM templates
  - business specific metrics
 
-Examples are (loosely) based on a [SpaceFinder project](https://github.com/amazon-archives/aws-serverless-auth-reference-app). The services used by this application include Amazon API Gateway, Amazon Cognito, AWS Lambda, Amazon ECS, AWS Fargate, and Amazon DynamoDB. The CI/CD pipelines use AWS CodePipeline, AWS CodeCommit, and AWS CodeBuild. 
+Examples are (loosely) based on a [SpaceFinder project](https://github.com/amazon-archives/aws-serverless-auth-reference-app). The services used by this application include Amazon API Gateway, Amazon Cognito, AWS Lambda, Amazon ECS, AWS Fargate, and Amazon DynamoDB. The CI/CD pipelines use AWS CodePipeline, and AWS CodeBuild. 
 
 ## Architecture
 

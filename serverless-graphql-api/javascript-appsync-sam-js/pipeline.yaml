@@ -6,12 +6,17 @@ Description: >
   This template generates a 2-environment CI/CD Pipeline for sample serverless API application
   Based on https://github.com/aws-samples/cookiecutter-aws-sam-pipeline
 
+Parameters:
+  gitHubOwner:
+    Type: String
+  gitHubRepo:
+    Type: String
+  gitHubBranch:
+    Type: String
+  gitHubToken:
+    Type: String
+
 Resources:
-  CodeRepository:
-    Type: AWS::CodeCommit::Repository
-    Properties:
-      RepositoryName: !Ref AWS::StackName
-      RepositoryDescription: Code repository for serverless GraphQL API sample application
 
   # S3 Bucket for build artifacts
   BuildArtifactsBucket:
@@ -43,7 +48,7 @@ Resources:
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/amazonlinux2-x86_64-standard:4.0
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         EnvironmentVariables:
           - Name: BUILD_OUTPUT_BUCKET
             Value: !Ref BuildArtifactsBucket
@@ -69,7 +74,7 @@ Resources:
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/amazonlinux2-x86_64-standard:4.0
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
         EnvironmentVariables:
           - Name: TEST_APPLICATION_STACK_NAME
             Value: !Sub ${AWS::StackName}-Testing
@@ -98,12 +103,14 @@ Resources:
             - Name: SourceCodeRepo
               ActionTypeId:
                 Category: Source
-                Owner: AWS
-                Provider: CodeCommit
+                Owner: ThirdParty
+                Provider: GitHub
                 Version: "1"
               Configuration:
-                RepositoryName: !GetAtt CodeRepository.Name
-                BranchName: main
+                Owner: !Ref gitHubOwner
+                Repo: !Ref gitHubRepo
+                Branch: !Ref gitHubBranch
+                OAuthToken: !Ref gitHubToken
               OutputArtifacts:
                 - Name: SourceCodeAsZip
               RunOrder: 1
@@ -450,7 +457,6 @@ Resources:
       Path: /
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AWSCodePipeline_FullAccess
-        - arn:aws:iam::aws:policy/AWSCodeCommitReadOnly
       Policies:
         - PolicyName: CodePipelineAccess
           PolicyDocument:
@@ -471,17 +477,6 @@ Resources:
                   - "s3:ListBucket"
                   - "s3:*Object*"
                 Resource: !Sub "arn:aws:s3:::${BuildArtifactsBucket}/*"
-              - Effect: Allow
-                Action:
-                  - "codecommit:GitPull"
-                  - "codecommit:Get*"
-                  - "codecommit:List*"
-                  - "codecommit:BatchGet*"
-                  - "codecommit:BatchDescribe*"
-                  - "codecommit:Describe*"
-                  - "codecommit:EvaluatePullRequestApprovalRules"
-                  - "codecommit:UploadArchive"
-                Resource: !Sub "arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${CodeRepository.Name}"
         - PolicyName: CodePipelineCodeBuildAndCloudformationAccess
           PolicyDocument:
             Version: "2012-10-17"
@@ -511,13 +506,6 @@ Resources:
                   - !Sub "arn:aws:cloudformation:${AWS::Region}:aws:transform/Serverless-2016-10-31"
 
 Outputs:
-  CodeCommitRepositoryHttpUrl:
-    Description: AWS CodeCommit Git repository
-    Value: !GetAtt CodeRepository.CloneUrlHttp
-
-  CodeCommitRepositorySshUrl:
-    Description: AWS CodeCommit Git repository
-    Value: !GetAtt CodeRepository.CloneUrlSsh
 
   BuildArtifactS3Bucket:
     Description: Amazon S3 Bucket for Pipeline and Build artifacts

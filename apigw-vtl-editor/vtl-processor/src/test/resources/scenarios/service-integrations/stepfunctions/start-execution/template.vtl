@@ -1,0 +1,12 @@
+{
+  #set($params = $util.parseJson($input.body))
+  "stateMachineArn": "$params.stateMachineArn",
+  #if($params.name)
+  "name": "$params.name",
+  #end
+  #if($params.input)
+  "input": "$util.escapeJavaScript($params.input)"
+  #else
+  "input": "{}"
+  #end
+}

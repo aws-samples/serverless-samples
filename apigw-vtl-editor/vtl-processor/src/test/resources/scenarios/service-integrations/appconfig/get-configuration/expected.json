@@ -1,0 +1,7 @@
+{
+  "Application": "MyApplication",
+  "Environment": "Production",
+  "Configuration": "MyConfigurationProfile",
+  "ClientId": "client-12345",
+  "ClientConfigurationVersion": "1"
+}

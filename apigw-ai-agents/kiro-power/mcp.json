@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "api-expert-server": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "<path to api-helper directory>",
+        "run",
+        "api_helper.py"
+      ],
+      "disabled": false,
+      "env": {
+        "AWS_REGION": "us-east-1",
+        "AGENTCORE_AGENT_ARN": "arn:aws:bedrock:us-east-1:123456789012:agent-runtime/your-agent-id"
+      }
+    }
+  }
+}

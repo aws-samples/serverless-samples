@@ -1,0 +1,12 @@
+POST /stepfunctions/sync-execution HTTP/1.1
+Host: sync-states.us-east-1.amazonaws.com
+Content-Type: application/json
+X-Amz-Target: AWSStepFunctions.StartSyncExecution
+X-Amz-Date: 20250515T163300Z
+
+
+{
+  "stateMachineArn": "arn:aws:states:us-east-1:123456789012:stateMachine:MyStateMachine",
+  "name": "MySyncExecution-12345",
+  "input": "{\"transactionId\":\"tx-67890\",\"paymentDetails\":{\"amount\":125.50,\"currency\":\"USD\",\"paymentMethod\":\"credit_card\"},\"customerInfo\":{\"id\":\"cust-12345\",\"email\":\"customer@example.com\"}}"
+}

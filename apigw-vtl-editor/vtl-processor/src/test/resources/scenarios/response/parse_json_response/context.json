@@ -1,0 +1,14 @@
+{
+  "context": {
+    "accountId": "123456789012",
+    "apiId": "api123",
+    "httpMethod": "GET",
+    "resourcePath": "/resource",
+    "stage": "dev",
+    "requestId": "req-12345"
+  },
+  "stageVariables": {
+    "environment": "dev",
+    "region": "us-east-1"
+  }
+}

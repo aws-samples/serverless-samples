@@ -1,0 +1,66 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. 
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for Amazon Bedrock Agent - API Expert Agent'
+
+Parameters:
+  KnowledgeBaseStackName:
+    Type: String
+    Description:  Name of the stack that contains the pre-existing knowledge base to associate with the agent
+    Default: your-kb-stack-name
+  AliasName:
+    Type: String
+    Description: Name for the agent alias
+    Default: prod
+
+Resources:
+  # IAM Role for Agent
+  BedrockAgentRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
+      Path: /service-role/
+            
+  # Bedrock Agent
+  ApiExpertAgent:
+    Type: AWS::Bedrock::Agent
+    Properties:
+      AgentName: !Sub "${AWS::StackName}-api-expert-agent"
+      Description: API Expert Agent that can answer questions related to the API planning, development, testing, security, management, governance
+      Instruction: You are API expert capable to answer deep technical questions on API planning, development, testing, security, management, governance, best practices. Use Knowledge Base content and your general knowledge to build answers. Respond "I cannot answer this question with the information I have" in all cases where you are not sure about the answer.
+      FoundationModel: amazon.nova-pro-v1:0
+      IdleSessionTTLInSeconds: 600
+      AgentResourceRoleArn: !GetAtt BedrockAgentRole.Arn
+      KnowledgeBases:
+        - KnowledgeBaseId: !ImportValue 
+            Fn::Sub: "${KnowledgeBaseStackName}-KnowledgeBaseId"
+
+          Description: Knowledge base includes publicly acessible information that focuses on Amazon API Gateway service, API development best practices, management, governance, security, testing, implementation details.
+
+  # Create agent alias
+  ApiExpertAgentAlias:
+    Type: AWS::Bedrock::AgentAlias
+    Properties:
+      AgentId: !Ref ApiExpertAgent
+      AgentAliasName: !Ref AliasName
+
+Outputs:
+  AgentId:
+    Description: ID of the created Bedrock Agent
+    Value: !Ref ApiExpertAgent
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiExpertAgentId"
+  AgentAliasId:
+    Description: ID of the created Agent Alias
+    Value: !GetAtt ApiExpertAgentAlias.AgentAliasId
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiExpertAgentAliasId"

@@ -1,0 +1,23 @@
+{
+  "QueueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/orders-queue",
+  "MessageBody": "{\"orderId\":\"order-12345\",\"customerId\":\"cust-6789\",\"items\":[{\"productId\":\"prod-101\",\"quantity\":2,\"price\":29.99},{\"productId\":\"prod-202\",\"quantity\":1,\"price\":49.99}],\"totalAmount\":109.97}",
+  "DelaySeconds": 30,
+  "MessageAttributes": {
+    "OrderType": {
+      "DataType": "String",
+      "StringValue": "Priority"
+    },
+    "Region": {
+      "DataType": "String",
+      "StringValue": "West"
+    },
+    "Timestamp": {
+      "DataType": "Number",
+      "StringValue": "1621234567890"
+    },
+    "BinaryAttribute": {
+      "DataType": "Binary",
+      "BinaryValue": "SGVsbG8gV29ybGQ="
+    }
+  }
+}

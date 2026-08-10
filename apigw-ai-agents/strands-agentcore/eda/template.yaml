@@ -1,0 +1,94 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: 2010-09-09
+Transform:
+  - AWS::Serverless-2016-10-31
+
+Description: >
+  Amazon API Gateway deploymnet inspection and feedback automation
+Parameters:
+  AgentCoreAgentArn:
+    Type: String
+    Description: AgentCore Agent ARN 
+  AgentCoreRegion:
+    Type: String
+    Default: us-east-1
+    Description: AWS region where the AgentCore agent is deployed
+  SesEmailForNotifications:
+    Type: String
+    Default: ""
+    Description: Email address for notifications
+  
+
+Resources:
+  APIInspectorProxyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Path: /
+
+  APIInspectorProxyPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: APIInspectorProxyPolicy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - bedrock-agentcore:InvokeAgentRuntime
+            Resource: !Ref AgentCoreAgentArn
+          - Effect: Allow
+            Action:
+              - bedrock-agentcore:InvokeAgentRuntime
+            Resource: !Sub '${AgentCoreAgentArn}/*'
+          - Effect: Allow
+            Action: 
+              - ses:SendEmail
+            Resource: !Sub arn:aws:ses:${AWS::Region}:${AWS::AccountId}:identity/${SesEmailForNotifications}
+          - Effect: Allow
+            Action:
+              - apigateway:GET
+            Resource: !Sub arn:aws:apigateway:${AWS::Region}::/*/*
+      Roles:
+        - !Ref APIInspectorProxyRole
+
+  APIInspectorProxyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.13
+      MemorySize: 128
+      Timeout: 900
+      EventInvokeConfig:
+        MaximumRetryAttempts: 0
+      Environment:
+        Variables:
+          AGENTCORE_REGION: !Ref AgentCoreRegion
+          AGENTCORE_AGENT_ARN: !Ref AgentCoreAgentArn
+          SES_EMAIL: !Ref SesEmailForNotifications
+      CodeUri: src/
+      Handler: api_gateway_inspector_proxy.lambda_handler
+      Description: API Gateway inspector agent proxy function
+      Role: !GetAtt APIInspectorProxyRole.Arn
+      Events:
+        APIModified:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              detail:
+                eventSource:
+                  - apigateway.amazonaws.com
+                eventName:
+                  - CreateDeployment
+                  - UpdateStage
+                errorCode:
+                  - exists: false

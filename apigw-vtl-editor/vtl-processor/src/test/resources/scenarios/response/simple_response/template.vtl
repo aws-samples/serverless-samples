@@ -1,0 +1,5 @@
+#set($inputRoot = $input.path('$'))
+{
+  "result": $input.json('$'),
+  "requestId": "$context.requestId"
+}

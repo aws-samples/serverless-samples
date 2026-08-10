@@ -1,0 +1,10 @@
+POST /queue/purge HTTP/1.1
+Host: sqs.us-east-1.amazonaws.com
+Content-Type: application/json
+X-Amz-Target: AmazonSQS.PurgeQueue
+X-Amz-Date: 20250515T162900Z
+
+
+{
+  "queueUrl": "https://sqs.us-east-1.amazonaws.com/123456789012/orders-queue"
+}

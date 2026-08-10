@@ -1,0 +1,128 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  AWS Config driven API Gateway inspection and recommendations using Amazon Bedrock Agent
+
+Parameters:
+  ApiInspectorAgentStackName:
+    Type: String
+    Description: Name of the stack that exports the API Inspector Agent ID and Alias ID
+
+  AwsRegionForModelAccess:
+    Type: String
+    Default: us-east-1
+    Description: AWS region where the API Inspector agent was deployed
+
+  SesEmailForNotifications:
+    Type: String
+    Description: Email address to be used as the sender for recommendations
+
+  ApiGatewayConfigRuleName:
+    Type: String
+    Default: ApiGatewayInspectorRule
+    Description: Name for the AWS Config rule that will trigger the API Gateway inspection workflow
+
+Globals:
+  Function:
+    Timeout: 600
+    MemorySize: 256
+    Runtime: python3.13
+    Architectures:
+      - x86_64
+
+Resources:
+  ApiGatewayInspectorProxyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Path: /
+
+  ApiGatewayInspectorProxyPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: ApiGatewayInspectorProxyPolicy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - bedrock:InvokeAgent
+            Resource: !Sub
+              - "arn:aws:bedrock:${AwsRegionForModelAccess}:${AWS::AccountId}:agent-alias/${AgentId}/${AgentAlias}"
+              - AgentId:
+                  Fn::ImportValue: !Sub "${ApiInspectorAgentStackName}-ApiInspectorAgentId"
+                AgentAlias:
+                  Fn::ImportValue: !Sub "${ApiInspectorAgentStackName}-ApiInspectorAgentAliasId"
+          - Effect: Allow
+            Action:
+              - ses:SendEmail
+            Resource: !Sub arn:aws:ses:${AWS::Region}:${AWS::AccountId}:identity/${SesEmailForNotifications}
+          - Effect: Allow
+            Action:
+              - apigateway:GET
+              - apigatewayv2:GET
+              - apigateway:GetTags
+              - apigatewayv2:GetTags
+              - tag:GetResources
+              - config:PutEvaluations
+            Resource: "*"
+      Roles:
+        - !Ref ApiGatewayInspectorProxyRole
+
+  ApiGatewayInspectorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: api_gateway_inspector_proxy.lambda_handler
+      Description: Lambda function that processes AWS Config events and invokes API Gateway Inspector Bedrock agent
+      Role: !GetAtt ApiGatewayInspectorProxyRole.Arn
+      Environment:
+        Variables:
+          REGION_FOR_BEDROCK: !Ref AwsRegionForModelAccess
+          BEDROCK_AGENT_ID:
+            Fn::ImportValue: !Sub "${ApiInspectorAgentStackName}-ApiInspectorAgentId"
+          BEDROCK_AGENT_ALIAS:
+            Fn::ImportValue: !Sub "${ApiInspectorAgentStackName}-ApiInspectorAgentAliasId"
+          SES_EMAIL: !Ref SesEmailForNotifications
+
+  ApiGatewayInspectorConfigRule:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: !Ref ApiGatewayConfigRuleName
+      Description: Evaluates API Gateway APIs and triggers the API Gateway Inspector
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::ApiGateway::RestApi
+          - AWS::ApiGatewayV2::Api
+      Source:
+        Owner: CUSTOM_LAMBDA
+        SourceIdentifier: !GetAtt ApiGatewayInspectorFunction.Arn
+        SourceDetails:
+          - EventSource: aws.config
+            MessageType: ConfigurationItemChangeNotification
+      MaximumExecutionFrequency: One_Hour
+
+  ApiGatewayInspectorConfigPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ApiGatewayInspectorFunction
+      Action: lambda:InvokeFunction
+      Principal: config.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+
+Outputs:
+  ApiGatewayInspectorFunction:
+    Description: API Gateway Inspector Lambda Function ARN
+    Value: !GetAtt ApiGatewayInspectorFunction.Arn
+
+  ApiGatewayInspectorConfigRule:
+    Description: API Gateway AWS Config Rule Name
+    Value: !Ref ApiGatewayInspectorConfigRule

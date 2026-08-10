@@ -1,0 +1,24 @@
+POST /events HTTP/1.1
+Host: events.amazonaws.com
+Content-Type: application/json
+X-Amz-Target: AWSEvents.PutEvents
+X-Amz-Date: 20250515T162500Z
+
+
+{
+  "entries": [
+    {
+      "source": "com.example.app",
+      "detailType": "UserSignup",
+      "detail": "{\"userId\":\"user123\",\"signupTime\":\"2025-05-15T16:25:00Z\",\"userType\":\"premium\"}",
+      "resources": ["arn:aws:lambda:us-east-1:123456789012:function:ProcessSignup"],
+      "eventBusName": "default"
+    },
+    {
+      "source": "com.example.app",
+      "detailType": "UserActivity",
+      "detail": "{\"userId\":\"user123\",\"action\":\"login\",\"timestamp\":\"2025-05-15T16:25:10Z\"}",
+      "resources": ["arn:aws:lambda:us-east-1:123456789012:function:TrackActivity"]
+    }
+  ]
+}

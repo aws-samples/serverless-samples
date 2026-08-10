@@ -1,0 +1,396 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. 
+# SPDX-License-Identifier: MIT-0
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for Amazon Bedrock Flow - API Expert'
+
+Parameters:
+  KnowledgeBaseStackName:
+    Type: String
+    Default: api-agent-kb
+    Description: Name of the stack that exports the Knowledge Base ID
+  
+  RequirementsGathererAgentStackName:
+    Type: String
+    Default: api-requirements-gatherer-agent
+    Description: Name of the stack that exports the Requirements Gatherer Agent ID and Alias ID
+  
+  APIInspectorAgentStackName:
+    Type: String
+    Default: api-inspector-agent
+    Description: Name of the stack that exports the API Inspector Agent ID and Alias ID
+  
+  APIBuilderAgentStackName:
+    Type: String
+    Default: api-builder-agent
+    Description: Name of the stack that exports the API Builder Agent ID and Alias ID
+
+Resources:
+  BedrockFlowExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
+      Policies:
+        - PolicyName: BedrockFlowExecutionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeAgent
+                  - bedrock:Retrieve
+                Resource: '*'
+
+  APIExpertFlow:
+    Type: AWS::Bedrock::Flow
+    Properties:
+      Name: !Sub "${AWS::StackName}-api-expert"
+      Description: API building/validation/expert flow
+      ExecutionRoleArn: !GetAtt BedrockFlowExecutionRole.Arn
+      Definition:
+        Nodes:
+          - Name: FlowInputNode
+            Type: Input
+            Configuration:
+              Input: {}
+            Outputs:
+              - Name: document
+                Type: String
+
+          - Name: InputClassifier
+            Type: Prompt
+            Configuration:
+              Prompt:
+                SourceConfiguration:
+                  Inline:
+                    InferenceConfiguration:
+                      Text:
+                        MaxTokens: 2000
+                        StopSequences:
+                          - "\n\nHuman:"
+                        Temperature: 1.0
+                        TopP: 0.9990000128746033
+                    ModelId: !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.anthropic.claude-3-5-haiku-20241022-v1:0"
+                    TemplateConfiguration:
+                      Text:
+                        InputVariables:
+                          - Name: input
+                        Text: "Think about what user is asking and what output user expects. Classify user input between following categories:\n\"API_INSPECT\" - all requests asking to validate, inspect, or verify API definition of an existing API by ID\n\"API_EXPERT\" - all questions about API Gateway features, patterns, capabilities, quotas, limits, management, governance, \"how to\" questions.\n\"API_BUILD\" - all requests to build APIs, code, databases, and infrastructure, it does not include questions how to do it.\n\"API_SUPPORT\" - all queries asking API and code troubleshooting related questions\n\"OTHER\" - all other questions, that do not fit into categories listed above\nOnly respond with category.\nUser input {{input}} "
+                    TemplateType: TEXT
+            Inputs:
+              - Name: input
+                Type: String
+                Expression: $.data
+            Outputs:
+              - Name: modelCompletion
+                Type: String
+
+          - Name: GenericResponse
+            Type: Output
+            Configuration:
+              Output: {}
+            Inputs:
+              - Name: document
+                Type: String
+                Expression: $.data
+
+          - Name: RouteSelector
+            Type: Condition
+            Configuration:
+              Condition:
+                Conditions:
+                  - Name: BuilderRequest
+                    Expression: conditionInput == "API_BUILD"
+                  - Name: ExpertRequest
+                    Expression: conditionInput == "API_EXPERT"
+                  - Name: ValidationRequest
+                    Expression: conditionInput == "API_INSPECT"
+                  - Name: default
+            Inputs:
+              - Name: conditionInput
+                Type: String
+                Expression: $.data
+
+          - Name: RequestNotClear
+            Type: Prompt
+            Configuration:
+              Prompt:
+                SourceConfiguration:
+                  Inline:
+                    InferenceConfiguration:
+                      Text:
+                        MaxTokens: 512
+                        StopSequences: []
+                        Temperature: 0.699999988079071
+                        TopP: 0.8999999761581421
+                    ModelId: amazon.nova-micro-v1:0
+                    TemplateConfiguration:
+                      Text:
+                        InputVariables: []
+                        Text: "Ask user to rephrase their request. Explain in a succinct way that you are API agent and your functions are limited to answering questions about Amazon API Gateway, API management and governance, helping users troubleshoot their APIs, validate API configurations, and build APIs for various use cases /scenarios."
+                    TemplateType: TEXT
+            Outputs:
+              - Name: modelCompletion
+                Type: String
+
+          - Name: KnowledgeBase
+            Type: KnowledgeBase
+            Configuration:
+              KnowledgeBase:
+                KnowledgeBaseId: 
+                  Fn::ImportValue: 
+                    !Sub "${KnowledgeBaseStackName}-KnowledgeBaseId"
+                ModelId: amazon.nova-pro-v1:0
+            Inputs:
+              - Name: retrievalQuery
+                Type: String
+                Expression: $.data
+            Outputs:
+              - Name: outputText
+                Type: String
+
+          - Name: ExpertRequestOutput
+            Type: Output
+            Configuration:
+              Output: {}
+            Inputs:
+              - Name: document
+                Type: String
+                Expression: $.data
+
+          - Name: APIBuilderOutput
+            Type: Output
+            Configuration:
+              Output: {}
+            Inputs:
+              - Name: document
+                Type: String
+                Expression: $.data
+
+          - Name: APIValidatorOutput
+            Type: Output
+            Configuration:
+              Output: {}
+            Inputs:
+              - Name: document
+                Type: String
+                Expression: $.data
+
+
+
+          - Name: RequirementsGatherer
+            Type: Agent
+            Configuration:
+              Agent:
+                AgentAliasArn: !Sub 
+                  - "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/${AgentId}/${AliasId}"
+                  - AgentId: 
+                      Fn::ImportValue: !Sub "${RequirementsGathererAgentStackName}-ApiRequirementsGathererAgentId"
+                    AliasId: 
+                      Fn::ImportValue: !Sub "${RequirementsGathererAgentStackName}-ApiRequirementsGathererAgentAliasId"
+            Inputs:
+              - Name: agentInputText
+                Type: String
+                Expression: $.data
+              - Name: promptAttributes
+                Type: Object
+                Expression: $.data
+              - Name: sessionAttributes
+                Type: Object
+                Expression: $.data
+            Outputs:
+              - Name: agentResponse
+                Type: String
+
+          - Name: APIBuilder
+            Type: Agent
+            Configuration:
+              Agent:
+                AgentAliasArn: !Sub 
+                  - "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/${AgentId}/${AliasId}"
+                  - AgentId: 
+                      Fn::ImportValue: !Sub "${APIBuilderAgentStackName}-ApiBuilderAgentId"
+                    AliasId: 
+                      Fn::ImportValue: !Sub "${APIBuilderAgentStackName}-ApiBuilderAgentAliasId"
+            Inputs:
+              - Name: agentInputText
+                Type: String
+                Expression: $.data
+              - Name: promptAttributes
+                Type: Object
+                Expression: $.data
+              - Name: sessionAttributes
+                Type: Object
+                Expression: $.data
+            Outputs:
+              - Name: agentResponse
+                Type: String
+
+          - Name: APIInspector
+            Type: Agent
+            Configuration:
+              Agent:
+                AgentAliasArn: !Sub 
+                  - "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent-alias/${AgentId}/${AliasId}"
+                  - AgentId: 
+                      Fn::ImportValue: !Sub "${APIInspectorAgentStackName}-ApiInspectorAgentId"
+                    AliasId: 
+                      Fn::ImportValue: !Sub "${APIInspectorAgentStackName}-ApiInspectorAgentAliasId"
+            Inputs:
+              - Name: agentInputText
+                Type: String
+                Expression: $.data
+              - Name: promptAttributes
+                Type: Object
+                Expression: $.data
+              - Name: sessionAttributes
+                Type: Object
+                Expression: $.data
+            Outputs:
+              - Name: agentResponse
+                Type: String
+
+        Connections:
+          - Name: FlowInputNodeFlowInputNode0ToInputClassifierPromptsNode0
+            Source: FlowInputNode
+            Target: InputClassifier
+            Type: Data
+            Configuration:
+              Data:
+                SourceOutput: document
+                TargetInput: input
+
+          - Name: InputClassifierPromptsNode0ToRouteSelectorConditionNode0
+            Source: InputClassifier
+            Target: RouteSelector
+            Type: Data
+            Configuration:
+              Data:
+                SourceOutput: modelCompletion
+                TargetInput: conditionInput
+
+          - Name: RouteSelectorConditionNodeHandleDefaultRouteSelectorToRequestNotClearRequestNotClearHeaderHandle
+            Source: RouteSelector
+            Target: RequestNotClear
+            Type: Conditional
+            Configuration:
+              Conditional:
+                Condition: default
+
+          - Name: RequestNotClearPromptsNode0ToGenericResponseFlowOutputNode0
+            Source: RequestNotClear
+            Target: GenericResponse
+            Type: Data
+            Configuration:
+              Data:
+                SourceOutput: modelCompletion
+                TargetInput: document
+
+          - Name: RouteSelectorConditionNodeHandle1ToKnowledgeBaseKnowledgeBaseHeaderHandle
+            Source: RouteSelector
+            Target: KnowledgeBase
+            Type: Conditional
+            Configuration:
+              Conditional:
+                Condition: ExpertRequest
+
+          - Name: FlowInputNodeFlowInputNode0ToKnowledgeBaseKnowledgeBaseNode0
+            Source: FlowInputNode
+            Target: KnowledgeBase
+            Type: Data
+            Configuration:
+              Data:
+                SourceOutput: document
+                TargetInput: retrievalQuery
+
+          - Name: KnowledgeBaseKnowledgeBaseNode0ToExpertRequestOutputFlowOutputNode0
+            Source: KnowledgeBase
+            Target: ExpertRequestOutput
+            Type: Data
+            Configuration:
+              Data:
+                SourceOutput: outputText
+                TargetInput: document
+
+
+
+          - Name: RouteSelectorConditionNodeHandle0ToRequirementsGathererRequirementsGathererHeaderHandle
+            Source: RouteSelector
+            Target: RequirementsGatherer
+            Type: Conditional
+            Configuration:
+              Conditional:
+                Condition: BuilderRequest
+
+          - Name: FlowInputNodeFlowInputNode0ToRequirementsGathererAgentsNode0
+            Source: FlowInputNode
+            Target: RequirementsGatherer
+            Type: Data
+            Configuration:
+              Data:
+                SourceOutput: document
+                TargetInput: agentInputText
+
+          - Name: APIBuilderPromptsNode0ToAPIBuilderOutputFlowOutputNode0
+            Source: APIBuilder
+            Target: APIBuilderOutput
+            Type: Data
+            Configuration:
+              Data:
+                SourceOutput: agentResponse
+                TargetInput: document
+
+          - Name: RequirementsGathererAgentsNode0ToAPIBuilderPromptsNode0
+            Source: RequirementsGatherer
+            Target: APIBuilder
+            Type: Data
+            Configuration:
+              Data:
+                SourceOutput: agentResponse
+                TargetInput: agentInputText
+
+          - Name: FlowInputNodeFlowInputNode0ToAPIInspectorAgentsNode0
+            Source: FlowInputNode
+            Target: APIInspector
+            Type: Data
+            Configuration:
+              Data:
+                SourceOutput: document
+                TargetInput: agentInputText
+
+          - Name: APIInspectorAgentsNode0ToAPIValidatorOutputFlowOutputNode0
+            Source: APIInspector
+            Target: APIValidatorOutput
+            Type: Data
+            Configuration:
+              Data:
+                SourceOutput: agentResponse
+                TargetInput: document
+
+          - Name: RouteSelectorConditionNodeHandle2ToAPIInspectorAPIInspectorHeaderHandle
+            Source: RouteSelector
+            Target: APIInspector
+            Type: Conditional
+            Configuration:
+              Conditional:
+                Condition: ValidationRequest
+
+
+
+Outputs:
+  FlowId:
+    Description: ID of the created Bedrock Flow
+    Value: !GetAtt APIExpertFlow.Id
+  
+  FlowArn:
+    Description: ARN of the created Bedrock Flow
+    Value: !GetAtt APIExpertFlow.Arn

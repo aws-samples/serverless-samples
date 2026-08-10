@@ -1,0 +1,38 @@
+{
+  "mcpServers": {
+    "jira": {
+      "type": "streamable-http",
+      "url": "https://mcp.internal.acme.com/jira",
+      "note": "Acme Jira instance — search issues, read tickets, add comments"
+    },
+    "knowledge-base": {
+      "type": "streamable-http",
+      "url": "https://mcp.internal.acme.com/kb",
+      "note": "Internal knowledge base — search architecture docs, runbooks, ADRs"
+    },
+    "artifactory": {
+      "type": "streamable-http",
+      "url": "https://mcp.internal.acme.com/artifactory",
+      "note": "Artifact registry — search packages, check versions, read metadata"
+    }
+  },
+  "extraKnownMarketplaces": {
+    "acme-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "acme-corp/claude-plugins"
+      }
+    },
+    "claude-plugins-official": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-code-plugins"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "code-formatter@acme-plugins": true,
+    "security-scanner@acme-plugins": true,
+    "aws-serverless@claude-plugins-official": true
+  }
+}

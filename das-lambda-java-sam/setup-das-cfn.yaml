@@ -1,0 +1,2713 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: This template deploys a VPC, with a pair of public and private subnets spread across three Availability Zones. In addition to the network components, the following will also be created (AWS Cloud9, Amazon ECR, Amazon EKS, Amazon OpenSearch Service and Reverse-Proxy Instance).
+
+Parameters:
+  ######## VPC Variables ########
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: VPC-das-lambda-java-sam
+
+  VpcCIDR:
+    Description: Please enter the IP range (CIDR notation) for this VPC
+    Type: String
+    Default: 172.16.0.0/16
+
+  PublicSubnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+    Type: String
+    Default: 172.16.10.0/24
+
+  PublicSubnet2CIDR:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
+    Type: String
+    Default: 172.16.11.0/24
+    
+  PublicSubnet3CIDR:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
+    Type: String
+    Default: 172.16.12.0/24
+
+  PrivateSubnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for the private subnet in the first Availability Zone
+    Type: String
+    Default: 172.16.20.0/24
+
+  PrivateSubnet2CIDR:
+    Description: Please enter the IP range (CIDR notation) for the private subnet in the second Availability Zone
+    Type: String
+    Default: 172.16.21.0/24
+    
+  PrivateSubnet3CIDR:
+    Description: Please enter the IP range (CIDR notation) for the private subnet in the second Availability Zone
+    Type: String
+    Default: 172.16.22.0/24
+
+  NatGateway:
+    Description: Create NatGateway (Yes or No)?
+    Default: "Yes"
+    Type: String
+    AllowedValues:
+      - "Yes"
+
+  AuroraPostgresVersion:
+    Description: The Version of Aurora Postgres
+    Default: "15.14"
+    Type: String
+    AllowedValues:
+      - "11.21"
+      - "12.16"
+      - "13.12"
+      - "14.9"
+      - "15.6"
+      - "15.7"
+      - "15.8"
+      - "15.10"
+      - "15.12"
+      - "15.13"
+      - "15.14"
+      - "16.1"
+      - "16.2"
+      - "16.3"
+      - "16.4"
+      - "16.6"
+
+  ######## Amazon OpenSearch Variables ########
+  DomainName:
+    Type: String
+    Default: "das-lambda-java-sam-os-dom"
+
+  EngineVersion:
+    Description: Amazon OpenSearch Service - Version
+    Type: String
+    Default: "OpenSearch_2.11"
+
+  InstanceType:
+    Description: Amazon OpenSearch Service - Instance Type
+    Type: String
+    Default: "r6g.large.search"
+
+  OpenSearchAdminUserName:
+    Description: Amazon OpenSearch Service - Username
+    Default: "aosadmin"
+    Type: String
+
+  ######## Reverse Proxy Variables ########
+  ReverseProxyInstanceType:
+    Description: Reverse Proxy EC2 instance type
+    Type: String
+    Default: m5.large
+
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64'
+
+  JavaVersion:
+    Type: String
+    Description: Choose the version of Java. Lambda currently supports Java 17 and 21 (Java 11 was removed because it is end-of-support in Lambda)
+    AllowedValues:
+      - java17
+      - java21
+    Default: java21
+
+  Python3Version:
+    Type: String
+    Description: Choose the version of Python 3 between 3.9 and 3.12. Note that in Amazon Linux 2023, 3.9 is installed by default and maximum allowed version is 3.12. Also Python 3.10 is not available to install on Amazon Linux 2023 so it is not being offered as an option
+    AllowedValues:
+      - python3.9
+      - python3.11
+      - python3.12
+    Default: python3.12
+
+  DASLambdaCodeGithubLocation:
+    Type: String
+    Description: >-
+      Public Git URL from which the EC2 UserData clones the project source.
+      Defaults to the upstream aws-samples repository. For local testing
+      against a fork, override this parameter (e.g., via the
+      DAS_GITHUB_LOCATION env var consumed by RunCloudformationStack.sh).
+    Default: https://github.com/aws-samples/serverless-samples/
+
+  DASLambdaCodeS3Uri:
+    Type: String
+    Description: >-
+      Optional S3 URI (s3://bucket/key.tgz) of a tar.gz of the project source
+      tree. When set, the EC2 UserData downloads and extracts this archive
+      INSTEAD of cloning from DASLambdaCodeGithubLocation. Used for local
+      development against unpublished code. Leave empty for production /
+      PCSR-time deployments. The archive must extract a top-level
+      "das-lambda-java-sam/" directory matching the upstream layout.
+    Default: ""
+
+  ######## S3 Bucket, SQS and SNS parameters ########
+  
+  SourceBucketPrefix:
+    Type: String
+    Description: A prefix where the Database Activity Logs will be sent to in the S3 bucket
+    Default: das
+
+  CloudFrontPrefixListId:
+    Type: String
+    Description: The CloudFront managed prefix list ID for the deployment region. Looked up automatically by RunCloudformationStack.sh
+    Default: ""
+Conditions:
+  CreateNgwResource: !Equals [!Ref NatGateway, "Yes"]
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "General Information"
+        Parameters:
+          - EnvironmentName
+      - Label:
+          default: "Network Configuration"
+        Parameters:
+          - VpcCIDR
+          - PublicSubnet1CIDR
+          - PublicSubnet2CIDR
+          - PublicSubnet3CIDR
+          - PrivateSubnet1CIDR
+          - PrivateSubnet2CIDR
+          - PrivateSubnet3CIDR
+          - NatGateway
+      - Label:
+          default: "OpenSearch Configuration"
+        Parameters:
+          - DomainName
+          - EngineVersion
+          - InstanceType
+          - OpenSearchAdminUserName
+      - Label:
+          default: "Reverse Proxy Configuration"
+        Parameters:
+          - ReverseProxyInstanceType
+
+Resources:
+  ######## Amazon VPC ########
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+        - Key: IsUsedForDeploy
+          Value: "True"
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: !Ref PublicSubnet1CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Subnet (AZ1)
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      CidrBlock: !Ref PublicSubnet2CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Subnet (AZ2)
+          
+  PublicSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [2, !GetAZs ""]
+      CidrBlock: !Ref PublicSubnet3CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Subnet (AZ3)
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: !Ref PrivateSubnet1CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Subnet (AZ1)
+        - Key: IsUsedForDeploy
+          Value: "True"
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      CidrBlock: !Ref PrivateSubnet2CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Subnet (AZ2)
+        - Key: IsUsedForDeploy
+          Value: "True"
+          
+  PrivateSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [2, !GetAZs ""]
+      CidrBlock: !Ref PrivateSubnet3CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Subnet (AZ3)
+        - Key: IsUsedForDeploy
+          Value: "True"
+
+  NatGateway1EIP:
+    Type: AWS::EC2::EIP
+    Condition: CreateNgwResource
+    DependsOn: InternetGatewayAttachment
+    DeletionPolicy: Delete
+    Properties:
+      Domain: vpc
+
+  NatGateway2EIP:
+    Type: AWS::EC2::EIP
+    Condition: CreateNgwResource
+    DependsOn: InternetGatewayAttachment
+    DeletionPolicy: Delete
+    Properties:
+      Domain: vpc
+      
+  NatGateway3EIP:
+    Type: AWS::EC2::EIP
+    Condition: CreateNgwResource
+    DependsOn: InternetGatewayAttachment
+    DeletionPolicy: Delete
+    Properties:
+      Domain: vpc
+
+  NatGateway1:
+    Type: AWS::EC2::NatGateway
+    Condition: CreateNgwResource
+    Properties:
+      AllocationId: !GetAtt NatGateway1EIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+
+  NatGateway2:
+    Type: AWS::EC2::NatGateway
+    Condition: CreateNgwResource
+    Properties:
+      AllocationId: !GetAtt NatGateway2EIP.AllocationId
+      SubnetId: !Ref PublicSubnet2
+      
+  NatGateway3:
+    Type: AWS::EC2::NatGateway
+    Condition: CreateNgwResource
+    Properties:
+      AllocationId: !GetAtt NatGateway3EIP.AllocationId
+      SubnetId: !Ref PublicSubnet3
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Routes
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet2
+      
+  PublicSubnet3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet3
+
+  PrivateRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Routes (AZ1)
+
+  DefaultPrivateRoute1:
+    Type: AWS::EC2::Route
+    Condition: CreateNgwResource
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway1
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      SubnetId: !Ref PrivateSubnet1
+
+  PrivateRouteTable2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Routes (AZ2)
+
+  DefaultPrivateRoute2:
+    Type: AWS::EC2::Route
+    Condition: CreateNgwResource
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway2
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      SubnetId: !Ref PrivateSubnet2
+      
+  PrivateRouteTable3:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Routes (AZ3)
+
+  DefaultPrivateRoute3:
+    Type: AWS::EC2::Route
+    Condition: CreateNgwResource
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable3
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway3
+
+  PrivateSubnet3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable3
+      SubnetId: !Ref PrivateSubnet3
+
+  IngressSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for VPC endpoints - allows HTTPS and HTTP from VPC CIDR"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - Description: "Allow HTTPS from VPC CIDR for VPC endpoint access"
+          FromPort: 443
+          IpProtocol: tcp
+          ToPort: 443
+          CidrIp: !Ref VpcCIDR
+        - Description: "Allow HTTP from VPC CIDR for VPC endpoint access"
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+          CidrIp: !Ref VpcCIDR
+      SecurityGroupEgress:
+        - Description: "Allow all outbound traffic"
+          IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+
+  AOSSVPCESecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: "Security group for OpenSearch Serverless VPC endpoint - allows traffic from VPC CIDR only"
+      VpcId: !Ref VPC
+      SecurityGroupIngress: 
+        - Description: "Allow all traffic from VPC CIDR for OpenSearch Serverless access"
+          IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: !Ref VpcCIDR
+      SecurityGroupEgress:
+        - Description: "Allow all outbound traffic to VPC CIDR"
+          IpProtocol: "-1"
+          CidrIp: !Ref VpcCIDR
+      
+  CreateVpcEndpointEC2Messages:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref IngressSecurityGroup
+      PrivateDnsEnabled: true
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ec2messages
+      VpcId: !Ref VPC
+      
+  CreateVpcEndpointKMS:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref IngressSecurityGroup
+      PrivateDnsEnabled: true
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.kms
+      VpcId: !Ref VPC
+
+  # S3 Gateway Endpoint for Lambda VPC access
+  CreateVpcEndpointS3:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcEndpointType: Gateway
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.s3
+      VpcId: !Ref VPC
+      RouteTableIds:
+        - !Ref PrivateRouteTable1
+        - !Ref PrivateRouteTable2
+        - !Ref PrivateRouteTable3
+
+  # Secrets Manager Interface Endpoint for Lambda VPC access
+  CreateVpcEndpointSecretsManager:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref IngressSecurityGroup
+      PrivateDnsEnabled: true
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.secretsmanager
+      VpcId: !Ref VPC
+
+  # SQS Interface Endpoint for Lambda VPC access (DLQ)
+  CreateVpcEndpointSQS:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      SecurityGroupIds:
+        - !Ref IngressSecurityGroup
+      PrivateDnsEnabled: true
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.sqs
+      VpcId: !Ref VPC
+
+  OpenSearchIngressSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for OpenSearch domain and OSI pipeline - allows HTTPS from VPC CIDR and access to VPC endpoints"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - Description: "Allow HTTPS from VPC CIDR for internal access"
+          FromPort: "443"
+          IpProtocol: tcp
+          ToPort: "443"
+          CidrIp: !Ref VpcCIDR
+      SecurityGroupEgress:
+        - Description: "Allow all outbound traffic for OpenSearch inter-node communication and AWS service access"
+          IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+  
+  # Lambda Security Group for VPC-attached functions
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for Lambda functions in VPC - allows outbound HTTPS to VPC endpoints and internet via NAT Gateway"
+      VpcId: !Ref VPC
+      SecurityGroupEgress:
+        - Description: "Allow HTTPS to VPC endpoints for AWS service access"
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref VpcCIDR
+        - Description: "Allow all outbound traffic via NAT Gateway for internet access (required for Lambda cold starts and external dependencies)"
+          IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+  
+  AOSSEncryptionPolicy:
+    Type: 'AWS::OpenSearchServerless::SecurityPolicy'
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      Name: das-lambda-aoss-security-policy
+      Type: encryption
+      Description: Encryption policy
+      Policy: >-
+        {"Rules":[{"ResourceType":"collection","Resource":["collection/das-lambda-*"]}],"AWSOwnedKey":true}
+  
+  Collection:
+    Type: 'AWS::OpenSearchServerless::Collection'
+    DependsOn:
+      - AOSSVPCESecurityGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      Name: das-lambda-os-collection
+      Type: TIMESERIES
+      Description: Collection to holds timeseries data
+    
+  CreateVpcEndpointAOSS:
+    Type: AWS::OpenSearchServerless::VpcEndpoint
+    DependsOn:
+      - Collection
+    Properties: 
+      Name: das-lambda-aoss-vpc-endpoint
+      SecurityGroupIds: 
+        - !Ref AOSSVPCESecurityGroup
+      SubnetIds: 
+        - !Ref PrivateSubnet1
+      VpcId: !Ref VPC
+
+  AOSSNetworkPolicy:
+    Type: AWS::OpenSearchServerless::SecurityPolicy
+    DependsOn:
+      - CreateVpcEndpointAOSS
+    Properties: 
+      Description: DAS Lambda Network Policy
+      Name: das-lambda-aoss-network-policy
+      Type: network
+      # Note: Dashboard access uses VPC endpoint instead of public access to comply with SpringClean policies
+      Policy: !Join ['', ['[{"Description":"Private Access for Endpoint","Rules":[{"ResourceType":"collection","Resource":["collection/das-lambda*"]}],"AllowFromPublic":false,"SourceVPCEs":["', !Ref CreateVpcEndpointAOSS, '"]},{"Description":"VPC Access for Dashboards","AllowFromPublic":false,"SourceVPCEs":["', !Ref CreateVpcEndpointAOSS, '"],"Rules":[{"ResourceType":"collection","Resource":["collection/das-lambda*"]},{"ResourceType":"dashboard","Resource":["collection/das-lambda*"]}]}]']]
+
+  AOSSDataAccessPolicy:
+    Type: AWS::OpenSearchServerless::AccessPolicy
+    DependsOn:
+      - CreateVpcEndpointAOSS
+    Properties: 
+      Description: DAS Lambda Data Access Policy
+      Name: das-lambda-data-access-policy
+      Type: data
+      Policy: !Sub >-
+        [{"Description":"Access for users Role","Rules":[{"ResourceType":"index","Resource":["index/*/*"],"Permission":["aoss:*"]},{"ResourceType":"collection","Resource":["collection/das-lambda*"],"Permission":["aoss:*"]}],"Principal":["arn:aws:iam::${AWS::AccountId}:role/Admin"]}]
+
+ 
+
+  ################## GENERATE OPENSEARCH PASSWORD ###################
+  AOSAdminPasswordSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: This secret has a dynamically generated secret password.
+      KmsKeyId: !Ref SecretsManagerKMSKey
+      GenerateSecretString:
+        SecretStringTemplate:
+          !Join ["", ['{"username": "', !Ref OpenSearchAdminUserName, '"}']]
+        GenerateStringKey: "password"
+        PasswordLength: 10
+        ExcludeCharacters: "\" ' ( ) $ % & * + , - . / : ; < = > ! # ? [ \\ ] ^ _ ` ~ { | } ~"
+
+  # CloudWatch Log Groups for OpenSearch logging
+  OpenSearchAuditLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub '/aws/opensearch/${DomainName}/audit-logs'
+      RetentionInDays: 30
+
+  OpenSearchIndexSlowLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub '/aws/opensearch/${DomainName}/index-slow-logs'
+      RetentionInDays: 30
+
+  OpenSearchSearchSlowLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub '/aws/opensearch/${DomainName}/search-slow-logs'
+      RetentionInDays: 30
+
+  OpenSearchApplicationLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub '/aws/opensearch/${DomainName}/application-logs'
+      RetentionInDays: 30
+
+  # IAM Role for OpenSearch to write logs to CloudWatch
+  OpenSearchLogsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: es.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+
+  # Resource policy for CloudWatch Logs to allow OpenSearch to write
+  OpenSearchLogsResourcePolicy:
+    Type: AWS::Logs::ResourcePolicy
+    Properties:
+      PolicyName: OpenSearchLogsPolicy
+      PolicyDocument: !Sub |
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "es.amazonaws.com"
+              },
+              "Action": [
+                "logs:PutLogEvents",
+                "logs:CreateLogStream"
+              ],
+              "Resource": [
+                "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/opensearch/${DomainName}/*"
+              ]
+            }
+          ]
+        }
+
+  OpenSearchServiceDomain:
+    Type: "AWS::OpenSearchService::Domain"
+    DependsOn:
+      - OpenSearchIngressSecurityGroup
+      - OpenSearchAuditLogGroup
+      - OpenSearchIndexSlowLogGroup
+      - OpenSearchSearchSlowLogGroup
+      - OpenSearchApplicationLogGroup
+      - OpenSearchLogsResourcePolicy
+    Properties:
+      DomainName:
+        Ref: DomainName
+      EngineVersion:
+        Ref: EngineVersion
+      ClusterConfig:
+        DedicatedMasterEnabled: true
+        DedicatedMasterType: 'm6g.large.search'
+        DedicatedMasterCount: '3'
+        InstanceCount: "3"
+        InstanceType:
+          Ref: InstanceType
+        ZoneAwarenessEnabled: true
+        ZoneAwarenessConfig:
+          AvailabilityZoneCount: 3
+      DomainEndpointOptions:
+        EnforceHTTPS: true
+      NodeToNodeEncryptionOptions:
+        Enabled: true
+      EncryptionAtRestOptions:
+        Enabled: true
+      EBSOptions:
+        EBSEnabled: true
+        Iops: "0"
+        VolumeSize: "100"
+        VolumeType: "gp2"
+      # PCSR suppression CKV_AWS_84 / CKV_AWS_317 (accepted): log publishing is enabled
+      # post-deployment via the EnableOpenSearchLogging custom resource.
+      # Enabling audit logging + FGAC during initial domain creation causes CloudFormation
+      # handler timeout (>60 min provisioning). Enabling via update after domain is active
+      # completes in ~10 min and avoids the timeout.
+      # Restrict access policy to specific principals and actions
+      # Note: OSI role access is granted through the OSIOpenSearchPolicy, not here to avoid circular dependency
+      # Anonymous access is required for the reverse proxy pattern - OpenSearch fine-grained access control
+      # (internal user database with username/password) handles authentication at the application layer.
+      # The domain is in a VPC with security groups restricting network access to only the reverse proxy.
+      AccessPolicies:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: '*'
+            Action:
+              - 'es:ESHttp*'
+            Resource: !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/${DomainName}/*'
+          - Effect: Allow
+            Principal:
+              Service: osis-pipelines.amazonaws.com
+            Action:
+              - 'es:ESHttpGet'
+              - 'es:ESHttpPut'
+              - 'es:ESHttpPost'
+              - 'es:ESHttpHead'
+              - 'es:DescribeDomain'
+            Resource: !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/${DomainName}/*'
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref 'AWS::AccountId'
+      AdvancedOptions:
+        rest.action.multi.allow_explicit_index: 'true'
+      AdvancedSecurityOptions:
+        Enabled: true
+        InternalUserDatabaseEnabled: true
+        MasterUserOptions:
+          MasterUserName: !Ref OpenSearchAdminUserName
+          MasterUserPassword: !Join
+            - ""
+            - - "{{resolve:secretsmanager:"
+              - !Ref AOSAdminPasswordSecret
+              - ":SecretString:password}}"
+      VPCOptions:
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+          - !Ref PrivateSubnet3
+        SecurityGroupIds:
+          - !Ref OpenSearchIngressSecurityGroup
+    UpdatePolicy:
+      EnableVersionUpgrade: true
+
+  ######## Enable OpenSearch Logging Post-Creation ########
+  # Audit logging + FGAC during initial creation causes CloudFormation handler timeout.
+  # This custom resource enables logging after the domain is active.
+
+  EnableOpenSearchLoggingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: EnableOpenSearchLogging
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'es:UpdateDomainConfig'
+                  - 'es:DescribeDomain'
+                Resource: !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/${DomainName}'
+              # PCSR suppression CKV_AWS_111 (accepted): logs:PutResourcePolicy /
+              # DescribeResourcePolicies and CreateLogGroup are account-level APIs that
+              # do not support resource-level constraints, so Resource '*' is required.
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                  - 'logs:PutResourcePolicy'
+                  - 'logs:DescribeResourcePolicies'
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - 'sqs:SendMessage'
+                Resource: !GetAtt LambdaDLQ.Arn
+              - Effect: Allow
+                Action:
+                  - 'kms:Decrypt'
+                  - 'kms:GenerateDataKey'
+                Resource: !GetAtt LambdaDLQKMSKey.Arn
+
+  EnableOpenSearchLoggingFunction:
+    Type: AWS::Lambda::Function
+    DependsOn:
+      - OpenSearchServiceDomain
+      - OpenSearchAuditLogGroup
+      - OpenSearchIndexSlowLogGroup
+      - OpenSearchSearchSlowLogGroup
+      - OpenSearchApplicationLogGroup
+      - LambdaDLQ
+    Properties:
+      Handler: index.lambda_handler
+      Role: !GetAtt EnableOpenSearchLoggingRole.Arn
+      Runtime: python3.11
+      Timeout: 600
+      ReservedConcurrentExecutions: 1
+      DeadLetterConfig:
+        TargetArn: !GetAtt LambdaDLQ.Arn
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import time
+          import cfnresponse
+
+          def lambda_handler(event, context):
+              print(f"Request Type: {event['RequestType']}")
+              if event['RequestType'] == 'Delete':
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                  return
+              try:
+                  props = event['ResourceProperties']
+                  domain = props['DomainName']
+                  region = props['Region']
+                  audit_log_arn = props['AuditLogGroupArn']
+                  index_slow_arn = props['IndexSlowLogGroupArn']
+                  search_slow_arn = props['SearchSlowLogGroupArn']
+                  app_log_arn = props['ApplicationLogGroupArn']
+
+                  client = boto3.client('opensearch', region_name=region)
+
+                  # Wait for domain to be active (not processing)
+                  for i in range(30):
+                      resp = client.describe_domain(DomainName=domain)
+                      processing = resp['DomainStatus'].get('Processing', True)
+                      if not processing:
+                          print(f"Domain is active after {i*20}s")
+                          break
+                      print(f"Domain still processing, waiting... ({i*20}s)")
+                      time.sleep(20)
+
+                  # Enable log publishing
+                  client.update_domain_config(
+                      DomainName=domain,
+                      LogPublishingOptions={
+                          'AUDIT_LOGS': {
+                              'CloudWatchLogsLogGroupArn': audit_log_arn,
+                              'Enabled': True
+                          },
+                          'INDEX_SLOW_LOGS': {
+                              'CloudWatchLogsLogGroupArn': index_slow_arn,
+                              'Enabled': True
+                          },
+                          'SEARCH_SLOW_LOGS': {
+                              'CloudWatchLogsLogGroupArn': search_slow_arn,
+                              'Enabled': True
+                          },
+                          'ES_APPLICATION_LOGS': {
+                              'CloudWatchLogsLogGroupArn': app_log_arn,
+                              'Enabled': True
+                          }
+                      }
+                  )
+                  print("Log publishing enabled successfully")
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {"Status": "Logging enabled"})
+              except Exception as e:
+                  print(f"Error: {e}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {"Error": str(e)})
+      Environment:
+        Variables:
+          REGION: !Ref AWS::Region
+
+  EnableOpenSearchLogging:
+    Type: Custom::EnableOpenSearchLogging
+    DependsOn:
+      - EnableOpenSearchLoggingFunction
+      - OpenSearchServiceDomain
+    Properties:
+      ServiceToken: !GetAtt EnableOpenSearchLoggingFunction.Arn
+      DomainName: !Ref DomainName
+      Region: !Ref AWS::Region
+      AuditLogGroupArn: !GetAtt OpenSearchAuditLogGroup.Arn
+      IndexSlowLogGroupArn: !GetAtt OpenSearchIndexSlowLogGroup.Arn
+      SearchSlowLogGroupArn: !GetAtt OpenSearchSearchSlowLogGroup.Arn
+      ApplicationLogGroupArn: !GetAtt OpenSearchApplicationLogGroup.Arn
+
+  ######## Reverse Proxy Template ########
+
+  OSIOpenSearchPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'es:ESHttpGet'
+              - 'es:ESHttpPut'
+              - 'es:ESHttpPost'
+              - 'es:ESHttpHead'
+              - 'es:DescribeDomain'
+            Resource: 
+              - !GetAtt OpenSearchServiceDomain.Arn
+              - !Sub '${OpenSearchServiceDomain.Arn}/*'
+            Sid: AllowOpenSearchAccess
+
+  OSIS3Policy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 's3:GetObject'
+              - 's3:ListBucket'
+              - 's3:GetBucketLocation'
+            Resource:
+              - !Sub '${SourceBucket.Arn}/*'
+              - !GetAtt SourceBucket.Arn
+            Sid: AllowS3Read
+
+  OSISQSPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'sqs:ReceiveMessage'
+              - 'sqs:DeleteMessage'
+              - 'sqs:GetQueueAttributes'
+            Resource: !GetAtt StandardQueue.Arn
+            Sid: AllowSQSRead
+
+  OSIKMSPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'kms:Decrypt'
+              - 'kms:GenerateDataKey'
+              - 'kms:DescribeKey'
+            Resource: 
+              - !GetAtt S3KMSKey.Arn
+              - !GetAtt StandardQueueKMSKey.Arn
+            Sid: AllowKMSDecrypt
+
+  OSIIAMRole:
+    Type: AWS::IAM::Role
+    DependsOn:
+      - OSIOpenSearchPolicy
+      - OSIS3Policy
+      - OSISQSPolicy
+      - OSIKMSPolicy
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: osis-pipelines.amazonaws.com
+            Action: sts:AssumeRole
+      Path: "/"
+      ManagedPolicyArns:
+        - !Ref OSIOpenSearchPolicy
+        - !Ref OSIS3Policy
+        - !Ref OSISQSPolicy
+        - !Ref OSIKMSPolicy
+
+  ReverseProxyInstance:
+    Type: AWS::EC2::Instance
+    DependsOn:
+      - OpenSearchServiceDomain
+      - Database
+      - SAMBucket
+      - SourceBucket
+      - CredentialsKMSKey
+      - OSIIAMRole
+      - AOSAdminPasswordSecret
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref ReverseProxyInstanceType
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      SecurityGroupIds:
+        - !Ref ReverseProxyInstanceSecurityGroup
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: {Ref: 'AWS::Region'}
+      SubnetId: !Ref PrivateSubnet1
+      # Enable IMDSv2 for enhanced security
+      MetadataOptions:
+        HttpTokens: required
+        HttpPutResponseHopLimit: 1
+        HttpEndpoint: enabled
+      # Enable detailed monitoring for better observability
+      Monitoring: true
+      # Enable EBS optimization for better I/O performance
+      EbsOptimized: true
+      Tags:
+        - Key: Environment
+          Value: Poc
+        - Key: IsUsedForDeploy
+          Value: True
+        - Key: Name
+          Value: ProxyInstance
+      UserData:
+        Fn::Base64:
+          !Sub
+          - |
+            #!/bin/bash
+
+            # Retry helper: retry_yum install <pkg> | retry_yum erase <pkg>
+            # Replaces 9 copy/pasted retry blocks in this UserData script.
+            retry_yum() {
+                local n=1
+                while [ $n -le 5 ]; do
+                    if yum "$@" -y; then
+                        echo "yum $* succeeded"
+                        return 0
+                    fi
+                    echo "yum $* attempt $n failed; sleeping 3s..."
+                    sleep 3
+                    n=$((n+1))
+                done
+                echo "yum $* failed after 5 attempts"
+                return 1
+            }
+
+            retry_yum update
+            retry_yum install jq
+
+            retry_yum install nginx.x86_64
+
+          
+            # Remove the default server block from nginx.conf so the OpenSearch proxy config takes effect.
+            # Uses Python to handle nested braces correctly (sed can't handle this reliably).
+            printf '%s\n' 'import re, sys' 'with open(sys.argv[1], "r") as f:' '    lines = f.readlines()' 'result, depth, in_server = [], 0, False' 'for line in lines:' '    if not in_server and re.match(r"\s*server\s*\{", line):' '        in_server, depth = True, line.count("{") - line.count("}")' '        continue' '    if in_server:' '        depth += line.count("{") - line.count("}")' '        if depth <= 0:' '            in_server = False' '        continue' '    result.append(line)' 'with open(sys.argv[1], "w") as f:' '    f.writelines(result)' > /tmp/remove_server_block.py
+            python3 /tmp/remove_server_block.py /etc/nginx/nginx.conf
+
+            cat << EOF > /etc/nginx/conf.d/nginx_opensearch.conf
+            server {
+                listen 80;
+                server_name \$host;
+                rewrite ^/$ https://\$host/_dashboards redirect;
+
+                # Use VPC DNS resolver with 10s TTL so nginx re-resolves
+                # when OpenSearch nodes shift ENIs (e.g. after logging enablement)
+                resolver 169.254.169.253 valid=10s;
+                set \$opensearch_upstream https://DOMAIN_ENDPOINT;
+
+                # Catch-all location for OpenSearch API requests
+                location / {
+                    proxy_pass \$opensearch_upstream;
+                    
+                    proxy_http_version 1.1;
+                    proxy_set_header Connection "Keep-Alive";
+                    proxy_set_header Host DOMAIN_ENDPOINT;
+                    
+                    proxy_buffer_size 128k;
+                    proxy_buffers 4 256k;
+                    proxy_busy_buffers_size 256k;
+                }
+
+                location ^~ /_dashboards {
+                    # Variable-based proxy_pass passes the original URI as-is,
+                    # so we use the base URL without /_dashboards suffix
+                    proxy_pass \$opensearch_upstream;
+
+                    proxy_set_header Host DOMAIN_ENDPOINT;
+
+                    proxy_cookie_domain DOMAIN_ENDPOINT \$host;
+                    proxy_cookie_path / /;
+
+                    proxy_set_header Accept-Encoding "";
+                    sub_filter_types *;
+                    sub_filter DOMAIN_ENDPOINT \$host;
+                    sub_filter_once off;
+
+                    proxy_buffer_size 128k;
+                    proxy_buffers 4 256k;
+                    proxy_busy_buffers_size 256k;
+                }
+            }          
+            EOF
+            sed -i -e "s/DOMAIN_ENDPOINT/${OpenSearchServiceDomain.DomainEndpoint}/g" /etc/nginx/conf.d/nginx_opensearch.conf
+            sudo systemctl restart nginx.service
+            sudo systemctl enable nginx.service
+          
+            JAVA_VERSION=${java_version}
+            echo "export JAVA_VERSION=$JAVA_VERSION" >> /home/ec2-user/.bash_profile
+            case "$JAVA_VERSION" in
+                java17) JAVA_PKG=java-17-amazon-corretto-devel; JAVA_HOME_PATH=/usr/lib/jvm/java-17-amazon-corretto.x86_64 ;;
+                *)      JAVA_PKG=java-21-amazon-corretto-devel; JAVA_HOME_PATH=/usr/lib/jvm/java-21-amazon-corretto.x86_64 ;;
+            esac
+            retry_yum install $JAVA_PKG
+
+            # Pin JAVA_HOME so Maven uses the JavaVersion-selected JDK instead of
+            # the Java 17 bundled with the maven-amazon-corretto17 RPM. Without
+            # this, `mvn` runs with Java 17 even when `alternatives` points
+            # `java`/`javac` at Java 21, breaking `<maven.compiler.release>21`.
+            echo "export JAVA_HOME=$JAVA_HOME_PATH" >> /home/ec2-user/.bash_profile
+            echo "export PATH=\$JAVA_HOME/bin:\$PATH" >> /home/ec2-user/.bash_profile
+            sudo sh -c "echo \"export JAVA_HOME=$JAVA_HOME_PATH\" > /etc/profile.d/java.sh"
+            sudo sh -c "echo 'export PATH=\$JAVA_HOME/bin:\$PATH' >> /etc/profile.d/java.sh"
+            sudo chmod 0644 /etc/profile.d/java.sh
+          
+            PYTHON3_VERSION=${python3_version}
+            retry_yum install $PYTHON3_VERSION
+            echo "export PYTHON3_VERSION=$PYTHON3_VERSION" >> /home/ec2-user/.bash_profile
+
+            retry_yum install git
+
+            retry_yum erase awscli
+
+            retry_yum install docker
+            service docker start
+            usermod -a -G docker ec2-user
+
+            retry_yum install maven
+          
+            # install AWS CLI 2 - access with aws2
+            cd /home/ec2-user
+            mkdir -p awscli
+            cd awscli
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install
+
+            # Get region for environment
+            AWS_REGION=${aws_region}
+            echo "export AWS_REGION=$AWS_REGION" >> /home/ec2-user/.bash_profile
+
+            # Install AWS SAM CLI
+            cd /home/ec2-user
+            mkdir -p awssam
+            cd awssam
+            wget https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip
+            unzip aws-sam-cli-linux-x86_64.zip -d sam-installation
+            sudo ./sam-installation/install
+            
+            #Enable DAS and wait to get the ARN of the Kinesis Stream
+            KMS_KEY=${kms_key}
+            echo "KMS_KEY=$KMS_KEY"
+            echo "export KMS_KEY=$KMS_KEY" >> /home/ec2-user/.bash_profile 
+            DATABASE_ARN=${database_arn}
+            echo "DATABASE_ARN=$DATABASE_ARN"
+            echo "export DATABASE_ARN=$DATABASE_ARN" >> /home/ec2-user/.bash_profile
+            
+            aws rds start-activity-stream --mode async --kms-key-id $KMS_KEY --resource-arn $DATABASE_ARN --apply-immediately
+            
+            max_attempts=25
+            attempt_num=1
+            success=false
+            while [ $success = false ] && [ $attempt_num -le $max_attempts ]; do
+                echo "Getting Status of Database Activity Stream"
+                
+                DAS_STATUS=$(aws rds --region $AWS_REGION describe-db-clusters | jq -r '.DBClusters[0].Status')
+               
+                # Check the exit code of the command
+                if [ $DAS_STATUS == "available" ]; then
+                    echo "DAS_STATUS=$DAS_STATUS"
+                    echo "DAS is enabled"
+                    success=true
+                else
+                    echo "DAS_STATUS=$DAS_STATUS"
+                    echo "DAS is being enabled. Sleeping for 1 minute and trying again..."
+                    sleep 60
+                    ((attempt_num++))
+                fi
+            done
+
+            DAS_KINESIS_STREAM_FULL_NAME=$(aws rds --region $AWS_REGION describe-db-clusters | jq -r '.DBClusters[0].ActivityStreamKinesisStreamName')
+            
+            DAS_KINESIS_STREAM_NAME="$(echo $DAS_KINESIS_STREAM_FULL_NAME | cut -d '-' -f5)"
+            
+            echo "export DAS_KINESIS_STREAM_NAME=$DAS_KINESIS_STREAM_NAME" >> /home/ec2-user/.bash_profile
+            
+            S3_BUCKET_NAME=${s3_bucket_name}
+            echo "export S3_BUCKET_NAME=$S3_BUCKET_NAME" >> /home/ec2-user/.bash_profile
+            
+            #Checkout Serverless Samples (from S3 archive if provided, else from Github)
+            cd /home/ec2-user
+            DAS_LAMBDA_CODE_GITHUB_LOCATION=${das_lambda_code_github_location}
+            DAS_LAMBDA_CODE_S3_URI=${das_lambda_code_s3_uri}
+            if [ -n "$DAS_LAMBDA_CODE_S3_URI" ]; then
+                echo "Using S3 code-source override: $DAS_LAMBDA_CODE_S3_URI"
+                mkdir -p serverless-samples
+                aws s3 cp "$DAS_LAMBDA_CODE_S3_URI" /tmp/das-code.tgz --region $AWS_REGION
+                tar -xzf /tmp/das-code.tgz -C serverless-samples
+                rm -f /tmp/das-code.tgz
+            else
+                echo "Cloning from $DAS_LAMBDA_CODE_GITHUB_LOCATION"
+                git clone $DAS_LAMBDA_CODE_GITHUB_LOCATION
+            fi
+            cd serverless-samples
+            cd ./das-lambda-java-sam/das_consumer_sam_project
+            sudo chown -R ec2-user .
+            source /home/ec2-user/.bash_profile
+            sed -i "s/DAS_KINESIS_STREAM_NAME/$DAS_KINESIS_STREAM_NAME/g" template.yaml
+            sed -i "s/S3_BUCKET_NAME/$S3_BUCKET_NAME/g" template.yaml
+                       
+            #Install PostgresSql client
+            retry_yum install postgresql15.x86_64 postgresql15-server
+            
+            # Create script to log into postgres database
+            
+            DB_SECRET=${db_secret}
+            
+            echo "DB_SECRET=$DB_SECRET"
+            echo "export DB_SECRET=$DB_SECRET" >> /home/ec2-user/.bash_profile
+            
+            DBHOST=$(aws secretsmanager get-secret-value --secret-id $DB_SECRET | jq -r '.SecretString' | jq -r '.' | jq -r '.host')
+            
+            DBPORT=$(aws secretsmanager get-secret-value --secret-id $DB_SECRET | jq -r '.SecretString' | jq -r '.' | jq -r '.port')
+            
+            DBUSERNAME=$(aws secretsmanager get-secret-value --secret-id $DB_SECRET | jq -r '.SecretString' | jq -r '.' | jq -r '.username')
+            
+            DBPASSWORD=$(aws secretsmanager get-secret-value --secret-id $DB_SECRET | jq -r '.SecretString' | jq -r '.' | jq -r '.password')     
+            
+            echo "export DBHOST=$DBHOST" >> /home/ec2-user/.bash_profile
+            echo "export DBPORT=$DBPORT" >> /home/ec2-user/.bash_profile
+            echo "export DBUSERNAME=$DBUSERNAME" >> /home/ec2-user/.bash_profile
+            
+            # db_connect.sh fetches the DB password from Secrets Manager at runtime
+            # (via the instance role) instead of baking the plaintext password into the
+            # script or persisting it to .bash_profile.
+            echo "#!/bin/bash" > /home/ec2-user/db_connect.sh
+            echo "export PGPASSWORD=\$(aws secretsmanager get-secret-value --secret-id $DB_SECRET --region ${aws_region} --query SecretString --output text | jq -r '.password')" >> /home/ec2-user/db_connect.sh
+            echo "psql -h $DBHOST -d postgres -U $DBUSERNAME -p $DBPORT" >> /home/ec2-user/db_connect.sh
+            sudo chmod +x /home/ec2-user/db_connect.sh
+            
+            # Create sample SQL commands file
+            
+            echo "create table persons(firstname varchar(25) not null, lastname varchar(25) not null, middle_initial varchar(1) null, street_address varchar(100) not null, unit_number varchar(10) null, city varchar(25) not null, state varchar(2) not null, zip varchar(10) not null);" > /home/ec2-user/db_commands.sql
+            
+            echo "" >> /home/ec2-user/db_commands.sql
+
+            echo "insert into persons values ('John', 'Cummins', 'M', '1320 Hollywood Blvd.', 'Apt - 213', 'London', 'KY', '40740');" >> /home/ec2-user/db_commands.sql
+            
+            echo "" >> /home/ec2-user/db_commands.sql
+
+            echo "insert into persons values ('Bryan', 'Starc', 'M', '89075 Parkwood Dr.', 'Unit-M', 'Paris', 'TX', '75461');" >> /home/ec2-user/db_commands.sql
+            
+            echo "" >> /home/ec2-user/db_commands.sql
+
+            echo "select * from persons;" >> /home/ec2-user/db_commands.sql
+            
+            # Adding OSI IAM Role as backend role to all_access role in OpenSearch
+            # and Creating OpenSearch Ingestion Pipeline
+            
+            SQS_QUEUE_URL=${sqs_queue_url}
+            echo "export SQS_QUEUE_URL=$SQS_QUEUE_URL" >> /home/ec2-user/.bash_profile
+            
+            OPENSEARCH_DOMAIN_ENDPOINT=${opensearch_domain_endpoint}
+            echo "export OPENSEARCH_DOMAIN_ENDPOINT=$OPENSEARCH_DOMAIN_ENDPOINT" >> /home/ec2-user/.bash_profile
+            
+            OPENSEARCH_DOMAIN_URL='https://'$OPENSEARCH_DOMAIN_ENDPOINT
+            echo "export OPENSEARCH_DOMAIN_URL=$OPENSEARCH_DOMAIN_URL" >> /home/ec2-user/.bash_profile
+            
+            OSI_IAM_ROLE=${osi_iam_role}
+            echo "export OSI_IAM_ROLE=$OSI_IAM_ROLE" >> /home/ec2-user/.bash_profile
+            
+            # OpenSearch admin credentials are exported into the current UserData shell
+            # only. The password and its base64 form are NOT persisted to .bash_profile,
+            # so UpdateOSIRole.sh below inherits them via the environment without leaving
+            # the secret on disk or in shell history on the instance.
+            export OS_ADMIN_USERNAME=${os_admin_username}
+            # Fetch the OpenSearch admin password directly from Secrets Manager (via the
+            # instance role) instead of receiving it through a custom resource. This keeps
+            # the plaintext password out of CloudFormation custom-resource responses,
+            # stack outputs, and CloudWatch logs.
+            export OS_ADMIN_PASSWORD=$(aws secretsmanager get-secret-value --secret-id ${aos_password_secret_arn} --region ${aws_region} --query SecretString --output text | jq -r '.password')
+            echo "export OS_ADMIN_USERNAME=$OS_ADMIN_USERNAME" >> /home/ec2-user/.bash_profile
+            export BASE64_USERNAME_PWD=$(echo -n $OS_ADMIN_USERNAME:$OS_ADMIN_PASSWORD | base64)
+            
+            source /home/ec2-user/.bash_profile
+            sudo chmod +x /home/ec2-user/serverless-samples/das-lambda-java-sam/UpdateOSIRole.sh
+            sh /home/ec2-user/serverless-samples/das-lambda-java-sam/UpdateOSIRole.sh > /home/ec2-user/UpdateOSIRoleOutput.txt
+            
+            cd /home/ec2-user/serverless-samples/das-lambda-java-sam
+            cp ./IngestionPipelineConfig.yaml ./IngestionPipelineConfigSubstituted.yaml
+            sudo chown -R ec2-user .
+            source /home/ec2-user/.bash_profile
+            sed -i "s|SQS_QUEUE_URL|$SQS_QUEUE_URL|g" IngestionPipelineConfigSubstituted.yaml
+            sed -i "s|OPENSEARCH_DOMAIN_ENDPOINT|$OPENSEARCH_DOMAIN_URL|g" IngestionPipelineConfigSubstituted.yaml
+            sed -i "s|OSI_ROLE|$OSI_IAM_ROLE|g" IngestionPipelineConfigSubstituted.yaml
+            sed -i "s/AWS_REGION/$AWS_REGION/g" IngestionPipelineConfigSubstituted.yaml
+            
+            # Create OSI pipeline with VPC configuration to access VPC-based OpenSearch domain
+            OSI_SUBNET_IDS="${osi_subnet_ids}"
+            OSI_SECURITY_GROUP_ID="${osi_security_group_id}"
+            aws osis create-pipeline \
+              --pipeline-name das-osi-pipeline \
+              --min-units 1 \
+              --max-units 4 \
+              --pipeline-configuration-body file://IngestionPipelineConfigSubstituted.yaml \
+              --vpc-options "SubnetIds=$OSI_SUBNET_IDS,SecurityGroupIds=$OSI_SECURITY_GROUP_ID" \
+              --region $AWS_REGION \
+              --no-cli-pager
+            
+            # Building and Deploying Lambda Function
+            cd /home/ec2-user
+            cd serverless-samples
+            cd ./das-lambda-java-sam/das_consumer_sam_project
+            source /home/ec2-user/.bash_profile
+            # Verify Maven is using the requested JDK before building. If JAVA_HOME
+            # is not exported correctly, Maven will fall back to its bundled
+            # Java 17 and silently produce a source-only deploy package.
+            echo "JAVA_HOME=$JAVA_HOME"
+            mvn -version
+            sam build
+            SAM_BUILD_RC=$?
+            if [ $SAM_BUILD_RC -ne 0 ]; then
+                echo "ERROR: sam build failed with exit code $SAM_BUILD_RC"
+                echo "Aborting sam deploy to avoid shipping a broken Lambda package."
+                exit $SAM_BUILD_RC
+            fi
+            sleep 60
+            sam deploy --capabilities CAPABILITY_IAM --stack-name das-lambda-stack --no-confirm-changeset --no-disable-rollback --resolve-s3 --region $AWS_REGION
+
+          - das_lambda_code_github_location: !Ref DASLambdaCodeGithubLocation
+            das_lambda_code_s3_uri: !Ref DASLambdaCodeS3Uri
+            python3_version: !Ref Python3Version
+            aws_region: !Ref 'AWS::Region'
+            kms_key: !GetAtt CredentialsKMSKey.Arn
+            database_arn: !GetAtt Database.DBClusterArn
+            s3_bucket_name: !Ref SourceBucket
+            sam_bucket_name: !Ref SAMBucket
+            java_version: !Ref JavaVersion
+            db_secret: !Ref DbActivityStreamsStackDatabaseSecret
+            sqs_queue_url: !Ref StandardQueue
+            opensearch_domain_endpoint: !GetAtt OpenSearchServiceDomain.DomainEndpoint
+            osi_iam_role: !GetAtt OSIIAMRole.Arn
+            osi_subnet_ids: !Join [',', [!Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3]]
+            osi_security_group_id: !GetAtt OpenSearchIngressSecurityGroup.GroupId
+            os_admin_username: !Ref OpenSearchAdminUserName
+            aos_password_secret_arn: !Ref AOSAdminPasswordSecret
+
+  # ALB Security Group - only allows HTTPS from CloudFront (managed prefix list)
+  ALBSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Security group for ALB - allows HTTP from CloudFront managed prefix list only"
+      SecurityGroupIngress:
+        - Description: "Allow HTTP from CloudFront managed prefix list"
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourcePrefixListId: !Ref CloudFrontPrefixListId
+      SecurityGroupEgress:
+        - Description: "Allow HTTP to reverse proxy EC2 in VPC"
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !Ref VpcCIDR
+      VpcId: !Ref VPC
+
+  # EC2 Security Group - private, no internet-facing rules
+  ReverseProxyInstanceSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Security group for OpenSearch reverse proxy EC2 instance - private, no internet-facing rules"
+      SecurityGroupIngress:
+        - Description: "Allow HTTP from ALB only"
+          IpProtocol: tcp
+          FromPort: "80"
+          ToPort: "80"
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+        - Description: "Allow SSH from EC2 Instance Connect Endpoint only"
+          IpProtocol: tcp
+          FromPort: "22"
+          ToPort: "22"
+          SourceSecurityGroupId: !Ref EICEndpointSecurityGroup
+      SecurityGroupEgress:
+        - Description: "Allow HTTPS outbound to OpenSearch domain in VPC"
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref VpcCIDR
+        - Description: "Allow HTTP/HTTPS outbound via NAT Gateway for package updates"
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - Description: "Allow PostgreSQL outbound to RDS Aurora cluster in VPC private subnets"
+          IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: !Ref VpcCIDR
+      VpcId: !Ref VPC
+
+
+  # RDS Enhanced Monitoring IAM Role
+  RDSEnhancedMonitoringRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: monitoring.rds.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole
+      Path: /
+
+  DatabaseSubnets:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnets for Database database
+      SubnetIds:
+      - Ref: PrivateSubnet1
+      - Ref: PrivateSubnet2
+      - Ref: PrivateSubnet3
+    
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for RDS Aurora PostgreSQL cluster - allows PostgreSQL traffic from VPC CIDR only"
+      SecurityGroupEgress:
+      - Description: "Allow PostgreSQL outbound to VPC CIDR for replication and monitoring"
+        IpProtocol: tcp
+        FromPort: 5432
+        ToPort: 5432
+        CidrIp: !Ref VpcCIDR
+      - Description: "Allow HTTPS outbound to VPC CIDR for AWS service access"
+        IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        CidrIp: !Ref VpcCIDR
+      VpcId:
+        Ref: VPC
+    
+  DatabaseSecurityGroupfromDbActivityStreamsStackBastionHostInstanceSecurityGroupIndirectPort:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: from DbActivityStreamsStackBastionHostInstanceSecurityGroup:{IndirectPort}
+      FromPort:
+        Fn::GetAtt:
+        - Database
+        - Endpoint.Port
+      GroupId:
+        Fn::GetAtt:
+        - DatabaseSecurityGroup
+        - GroupId
+      IpProtocol: tcp
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+        - ReverseProxyInstanceSecurityGroup
+        - GroupId
+      ToPort:
+        Fn::GetAtt:
+        - Database
+        - Endpoint.Port
+    
+  DbActivityStreamsStackDatabaseSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      KmsKeyId: !Ref SecretsManagerKMSKey
+      Description:
+        Fn::Join:
+        - ''
+        - - 'Generated by the CDK for stack: '
+          - Ref: AWS::StackName
+      GenerateSecretString:
+        ExcludeCharacters: ' %+~`#$&*()|[]{}:;<>?!''/@"\'
+        GenerateStringKey: password
+        PasswordLength: 30
+        SecretStringTemplate: '{"username":"adminuser"}'
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    
+  DatabaseSecretAttachment:
+    Type: AWS::SecretsManager::SecretTargetAttachment
+    Properties:
+      SecretId:
+        Ref: DbActivityStreamsStackDatabaseSecret
+      TargetId:
+        Ref: Database
+      TargetType: AWS::RDS::DBCluster
+    
+  Database:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      CopyTagsToSnapshot: true
+      DBClusterParameterGroupName: default.aurora-postgresql15
+      DBSubnetGroupName:
+        Ref: DatabaseSubnets
+      Engine: aurora-postgresql
+      EngineVersion: !Ref AuroraPostgresVersion
+      MasterUserPassword:
+        Fn::Join:
+        - ''
+        - - "{{resolve:secretsmanager:"
+          - Ref: DbActivityStreamsStackDatabaseSecret
+          - ":SecretString:password::}}"
+      MasterUsername: adminuser
+      Port: 5432
+      StorageType: aurora-iopt1
+      StorageEncrypted: true
+      # PCSR fix CKV_AWS_162: enable IAM database authentication. This is additive to
+      # the master-user password auth that DAS setup requires, allowing applications to
+      # connect with short-lived IAM auth tokens instead of long-lived credentials.
+      EnableIAMDatabaseAuthentication: true
+      DeletionProtection: true
+      EnableCloudwatchLogsExports:
+        - postgresql
+      VpcSecurityGroupIds:
+      - Fn::GetAtt:
+        - DatabaseSecurityGroup
+        - GroupId
+    UpdateReplacePolicy: Snapshot
+    DeletionPolicy: Snapshot
+    
+  DatabaseInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBClusterIdentifier:
+        Ref: Database
+      DBInstanceClass: db.r5.large
+      DBSubnetGroupName:
+        Ref: DatabaseSubnets
+      Engine: aurora-postgresql
+      PubliclyAccessible: false
+      MonitoringInterval: 60
+      MonitoringRoleArn: !GetAtt RDSEnhancedMonitoringRole.Arn
+      AutoMinorVersionUpgrade: true
+    DependsOn:
+    - PrivateSubnet1RouteTableAssociation
+    - PrivateSubnet2RouteTableAssociation
+    - PrivateSubnet3RouteTableAssociation
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    
+  DatabaseInstance2:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBClusterIdentifier:
+        Ref: Database
+      DBInstanceClass: db.r5.large
+      DBSubnetGroupName:
+        Ref: DatabaseSubnets
+      Engine: aurora-postgresql
+      PubliclyAccessible: false
+      MonitoringInterval: 60
+      MonitoringRoleArn: !GetAtt RDSEnhancedMonitoringRole.Arn
+      AutoMinorVersionUpgrade: true
+    DependsOn:
+    - PrivateSubnet1RouteTableAssociation
+    - PrivateSubnet2RouteTableAssociation
+    - PrivateSubnet3RouteTableAssociation
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+
+  # S3 KMS Customer Managed Key
+  S3KMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "KMS Customer Managed Key for S3 bucket encryption"
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Id: s3-key-policy
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow S3 to use the key
+            Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - 'kms:Decrypt'
+              - 'kms:GenerateDataKey'
+              - 'kms:CreateGrant'
+            Resource: '*'
+            Condition:
+              StringEquals:
+                'kms:ViaService': !Sub 's3.${AWS::Region}.amazonaws.com'
+                'kms:CallerAccount': !Ref 'AWS::AccountId'
+          # PCSR suppression CKV_AWS_33 (accepted): Principal AWS '*' is scoped by the
+          # kms:CallerAccount and aws:PrincipalArn conditions below (Lambda roles in this
+          # account only) — the AWS-recommended condition-scoped key policy pattern, not
+          # an unconditioned wildcard principal.
+          - Sid: Allow Lambda to use the key for S3 access
+            Effect: Allow
+            Principal:
+              AWS: '*'
+            Action:
+              - 'kms:Decrypt'
+              - 'kms:GenerateDataKey'
+            Resource: '*'
+            Condition:
+              StringEquals:
+                'kms:CallerAccount': !Ref 'AWS::AccountId'
+              StringLike:
+                'aws:PrincipalArn': !Sub 'arn:aws:iam::${AWS::AccountId}:role/*Lambda*'
+          - Sid: Allow OpenSearch Ingestion to use the key
+            Effect: Allow
+            Principal:
+              Service: osis-pipelines.amazonaws.com
+            Action:
+              - 'kms:Decrypt'
+              - 'kms:GenerateDataKey'
+            Resource: '*'
+            Condition:
+              StringEquals:
+                'kms:CallerAccount': !Ref 'AWS::AccountId'
+      PendingWindowInDays: 7
+
+  # S3 Access Logging Bucket
+  # PCSR suppression CKV_AWS_18 / S3_BUCKET_LOGGING_ENABLED (accepted): this bucket IS the
+  # terminal access-log destination for the other S3 buckets and for CloudFront. Enabling
+  # access logging on it would create a self-referential logging loop.
+  S3LoggingBucket:
+    Type: 'AWS::S3::Bucket'
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'aws:kms'
+              KMSMasterKeyID: !GetAtt S3KMSKey.Arn
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 90
+          - Id: ExpireOldLogs
+            Status: Enabled
+            ExpirationInDays: 365
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerPreferred
+      Tags:
+        - Key: Purpose
+          Value: S3AccessLogging
+
+  # S3 Logging Bucket Policy
+  S3LoggingBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3LoggingBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: S3ServerAccessLogsPolicy
+            Effect: Allow
+            Principal:
+              Service: logging.s3.amazonaws.com
+            Action:
+              - 's3:PutObject'
+            Resource: !Sub '${S3LoggingBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref 'AWS::AccountId'
+          # PCSR fix S3_BUCKET_SSL_REQUESTS_ONLY: deny any request not using TLS.
+          - Sid: DenyNonSSL
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt S3LoggingBucket.Arn
+              - !Sub '${S3LoggingBucket.Arn}/*'
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'false'
+
+  # PCSR fix S3_BUCKET_SSL_REQUESTS_ONLY: enforce TLS-only access on the DAS events bucket.
+  SourceBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SourceBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyNonSSL
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt SourceBucket.Arn
+              - !Sub '${SourceBucket.Arn}/*'
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'false'
+
+  # PCSR fix S3_BUCKET_SSL_REQUESTS_ONLY: enforce TLS-only access on the SAM deployment bucket.
+  SAMBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SAMBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyNonSSL
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt SAMBucket.Arn
+              - !Sub '${SAMBucket.Arn}/*'
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'false'
+
+  ## S3 bucket for DAS events
+  SourceBucket:
+    Type: 'AWS::S3::Bucket'
+    DependsOn:
+      - QueuePolicy
+      - S3LoggingBucket
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'aws:kms'
+              KMSMasterKeyID: !GetAtt S3KMSKey.Arn
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      LoggingConfiguration:
+        DestinationBucketName: !Ref S3LoggingBucket
+        LogFilePrefix: 'source-bucket-logs/'
+      ObjectLockEnabled: true
+      ObjectLockConfiguration:
+        ObjectLockEnabled: Enabled
+        Rule:
+          DefaultRetention:
+            Mode: GOVERNANCE
+            Days: 30
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 90
+          - Id: TransitionOldVersionsToIA
+            Status: Enabled
+            NoncurrentVersionTransitions:
+              - StorageClass: STANDARD_IA
+                TransitionInDays: 30
+      NotificationConfiguration:
+        QueueConfigurations:
+          - Event: 's3:ObjectCreated:*'
+            Queue: !GetAtt StandardQueue.Arn
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: !Join ['', [!Ref SourceBucketPrefix, "/"]]
+      Tags:
+        - Key: Purpose
+          Value: DatabaseActivityStreams
+
+  ## S3 bucket for SAM deployments
+  SAMBucket:
+    Type: 'AWS::S3::Bucket'
+    DependsOn:
+      - S3LoggingBucket
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'aws:kms'
+              KMSMasterKeyID: !GetAtt S3KMSKey.Arn
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      LoggingConfiguration:
+        DestinationBucketName: !Ref S3LoggingBucket
+        LogFilePrefix: 'sam-bucket-logs/'
+      ObjectLockEnabled: true
+      ObjectLockConfiguration:
+        ObjectLockEnabled: Enabled
+        Rule:
+          DefaultRetention:
+            Mode: GOVERNANCE
+            Days: 30
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 90
+          - Id: TransitionOldVersionsToIA
+            Status: Enabled
+            NoncurrentVersionTransitions:
+              - StorageClass: STANDARD_IA
+                TransitionInDays: 30
+      Tags:
+        - Key: Purpose
+          Value: SAMDeployments
+
+  QueuePolicy:
+    Type: 'AWS::SQS::QueuePolicy'
+    DependsOn:
+      - StandardQueue
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal: 
+              Service: "s3.amazonaws.com"
+            Action:
+              - 'SQS:SendMessage'
+            Resource: !GetAtt StandardQueue.Arn
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+      Queues:
+        - !Ref StandardQueue
+
+  StandardQueue:
+    Type: 'AWS::SQS::Queue'
+    Properties:
+      # PCSR suppression CKV_AWS_27 (accepted): using SQS-managed encryption (SSE-SQS) instead of KMS-CMK
+      # KMS-CMK encryption on SQS is incompatible with OpenSearch Ingestion pipelines
+      # that read from the queue via VPC endpoints. SSE-SQS provides encryption at rest
+      # without the KMS key management overhead.
+      SqsManagedSseEnabled: true
+  
+  # KMS Key for Standard SQS Queue (DAS notifications)
+  StandardQueueKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "KMS key for Standard SQS Queue encryption (DAS notifications)"
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Id: standard-queue-key-policy
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow S3 to use the key for event notifications
+            Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - 'kms:Decrypt'
+              - 'kms:GenerateDataKey'
+            Resource: '*'
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref 'AWS::AccountId'
+          - Sid: Allow SQS to use the key
+            Effect: Allow
+            Principal:
+              Service: sqs.amazonaws.com
+            Action:
+              - 'kms:Decrypt'
+              - 'kms:GenerateDataKey'
+            Resource: '*'
+          - Sid: Allow OpenSearch Ingestion to use the key
+            Effect: Allow
+            Principal:
+              Service: osis-pipelines.amazonaws.com
+            Action:
+              - 'kms:Decrypt'
+              - 'kms:GenerateDataKey'
+              - 'kms:DescribeKey'
+            Resource: '*'
+      PendingWindowInDays: 7
+      Tags:
+        - Key: StackName
+          Value: !Ref AWS::StackName
+        - Key: Purpose
+          Value: das-lambda-java-sam
+  
+  # Secrets Manager KMS Customer Managed Key
+  SecretsManagerKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "KMS Customer Managed Key for Secrets Manager encryption"
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Id: secrets-manager-key-policy
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow Secrets Manager to use the key
+            Effect: Allow
+            Principal:
+              Service: secretsmanager.amazonaws.com
+            Action:
+              - 'kms:Decrypt'
+              - 'kms:GenerateDataKey'
+              - 'kms:CreateGrant'
+              - 'kms:DescribeKey'
+            Resource: '*'
+            Condition:
+              StringEquals:
+                'kms:ViaService': !Sub 'secretsmanager.${AWS::Region}.amazonaws.com'
+                'kms:CallerAccount': !Ref 'AWS::AccountId'
+          - Sid: Allow Lambda service to decrypt secrets
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - 'kms:Decrypt'
+              - 'kms:DescribeKey'
+            Resource: '*'
+            Condition:
+              StringEquals:
+                'kms:CallerAccount': !Ref 'AWS::AccountId'
+      PendingWindowInDays: 7
+      Tags:
+        - Key: StackName
+          Value: !Ref AWS::StackName
+        - Key: Purpose
+          Value: das-lambda-java-sam
+  
+  # Lambda Dead Letter Queue KMS Key
+  LambdaDLQKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "KMS key for Lambda Dead Letter Queue encryption"
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Id: lambda-dlq-key-policy
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow SQS to use the key
+            Effect: Allow
+            Principal:
+              Service: sqs.amazonaws.com
+            Action:
+              - 'kms:Decrypt'
+              - 'kms:GenerateDataKey'
+            Resource: '*'
+          - Sid: Allow Lambda to use the key
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - 'kms:Decrypt'
+              - 'kms:GenerateDataKey'
+            Resource: '*'
+      PendingWindowInDays: 7
+      Tags:
+        - Key: StackName
+          Value: !Ref AWS::StackName
+        - Key: Purpose
+          Value: das-lambda-java-sam
+
+  # Lambda Dead Letter Queue
+  LambdaDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600  # 14 days in seconds
+      KmsMasterKeyId: !Ref LambdaDLQKMSKey
+      KmsDataKeyReusePeriodSeconds: 300
+  
+  SNSTopicForOpenSearchNotification:
+    Type: 'AWS::SNS::Topic'
+    Properties:
+      KmsMasterKeyId: !Ref SNSTopicKMSKey
+  
+  # KMS Key for SNS Topic (OpenSearch notifications)
+  SNSTopicKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "KMS key for SNS Topic encryption (OpenSearch notifications)"
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Id: sns-topic-key-policy
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow OpenSearch to use the key
+            Effect: Allow
+            Principal:
+              Service: es.amazonaws.com
+            Action:
+              - 'kms:Decrypt'
+              - 'kms:GenerateDataKey'
+            Resource: '*'
+          - Sid: Allow SNS to use the key
+            Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action:
+              - 'kms:Decrypt'
+              - 'kms:GenerateDataKey'
+            Resource: '*'
+      PendingWindowInDays: 7
+  
+  OpenSearchSNSPulishRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - es.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: SNSSendMessagePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref SNSTopicForOpenSearchNotification
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                  - kms:GenerateDataKey
+                Resource: !GetAtt SNSTopicKMSKey.Arn
+                Sid: AllowKMSForSNS
+
+  EICEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for EC2 Instance Connect Endpoint - SSH egress to VPC only"
+      SecurityGroupEgress:
+        - Description: "Allow SSH to EC2 instances in VPC only"
+          IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref VpcCIDR
+      VpcId: !Ref VPC
+
+  EC2InstanceEndpoint:
+    Type: AWS::EC2::InstanceConnectEndpoint
+    Properties:
+      PreserveClientIp: false
+      SecurityGroupIds: 
+        - !GetAtt EICEndpointSecurityGroup.GroupId
+      SubnetId: !Ref PrivateSubnet1
+
+  ######## Application Load Balancer for CloudFront Origin ########
+  OpenSearchALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      Type: application
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+        - !Ref PublicSubnet3
+      LoadBalancerAttributes:
+        - Key: routing.http.drop_invalid_header_fields.enabled
+          Value: "true"
+
+  OpenSearchALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: ReverseProxyInstance
+    Properties:
+      Protocol: HTTP
+      Port: 80
+      VpcId: !Ref VPC
+      TargetType: instance
+      Targets:
+        - Id: !Ref ReverseProxyInstance
+          Port: 80
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /
+      HealthCheckIntervalSeconds: 30
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 5
+      Matcher:
+        HttpCode: 200-399
+
+  OpenSearchALBListener:
+    # PCSR findings CKV_AWS_2 / CKV_AWS_103 (documented suppression): this ALB is
+    # internal (private subnets) and only reachable from CloudFront via the CloudFront
+    # managed prefix list. TLS terminates at CloudFront and the CloudFront->ALB hop
+    # stays within the AWS network inside the VPC. Production deployments that require
+    # end-to-end encryption should switch this listener to HTTPS:443 with an ACM
+    # certificate and SslPolicy ELBSecurityPolicy-TLS13-1-2-2021-06.
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref OpenSearchALB
+      Protocol: HTTP
+      Port: 80
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref OpenSearchALBTargetGroup
+
+  ######## CloudFront Distribution ########
+  OpenSearchCloudFront:
+    Type: AWS::CloudFront::Distribution
+    DependsOn: OpenSearchALB
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub "CloudFront for OpenSearch Dashboards - ${AWS::StackName}"
+        # PCSR fix CKV_AWS_86: enable CloudFront standard access logging to the
+        # dedicated S3 logging bucket (ACLs are enabled on it via BucketOwnerPreferred
+        # so CloudFront's log-delivery account can write).
+        Logging:
+          Bucket: !GetAtt S3LoggingBucket.RegionalDomainName
+          IncludeCookies: false
+          Prefix: cloudfront-logs/
+        DefaultCacheBehavior:
+          TargetOriginId: opensearch-alb
+          ViewerProtocolPolicy: https-only
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - POST
+            - PATCH
+            - DELETE
+          CachedMethods:
+            - GET
+            - HEAD
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad  # CachingDisabled
+          OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3  # AllViewer
+          Compress: true
+        Origins:
+          - Id: opensearch-alb
+            DomainName: !GetAtt OpenSearchALB.DNSName
+            CustomOriginConfig:
+              HTTPPort: 80
+              OriginProtocolPolicy: http-only
+        ViewerCertificate:
+          # PCSR finding CKV_AWS_174 (documented suppression): enforcing a TLS 1.2+
+          # MinimumProtocolVersion requires a custom domain + ACM certificate, which
+          # CloudFront does not allow together with CloudFrontDefaultCertificate. This
+          # sample ships without a custom domain; production deployments should add a
+          # custom domain with an ACM cert and MinimumProtocolVersion: TLSv1.2_2021.
+          CloudFrontDefaultCertificate: true
+        HttpVersion: http2
+
+  # Consolidated EC2 IAM Policies (3 policies instead of 9 to stay under 10-policy limit)
+  
+  EC2DeploymentPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          # CloudFormation Operations
+          - Effect: Allow
+            Action:
+              - 'cloudformation:CreateStack'
+              - 'cloudformation:UpdateStack'
+              - 'cloudformation:DeleteStack'
+              - 'cloudformation:DescribeStacks'
+              - 'cloudformation:DescribeStackEvents'
+              - 'cloudformation:DescribeStackResources'
+              - 'cloudformation:GetTemplate'
+              - 'cloudformation:ValidateTemplate'
+              - 'cloudformation:ListStacks'
+              - 'cloudformation:CreateChangeSet'
+              - 'cloudformation:DescribeChangeSet'
+              - 'cloudformation:ExecuteChangeSet'
+              - 'cloudformation:DeleteChangeSet'
+              - 'cloudformation:ListChangeSets'
+            Resource: 
+              - !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*'
+              - !Sub 'arn:aws:cloudformation:${AWS::Region}:aws:transform/Serverless-2016-10-31'
+            Sid: AllowCloudFormationOperations
+          # Lambda Function Operations
+          - Effect: Allow
+            Action:
+              - 'lambda:CreateFunction'
+              - 'lambda:DeleteFunction'
+              - 'lambda:GetFunction'
+              - 'lambda:UpdateFunctionCode'
+              - 'lambda:UpdateFunctionConfiguration'
+              - 'lambda:ListFunctions'
+              - 'lambda:InvokeFunction'
+              - 'lambda:AddPermission'
+              - 'lambda:RemovePermission'
+              - 'lambda:GetFunctionConfiguration'
+              - 'lambda:PutFunctionConcurrency'
+              - 'lambda:DeleteFunctionConcurrency'
+              - 'lambda:TagResource'
+              - 'lambda:UntagResource'
+              - 'lambda:ListTags'
+            Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*'
+            Sid: AllowLambdaFunctionOperations
+          # Lambda Event Source Mapping Operations
+          # PCSR suppression CKV_AWS_111 (accepted): the EventSourceMapping APIs do not
+          # support resource-level permissions, so Resource '*' is required per AWS docs.
+          - Effect: Allow
+            Action:
+              - 'lambda:CreateEventSourceMapping'
+              - 'lambda:DeleteEventSourceMapping'
+              - 'lambda:GetEventSourceMapping'
+              - 'lambda:UpdateEventSourceMapping'
+              - 'lambda:ListEventSourceMappings'
+            Resource: '*'
+            Sid: AllowLambdaEventSourceMappingOperations
+          # IAM Operations
+          - Effect: Allow
+            Action:
+              - 'iam:CreateRole'
+              - 'iam:DeleteRole'
+              - 'iam:GetRole'
+              - 'iam:PutRolePolicy'
+              - 'iam:DeleteRolePolicy'
+              - 'iam:AttachRolePolicy'
+              - 'iam:DetachRolePolicy'
+              - 'iam:CreatePolicy'
+              - 'iam:DeletePolicy'
+              - 'iam:GetPolicy'
+              - 'iam:TagRole'
+              - 'iam:TagPolicy'
+            Resource:
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:role/*'
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/*'
+            Sid: AllowIAMOperations
+          - Effect: Allow
+            Action:
+              - 'iam:PassRole'
+            Resource: 
+              - !GetAtt OSIIAMRole.Arn
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:role/das-lambda-stack-*'
+            Condition:
+              StringEquals:
+                'iam:PassedToService':
+                  - 'lambda.amazonaws.com'
+                  - 'osis-pipelines.amazonaws.com'
+            Sid: AllowPassRoleToServices
+          # OpenSearch Ingestion Operations
+          - Effect: Allow
+            Action:
+              - 'osis:CreatePipeline'
+              - 'osis:ListPipelineBlueprints'
+              - 'osis:ValidatePipeline'
+              - 'osis:GetPipeline'
+              - 'osis:StopPipeline'
+              - 'osis:StartPipeline'
+              - 'osis:UpdatePipeline'
+              - 'osis:DeletePipeline'
+            Resource: !Sub 'arn:aws:osis:${AWS::Region}:${AWS::AccountId}:pipeline/*'
+            Sid: AllowOSIOperations
+          # Service-linked role creation for OSIS (required on first pipeline creation in account)
+          - Effect: Allow
+            Action:
+              - 'iam:CreateServiceLinkedRole'
+            Resource: 'arn:aws:iam::*:role/aws-service-role/osis.amazonaws.com/AWSServiceRoleForAmazonOpenSearchIngestionService'
+            Condition:
+              StringEquals:
+                'iam:AWSServiceName': 'osis.amazonaws.com'
+            Sid: AllowOSISServiceLinkedRole
+
+  EC2DataServicesPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          # S3 Operations
+          - Effect: Allow
+            Action:
+              - 's3:GetObject'
+              - 's3:PutObject'
+              - 's3:DeleteObject'
+              - 's3:ListBucket'
+            Resource:
+              - !Sub '${SAMBucket.Arn}/*'
+              - !GetAtt SAMBucket.Arn
+              - !Sub '${SourceBucket.Arn}/*'
+              - !GetAtt SourceBucket.Arn
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'true'
+            Sid: AllowS3Operations
+          - Effect: Allow
+            Action:
+              - 's3:CreateBucket'
+              - 's3:DeleteBucket'
+              - 's3:PutBucketPolicy'
+              - 's3:GetBucketPolicy'
+              - 's3:PutBucketTagging'
+              - 's3:GetBucketTagging'
+              - 's3:TagResource'
+              - 's3:UntagResource'
+              - 's3:PutEncryptionConfiguration'
+              - 's3:GetEncryptionConfiguration'
+              - 's3:PutBucketVersioning'
+              - 's3:GetBucketVersioning'
+              - 's3:PutLifecycleConfiguration'
+              - 's3:GetLifecycleConfiguration'
+              - 's3:PutBucketPublicAccessBlock'
+              - 's3:GetBucketPublicAccessBlock'
+              - 's3:PutBucketNotification'
+              - 's3:GetBucketNotification'
+              - 's3:PutBucketLogging'
+              - 's3:GetBucketLogging'
+            Resource: !Sub 'arn:aws:s3:::*'
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'true'
+            Sid: AllowS3BucketManagement
+          # RDS Operations
+          - Effect: Allow
+            Action:
+              - 'rds:DescribeDBInstances'
+              - 'rds:DescribeDBClusters'
+              - 'rds:StartActivityStream'
+              - 'rds:StopActivityStream'
+            Resource:
+              - !Sub 'arn:aws:rds:${AWS::Region}:${AWS::AccountId}:db:*'
+              - !Sub 'arn:aws:rds:${AWS::Region}:${AWS::AccountId}:cluster:*'
+            Sid: AllowRDSOperations
+          # Secrets Manager Operations
+          - Effect: Allow
+            Action:
+              - 'secretsmanager:GetSecretValue'
+              - 'secretsmanager:DescribeSecret'
+              - 'secretsmanager:CreateSecret'
+              - 'secretsmanager:UpdateSecret'
+              - 'secretsmanager:DeleteSecret'
+            Resource:
+              - !Ref AOSAdminPasswordSecret
+              - !Ref DbActivityStreamsStackDatabaseSecret
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'true'
+            Sid: AllowSecretsManagerOperations
+          # KMS Operations
+          - Effect: Allow
+            Action:
+              - 'kms:Decrypt'
+              - 'kms:DescribeKey'
+              - 'kms:Encrypt'
+              - 'kms:GenerateDataKey'
+            Resource:
+              - !GetAtt SecretsManagerKMSKey.Arn
+              - !GetAtt CredentialsKMSKey.Arn
+            Sid: AllowKMSOperations
+          # Dev-only: read code archive from CFN deployment bucket when DASLambdaCodeS3Uri override is used.
+          # Scoped to the same cft-bucket-* prefix RunCloudformationStack.sh creates for CFN packaging.
+          - Effect: Allow
+            Action:
+              - 's3:GetObject'
+            Resource:
+              - !Sub 'arn:aws:s3:::cft-bucket-${AWS::AccountId}-*/*'
+            Condition:
+              Bool:
+                'aws:SecureTransport': 'true'
+            Sid: AllowDevCodeArchiveRead
+
+  EC2MonitoringAndNetworkPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          # CloudWatch Logs Operations
+          - Effect: Allow
+            Action:
+              - 'logs:CreateLogGroup'
+              - 'logs:CreateLogStream'
+              - 'logs:PutLogEvents'
+              - 'logs:DescribeLogGroups'
+              - 'logs:DescribeLogStreams'
+            Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*'
+            Sid: AllowCloudWatchLogs
+          # CloudWatch Metrics Operations
+          - Effect: Allow
+            Action:
+              - 'cloudwatch:PutMetricData'
+              - 'cloudwatch:GetMetricStatistics'
+              - 'cloudwatch:ListMetrics'
+            Resource: '*'
+            Sid: AllowCloudWatchMetrics
+          # EC2 VPC and Network Describe Operations (required for Lambda VPC configuration)
+          - Effect: Allow
+            Action:
+              - 'ec2:DescribeSecurityGroups'
+              - 'ec2:DescribeSecurityGroupRules'
+              - 'ec2:DescribeTags'
+              - 'ec2:DescribeSubnets'
+              - 'ec2:DescribeVpcs'
+              - 'ec2:DescribeNetworkInterfaces'
+              - 'ec2:DescribeAvailabilityZones'
+            Resource: '*'
+            Sid: AllowEC2NetworkDescribe
+          # Security Group Modify Operations
+          - Effect: Allow
+            Action:
+              - 'ec2:AuthorizeSecurityGroupIngress'
+              - 'ec2:RevokeSecurityGroupIngress'
+              - 'ec2:AuthorizeSecurityGroupEgress'
+              - 'ec2:RevokeSecurityGroupEgress'
+              - 'ec2:ModifySecurityGroupRules'
+              - 'ec2:UpdateSecurityGroupRuleDescriptionsIngress'
+              - 'ec2:UpdateSecurityGroupRuleDescriptionsEgress'
+            Resource: !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*'
+            Sid: AllowSecurityGroupModify
+          - Effect: Allow
+            Action:
+              - 'ec2:ModifySecurityGroupRules'
+            Resource: !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group-rule/*'
+            Sid: AllowSecurityGroupRuleModify
+
+  EC2Role:
+    Type: AWS::IAM::Role
+    DependsOn:
+      - EC2DeploymentPolicy
+      - EC2DataServicesPolicy
+      - EC2MonitoringAndNetworkPolicy
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: ''
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Path: "/"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM
+        - !Ref EC2DeploymentPolicy
+        - !Ref EC2DataServicesPolicy
+        - !Ref EC2MonitoringAndNetworkPolicy         
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EC2Role
+        
+  CredentialsKMSKey:
+    Type: AWS::KMS::Key
+    Properties: 
+      Description: "KMS key to use with Database Activity Streams"
+      EnableKeyRotation: True
+      KeyPolicy: 
+        Version: "2012-10-17"
+        Id: key-default-1
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Join 
+                - ''
+                - - 'arn:aws:iam::'
+                  - !Ref 'AWS::AccountId'
+                  - ':root'
+            Action: 'kms:*'
+            Resource: '*'
+          # PCSR suppression CKV_AWS_33 (accepted): the RDS and Lambda statements below
+          # use Principal AWS '*' scoped by kms:CallerAccount and kms:ViaService
+          # conditions (AWS-recommended condition-scoped service-integration pattern),
+          # not an unconditioned wildcard principal.
+          - Sid: Enable RDS Permissions
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action: 
+              - "kms:Encrypt"
+              - "kms:Decrypt"
+              - "kms:ReEncrypt*"
+              - "kms:GenerateDataKey*"
+              - "kms:CreateGrant"
+              - "kms:DescribeKey"
+            Resource: '*'
+            Condition:
+              StringEquals:
+                kms:CallerAccount: !Ref 'AWS::AccountId'
+                kms:ViaService: !Join 
+                  - ''
+                  - - 'rds.'
+                    - !Ref 'AWS::Region'
+                    - '.amazonaws.com'
+          - Sid: Enable Lambda Permissions
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action: 
+              - "kms:Encrypt"
+              - "kms:Decrypt"
+              - "kms:ReEncrypt*"
+              - "kms:GenerateDataKey*"
+              - "kms:CreateGrant"
+              - "kms:DescribeKey"
+            Resource: '*'
+            Condition:
+              StringEquals:
+                kms:CallerAccount: !Ref 'AWS::AccountId'
+                kms:ViaService: !Join 
+                  - ''
+                  - - 'lambda.'
+                    - !Ref 'AWS::Region'
+                    - '.amazonaws.com'
+      PendingWindowInDays: 7
+      Tags:
+        - Key: StackName
+          Value: !Ref AWS::StackName
+        - Key: Purpose
+          Value: das-lambda-java-sam
+
+Outputs:
+  DasKmsKeyArn:
+    Description: >-
+      ARN of the customer-managed KMS key used by Database Activity Streams to
+      encrypt Kinesis payloads. The consumer Lambda imports this to scope its
+      kms:Decrypt permission to exactly this key. DAS decryption is a DIRECT
+      KMS API call (AWS Encryption SDK), not service-mediated, so it cannot be
+      gated by a kms:ViaService condition — it must be scoped by key ARN.
+    Value: !GetAtt CredentialsKMSKey.Arn
+    Export:
+      Name: DasKmsKeyArn
+  AOSDomainArn:
+    Value:
+      "Fn::GetAtt":
+        - OpenSearchServiceDomain
+        - Arn
+    Export:
+      Name: AOSDomainArn
+  AOSDomainEndpoint:
+    Value:
+      "Fn::GetAtt":
+        - OpenSearchServiceDomain
+        - DomainEndpoint
+    Export:
+      Name: AOSDomainEndpoint
+  AOSDomainUserName:
+    Value: !Ref OpenSearchAdminUserName
+    Export:
+      Name: AOSDomainUserName
+  AOSDashboardsPublicIP:
+    Description: CloudFront URL for Amazon Opensearch Dashboards
+    Value:
+      Fn::Join:
+        - ""
+        - - https://
+          - !GetAtt OpenSearchCloudFront.DomainName
+          - /_dashboards
+    Export:
+      Name: AOSDashboardsPublicIP
+  AOSAdminPasswordSecretArn:
+    Value: !Ref AOSAdminPasswordSecret
+    Export:
+      Name: AOSAdminPasswordSecretArn
+  OpenSearchIngressSecurityGroup:
+    Value: !Ref OpenSearchIngressSecurityGroup
+    Export:
+      Name: OpenSearchIngressSecurityGroup
+  AOSServerlessDashboardsEndpoint:
+    Value:
+      "Fn::GetAtt":
+        - Collection
+        - DashboardEndpoint
+    Export:
+      Name: AOSServerlessDashboardsEndpoint
+  OpenSearchIngestionPipelineIAMRoleARN:
+    Value: !GetAtt OSIIAMRole.Arn
+    Export:
+      Name: OpenSearchIngestionPipelineIAMRoleARN
+  SNSTopicARN:
+    Value: !GetAtt SNSTopicForOpenSearchNotification.TopicArn
+    Export:
+      Name: SNSTopicARN
+  CloudFrontDomainName:
+    Description: CloudFront distribution domain name for OpenSearch access
+    Value: !GetAtt OpenSearchCloudFront.DomainName
+    Export:
+      Name: CloudFrontDomainName
+  ReverseProxySecurityGroupName:
+    Value: !GetAtt ReverseProxyInstanceSecurityGroup.GroupId
+    Export:
+      Name: ReverseProxySecurityGroupName
+  S3BucketName:
+    Value: !Ref SourceBucket
+    Export:
+      Name: S3BucketName
+  LambdaDLQArn:
+    Description: ARN of the Lambda Dead Letter Queue
+    Value: !GetAtt LambdaDLQ.Arn
+    Export:
+      Name: LambdaDLQArn
+  LambdaDLQUrl:
+    Description: URL of the Lambda Dead Letter Queue
+    Value: !Ref LambdaDLQ
+    Export:
+      Name: LambdaDLQUrl
+  PrivateSubnet1:
+    Description: Private Subnet 1 ID
+    Value: !Ref PrivateSubnet1
+    Export:
+      Name: PrivateSubnet1
+  PrivateSubnet2:
+    Description: Private Subnet 2 ID
+    Value: !Ref PrivateSubnet2
+    Export:
+      Name: PrivateSubnet2
+  PrivateSubnet3:
+    Description: Private Subnet 3 ID
+    Value: !Ref PrivateSubnet3
+    Export:
+      Name: PrivateSubnet3
+  LambdaSecurityGroup:
+    Description: Lambda Security Group ID
+    Value: !Ref LambdaSecurityGroup
+    Export:
+      Name: LambdaSecurityGroup
