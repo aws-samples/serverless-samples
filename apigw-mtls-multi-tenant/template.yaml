@@ -1,0 +1,200 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  API Gateway mTLS Full-Chain Truststore Demo.
+  Deploys an HTTP API with mutual TLS configured against a full-chain truststore
+  (intermediate + root CAs) stored in S3.
+
+Parameters:
+  DomainName:
+    Type: String
+    Description: Custom domain name for the API (e.g., mtls-demo.example.com)
+
+  HostedZoneId:
+    Type: String
+    Description: Route 53 Hosted Zone ID for the custom domain
+
+  CertificateArn:
+    Type: String
+    Description: ARN of the ACM certificate for the custom domain (server-side TLS)
+
+  TruststoreBucket:
+    Type: String
+    Description: S3 bucket name containing the truststore PEM
+
+  TruststoreKey:
+    Type: String
+    Default: truststore.pem
+    Description: S3 object key for the truststore PEM file
+
+  TruststoreVersion:
+    Type: String
+    Description: S3 version ID of the truststore PEM (required for versioned buckets)
+
+Globals:
+  Function:
+    Timeout: 10
+    Runtime: python3.12
+    MemorySize: 128
+
+Resources:
+  # ─── Lambda Backend ─────────────────────────────────────────────────────────
+  MtlsDemoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handler.lambda_handler
+      CodeUri: src/
+      Description: Returns 200 with mTLS client certificate details
+      Events:
+        RootGet:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref MtlsHttpApi
+            Path: /
+            Method: GET
+            Auth:
+              # SECURITY NOTE: Authorizer intentionally bypassed for root path.
+              # This endpoint is still protected by mTLS at the API Gateway level —
+              # only clients with a valid certificate in the truststore can reach it.
+              # It returns generic, non-tenant-specific information (API status/metadata)
+              # and does not expose any tenant data, so tenant-based authorization
+              # via the Lambda Authorizer is not required here.
+              Authorizer: NONE
+        HealthGet:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref MtlsHttpApi
+            Path: /health
+            Method: GET
+            Auth:
+              # SECURITY NOTE: Authorizer intentionally bypassed for health check.
+              # This endpoint is still protected by mTLS — only clients presenting a
+              # valid certificate from the truststore can access it. It returns only
+              # a generic health status with no tenant-specific or sensitive data.
+              # Bypassing the authorizer allows monitoring systems with valid certs
+              # to check API availability without tenant-level identity mapping.
+              Authorizer: NONE
+
+  # ─── HTTP API with mTLS ─────────────────────────────────────────────────────
+  MtlsHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: prod
+      Description: HTTP API with mutual TLS authentication and Lambda authorizer
+      DisableExecuteApiEndpoint: true
+      Auth:
+        DefaultAuthorizer: MtlsLambdaAuthorizer
+        Authorizers:
+          MtlsLambdaAuthorizer:
+            FunctionArn: !GetAtt MtlsAuthorizerFunction.Arn
+            FunctionInvokeRole: !GetAtt AuthorizerInvokeRole.Arn
+            Identity:
+              ReauthorizeEvery: 0
+            AuthorizerPayloadFormatVersion: "2.0"
+            EnableSimpleResponses: true
+
+  # ─── Lambda Authorizer Function ─────────────────────────────────────────────
+  MtlsAuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: authorizer.lambda_handler
+      CodeUri: src/
+      Description: mTLS Lambda authorizer — logs cert details, maps CN to tenant
+      Timeout: 10
+
+  # ─── Authorizer Invoke Role ─────────────────────────────────────────────────
+  AuthorizerInvokeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeAuthorizer
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt MtlsAuthorizerFunction.Arn
+
+  # ─── Tenant-Specific Handler ────────────────────────────────────────────────
+  TenantFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: tenant_handler.lambda_handler
+      CodeUri: src/
+      Description: Multi-tenant handler — routes by cert identity, not path
+      Events:
+        TenantApi:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref MtlsHttpApi
+            Path: /api
+            Method: GET
+
+  # ─── Custom Domain with mTLS ────────────────────────────────────────────────
+  ApiDomainName:
+    Type: AWS::ApiGatewayV2::DomainName
+    Properties:
+      DomainName: !Ref DomainName
+      DomainNameConfigurations:
+        - CertificateArn: !Ref CertificateArn
+          EndpointType: REGIONAL
+          SecurityPolicy: TLS_1_2
+      MutualTlsAuthentication:
+        TruststoreUri: !Sub "s3://${TruststoreBucket}/${TruststoreKey}"
+        TruststoreVersion: !Ref TruststoreVersion
+
+  # ─── API Mapping ────────────────────────────────────────────────────────────
+  ApiMapping:
+    Type: AWS::ApiGatewayV2::ApiMapping
+    DependsOn: ApiDomainName
+    Properties:
+      ApiId: !Ref MtlsHttpApi
+      DomainName: !Ref DomainName
+      Stage: !Ref MtlsHttpApi.Stage
+
+  # ─── Route 53 Record ────────────────────────────────────────────────────────
+  DnsRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt ApiDomainName.RegionalDomainName
+        HostedZoneId: !GetAtt ApiDomainName.RegionalHostedZoneId
+
+Outputs:
+  ApiDomain:
+    Description: Custom domain URL for the mTLS API
+    Value: !Sub "https://${DomainName}/"
+
+  ApiId:
+    Description: HTTP API ID
+    Value: !Ref MtlsHttpApi
+
+  FunctionArn:
+    Description: Lambda function ARN
+    Value: !GetAtt MtlsDemoFunction.Arn
+
+  AuthorizerFunctionArn:
+    Description: Authorizer Lambda function ARN
+    Value: !GetAtt MtlsAuthorizerFunction.Arn
+
+  TenantFunctionArn:
+    Description: Tenant handler Lambda function ARN
+    Value: !GetAtt TenantFunction.Arn
+
+  TenantAEndpoint:
+    Description: Multi-tenant API endpoint (same path, routed by cert identity)
+    Value: !Sub "https://${DomainName}/api"
+
+  TruststoreLocation:
+    Description: S3 URI of the truststore
+    Value: !Sub "s3://${TruststoreBucket}/${TruststoreKey}"

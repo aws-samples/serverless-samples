@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API Gateway mTLS — Full-Chain Validation Demo</title>
+<style>
+:root {
+  --bg: #0f1419;
+  --card-bg: #1a2332;
+  --border: #2d3748;
+  --text: #e2e8f0;
+  --text-dim: #8892a4;
+  --accent: #3b82f6;
+  --green: #10b981;
+  --red: #ef4444;
+  --yellow: #f59e0b;
+  --terminal-bg: #0d1117;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.header {
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid var(--border);
+}
+.header h1 { font-size: 1.5rem; margin-bottom: 0.3rem; }
+.header .subtitle { color: var(--text-dim); font-size: 0.9rem; }
+
+/* Layout */
+.main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Tabs sidebar */
+.tabs {
+  width: 280px;
+  min-width: 280px;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 0.5rem 0;
+}
+.tab {
+  padding: 0.75rem 1.25rem;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.tab:hover { background: rgba(59,130,246,0.08); }
+.tab.active {
+  background: rgba(59,130,246,0.12);
+  border-left-color: var(--accent);
+}
+.tab .tab-num {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--border);
+  flex-shrink: 0;
+}
+.tab.pass .tab-num { background: var(--green); color: #fff; }
+.tab.fail .tab-num { background: var(--red); color: #fff; }
+.tab.running .tab-num { background: var(--yellow); color: #000; }
+.tab .tab-title {
+  font-size: 0.82rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tab-group-label {
+  padding: 0.5rem 1.25rem 0.25rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+/* Content area */
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Scenario panel */
+.scenario {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+.scenario.active { display: flex; }
+
+.scenario-header {
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid var(--border);
+}
+.scenario-header h2 { font-size: 1.2rem; margin-bottom: 0.5rem; }
+.scenario-header .desc { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 0.75rem; }
+.scenario-header .meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.expected-badge {
+  font-size: 0.78rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  font-weight: 500;
+}
+.expected-badge.expect-pass { background: rgba(16,185,129,0.15); color: var(--green); }
+.expected-badge.expect-fail { background: rgba(239,68,68,0.15); color: var(--red); }
+.result-badge {
+  font-size: 0.78rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  font-weight: 600;
+  display: none;
+}
+.result-badge.pass { display: inline-block; background: rgba(16,185,129,0.2); color: var(--green); }
+.result-badge.fail { display: inline-block; background: rgba(239,68,68,0.2); color: var(--red); }
+
+.run-btn {
+  padding: 0.5rem 1.4rem;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+.run-btn:hover { opacity: 0.85; }
+.run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.spinner {
+  display: inline-block;
+  width: 12px; height: 12px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin-right: 0.4rem;
+  vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Terminal */
+.terminal-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.cert-panel {
+  display: none;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 1.5rem;
+  font-size: 0.8rem;
+  gap: 1.5rem;
+}
+.cert-panel.visible { display: flex; flex-wrap: wrap; }
+.cert-panel-section {
+  flex: 1;
+  min-width: 250px;
+}
+.cert-panel-section h4 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  margin-bottom: 0.5rem;
+}
+.cert-item {
+  padding: 0.4rem 0.6rem;
+  background: var(--terminal-bg);
+  border-radius: 4px;
+  margin-bottom: 0.3rem;
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 0.75rem;
+  border-left: 3px solid var(--border);
+}
+.cert-item.root { border-left-color: var(--yellow); }
+.cert-item.intermediate { border-left-color: var(--accent); }
+.cert-item.leaf { border-left-color: var(--green); }
+.cert-item.expired { border-left-color: var(--red); }
+.cert-item.untrusted { border-left-color: var(--red); }
+.cert-item .cert-subject { color: var(--text); }
+.cert-item .cert-detail { color: var(--text-dim); font-size: 0.7rem; }
+.cert-item-none {
+  color: var(--text-dim);
+  font-style: italic;
+  font-size: 0.75rem;
+}
+.terminal {
+  flex: 1;
+  background: var(--terminal-bg);
+  padding: 1rem 1.5rem;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-size: 0.8rem;
+  overflow-y: auto;
+  border-top: 1px solid var(--border);
+}
+.terminal .line { white-space: pre-wrap; word-break: break-all; margin-bottom: 1px; }
+.terminal .line.dim { color: var(--text-dim); }
+.terminal .line.green { color: var(--green); }
+.terminal .line.red { color: var(--red); }
+.terminal .placeholder {
+  color: var(--text-dim);
+  font-style: italic;
+  padding-top: 2rem;
+  text-align: center;
+}
+
+/* Footer */
+.footer {
+  padding: 0.75rem 2rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+}
+.footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>API Gateway mTLS — Full-Chain Validation Demo</h1>
+  <p class="subtitle">
+    mTLS full-chain truststore validation · Root → Intermediate → Leaf · Multi-tenant routing
+  </p>
+</div>
+
+<div class="main">
+  <div class="tabs" id="tabs">
+    <div class="tab-group-label">Chain Validation Tests</div>
+    <div id="test-tabs"></div>
+    <div class="tab-group-label" style="margin-top:0.75rem">Multi-Tenant Demo</div>
+    <div class="tab" id="tab-mt" onclick="switchToMultiTenant()">
+      <span class="tab-num" style="background:var(--accent)">⛁</span>
+      <span class="tab-title">Tenant Routing</span>
+    </div>
+  </div>
+  <div class="content" id="content">
+    <div id="test-panels"></div>
+    <!-- Multi-tenant panel -->
+    <div class="scenario" id="scenario-mt">
+      <div class="scenario-header">
+        <h2>Multi-Tenant mTLS — Lambda Authorizer Demo</h2>
+        <p class="desc">
+          Both tenants use separate client certificates issued by the same Intermediate CA —
+          sharing a single truststore. The Lambda Authorizer extracts the cert CN, logs full
+          cert details to CloudWatch (where CRL/OCSP revocation checks could be added in
+          production), and maps the certificate identity to a tenant context that the backend
+          handler uses to return tenant-specific responses. All tenants hit the same endpoint.
+        </p>
+        <div class="meta" style="gap:0.5rem">
+          <button class="run-btn" id="btn-mt-a" onclick="runTenantTest('tenant-a')">▶ Tenant A</button>
+          <button class="run-btn" id="btn-mt-b" onclick="runTenantTest('tenant-b')" style="background:#8b5cf6">▶ Tenant B</button>
+          <button class="run-btn" id="btn-mt-logs" onclick="fetchAuthorizerLogs()" style="background:#6b7280">📋 Authorizer Logs</button>
+          <span class="result-badge" id="badge-mt"></span>
+        </div>
+      </div>
+      <div class="terminal-area">
+        <div class="cert-panel" id="certpanel-mt">
+          <div class="cert-panel-section">
+            <h4>🔒 Shared Truststore (serves both tenants)</h4>
+            <div id="truststore-certs-mt"><span class="cert-item-none">Run a tenant test to see certs</span></div>
+          </div>
+          <div class="cert-panel-section">
+            <h4>📄 Tenant Client Certificate</h4>
+            <div id="client-cert-mt"><span class="cert-item-none">Select a tenant above</span></div>
+          </div>
+        </div>
+        <div class="terminal" id="term-mt">
+          <div class="placeholder">
+            Select Tenant A or Tenant B to send an authenticated request.<br><br>
+            Both tenants hit the <strong>same endpoint</strong> (/api). The only difference<br>
+            is which client certificate is presented. The Lambda Authorizer:<br><br>
+            • Extracts the full cert (subject, issuer, serial, validity)<br>
+            • Logs cert details to CloudWatch (revocation check point)<br>
+            • Maps CN → tenant identity (no path-based routing)<br>
+            • Returns tenant context to the backend handler<br>
+            • Handler returns tenant-specific data based on cert identity
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <a href="https://docs.aws.amazon.com/apigateway/latest/developerguide/rest-api-mutual-tls.html" target="_blank">API Gateway mTLS Docs</a>
+  · Max chain depth: 4 · Truststore limit: 1000 KB · CRL/OCSP: not checked natively
+</div>
+
+<script>
+const TESTS = [
+  {
+    id: 1,
+    title: "Full-Chain Validates",
+    fullTitle: "Full-Chain Truststore → Leaf Validates",
+    description: "Truststore contains intermediate + root CA. Client presents leaf cert signed by intermediate. The chain resolves: leaf → intermediate → root.",
+    expectedResult: "pass",
+    expectedText: "Expected: HTTP 200 (success)",
+    proves: "The documented workaround works — include the full chain in the truststore."
+  },
+  {
+    id: 2,
+    title: "Root-Only Rejected",
+    fullTitle: "Root-Only Truststore → Leaf REJECTED",
+    description: "Truststore contains only the root CA (no intermediate). Client presents the same leaf cert. API Gateway cannot resolve the chain because the intermediate is missing.",
+    expectedResult: "fail",
+    expectedText: "Expected: HTTP 403 (rejected)",
+    proves: "Confirms the gap: API Gateway does NOT auto-discover intermediate CAs from a root-only truststore."
+  },
+  {
+    id: 3,
+    title: "Expired Cert Rejected",
+    fullTitle: "Expired Leaf Certificate → REJECTED",
+    description: "Generates a leaf certificate that expired yesterday (properly signed by the intermediate CA). Proves API Gateway validates the NotAfter date on client certificates.",
+    expectedResult: "fail",
+    expectedText: "Expected: HTTP 403 (rejected)",
+    proves: "Leaf certificate expiry IS enforced — expired certs are rejected at TLS handshake."
+  },
+  {
+    id: 4,
+    title: "CA Rotation Works",
+    fullTitle: "Intermediate CA Rotation → New Leaf Validates",
+    description: "Generates a new intermediate CA (v2), issues a new leaf from it, updates the truststore to contain BOTH intermediates + root. Verifies both old and new leaf certs work during the transition window.",
+    expectedResult: "pass",
+    expectedText: "Expected: HTTP 200 (success)",
+    proves: "Safe rotation: include both old + new intermediates during CA key rotation."
+  },
+  {
+    id: 5,
+    title: "No Cert Rejected",
+    fullTitle: "No Client Certificate → REJECTED",
+    description: "Sends a request with no client certificate. mTLS requires a cert to complete the TLS handshake — without one, the connection is refused.",
+    expectedResult: "fail",
+    expectedText: "Expected: Connection refused",
+    proves: "mTLS is actively enforced — unauthenticated requests cannot reach the API."
+  },
+  {
+    id: 6,
+    title: "Untrusted Rejected",
+    fullTitle: "Untrusted Self-Signed Cert → REJECTED",
+    description: "Generates a rogue self-signed certificate not in any chain of trust. Proves the truststore validation is real — not just checking that \"a cert\" is present.",
+    expectedResult: "fail",
+    expectedText: "Expected: HTTP 403 (rejected)",
+    proves: "Chain-of-trust is validated — arbitrary certificates from unknown CAs are rejected."
+  },
+  {
+    id: 7,
+    title: "Max Chain Depth",
+    fullTitle: "Maximum Chain Depth (4 levels) → Leaf Validates",
+    description: "Builds a 4-level chain: Root → Intermediate 1 → Intermediate 2 → Intermediate 3 → Leaf. This is the maximum chain depth supported by API Gateway. All 3 intermediates + root go in the truststore.",
+    expectedResult: "pass",
+    expectedText: "Expected: HTTP 200 (success)",
+    proves: "API Gateway supports the documented max chain depth of 4 (root + 3 intermediates)."
+  }
+];
+
+let activeTest = 1;
+let activeView = 'test'; // 'test' or 'mt'
+let running = false;
+
+function renderTabs() {
+  const container = document.getElementById('test-tabs');
+  container.textContent = '';
+  TESTS.forEach(t => {
+    const tab = document.createElement('div');
+    tab.className = 'tab' + (activeView === 'test' && t.id === activeTest ? ' active' : '');
+    tab.id = 'tab-' + t.id;
+    tab.setAttribute('onclick', 'switchTab(' + t.id + ')');
+
+    const num = document.createElement('span');
+    num.className = 'tab-num';
+    num.id = 'tab-num-' + t.id;
+    num.textContent = t.id;
+    tab.appendChild(num);
+
+    const title = document.createElement('span');
+    title.className = 'tab-title';
+    title.textContent = t.title;
+    tab.appendChild(title);
+
+    container.appendChild(tab);
+  });
+}
+
+function renderContent() {
+  const container = document.getElementById('test-panels');
+  container.textContent = '';
+  TESTS.forEach(t => {
+    const scenario = document.createElement('div');
+    scenario.className = 'scenario' + (activeView === 'test' && t.id === activeTest ? ' active' : '');
+    scenario.id = 'scenario-' + t.id;
+
+    const header = document.createElement('div');
+    header.className = 'scenario-header';
+
+    const h2 = document.createElement('h2');
+    h2.textContent = 'Test ' + t.id + ': ' + t.fullTitle;
+    header.appendChild(h2);
+
+    const desc = document.createElement('p');
+    desc.className = 'desc';
+    desc.textContent = t.description;
+    header.appendChild(desc);
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+
+    const btn = document.createElement('button');
+    btn.className = 'run-btn';
+    btn.id = 'btn-' + t.id;
+    btn.setAttribute('onclick', 'runTest(' + t.id + ')');
+    btn.textContent = '\u25b6 Run Test';
+    meta.appendChild(btn);
+
+    const expectedBadge = document.createElement('span');
+    expectedBadge.className = 'expected-badge ' + (t.expectedResult === 'pass' ? 'expect-pass' : 'expect-fail');
+    expectedBadge.textContent = t.expectedText;
+    meta.appendChild(expectedBadge);
+
+    const resultBadge = document.createElement('span');
+    resultBadge.className = 'result-badge';
+    resultBadge.id = 'badge-' + t.id;
+    meta.appendChild(resultBadge);
+
+    header.appendChild(meta);
+    scenario.appendChild(header);
+
+    const termArea = document.createElement('div');
+    termArea.className = 'terminal-area';
+
+    const certPanel = document.createElement('div');
+    certPanel.className = 'cert-panel';
+    certPanel.id = 'certpanel-' + t.id;
+
+    const tsSection = document.createElement('div');
+    tsSection.className = 'cert-panel-section';
+    const tsH4 = document.createElement('h4');
+    tsH4.textContent = '\ud83d\udd12 Truststore (on API Gateway)';
+    tsSection.appendChild(tsH4);
+    const tsDiv = document.createElement('div');
+    tsDiv.id = 'truststore-certs-' + t.id;
+    const tsPlaceholder = document.createElement('span');
+    tsPlaceholder.className = 'cert-item-none';
+    tsPlaceholder.textContent = 'Not loaded yet';
+    tsDiv.appendChild(tsPlaceholder);
+    tsSection.appendChild(tsDiv);
+    certPanel.appendChild(tsSection);
+
+    const ccSection = document.createElement('div');
+    ccSection.className = 'cert-panel-section';
+    const ccH4 = document.createElement('h4');
+    ccH4.textContent = '\ud83d\udcc4 Client Certificate (presented by caller)';
+    ccSection.appendChild(ccH4);
+    const ccDiv = document.createElement('div');
+    ccDiv.id = 'client-cert-' + t.id;
+    const ccPlaceholder = document.createElement('span');
+    ccPlaceholder.className = 'cert-item-none';
+    ccPlaceholder.textContent = 'Not loaded yet';
+    ccDiv.appendChild(ccPlaceholder);
+    ccSection.appendChild(ccDiv);
+    certPanel.appendChild(ccSection);
+
+    termArea.appendChild(certPanel);
+
+    const terminal = document.createElement('div');
+    terminal.className = 'terminal';
+    terminal.id = 'term-' + t.id;
+    const placeholder = document.createElement('div');
+    placeholder.className = 'placeholder';
+    placeholder.textContent = 'Click "Run Test" to execute this scenario';
+    terminal.appendChild(placeholder);
+    termArea.appendChild(terminal);
+
+    scenario.appendChild(termArea);
+    container.appendChild(scenario);
+  });
+}
+
+function switchTab(id) {
+  activeTest = id;
+  activeView = 'test';
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById(`tab-${id}`).classList.add('active');
+  document.querySelectorAll('.scenario').forEach(el => el.classList.remove('active'));
+  document.getElementById(`scenario-${id}`).classList.add('active');
+}
+
+function switchToMultiTenant() {
+  activeView = 'mt';
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-mt').classList.add('active');
+  document.querySelectorAll('.scenario').forEach(el => el.classList.remove('active'));
+  document.getElementById('scenario-mt').classList.add('active');
+}
+
+function setAllButtonsDisabled(disabled) {
+  TESTS.forEach(t => {
+    const btn = document.getElementById(`btn-${t.id}`);
+    if (btn) btn.disabled = disabled;
+  });
+  ['btn-mt-a', 'btn-mt-b', 'btn-mt-logs'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.disabled = disabled;
+  });
+}
+
+function runTest(id) {
+  if (running) return;
+  running = true;
+
+  const btn = document.getElementById(`btn-${id}`);
+  const term = document.getElementById(`term-${id}`);
+  const badge = document.getElementById(`badge-${id}`);
+  const tabNum = document.getElementById(`tab-num-${id}`);
+  const tab = document.getElementById(`tab-${id}`);
+
+  // Disable all buttons
+  setAllButtonsDisabled(true);
+  btn.textContent = '';
+  const spinner = document.createElement('span');
+  spinner.className = 'spinner';
+  btn.appendChild(spinner);
+  btn.appendChild(document.createTextNode('Running...'));
+
+  // Reset terminal and badge
+  term.textContent = '';
+  badge.className = 'result-badge';
+  badge.style.display = 'none';
+  tab.classList.remove('pass', 'fail');
+  tab.classList.add('running');
+
+  // Reset cert panel
+  const certPanel = document.getElementById(`certpanel-${id}`);
+  certPanel.classList.remove('visible');
+
+  const truststoreReset = document.getElementById(`truststore-certs-${id}`);
+  truststoreReset.textContent = '';
+  const tsLoading = document.createElement('span');
+  tsLoading.className = 'cert-item-none';
+  tsLoading.textContent = 'Loading...';
+  truststoreReset.appendChild(tsLoading);
+
+  const clientReset = document.getElementById(`client-cert-${id}`);
+  clientReset.textContent = '';
+  const ccLoading = document.createElement('span');
+  ccLoading.className = 'cert-item-none';
+  ccLoading.textContent = 'Loading...';
+  clientReset.appendChild(ccLoading);
+
+  const source = new EventSource(`/api/test/${id}`);
+
+  source.addEventListener('output', (e) => {
+    const data = JSON.parse(e.data);
+    const line = document.createElement('div');
+    line.className = 'line' + (data.text.startsWith('  ') ? ' dim' : '');
+    line.textContent = data.text;
+    term.appendChild(line);
+    term.scrollTop = term.scrollHeight;
+  });
+
+  source.addEventListener('certinfo', (e) => {
+    const data = JSON.parse(e.data);
+    const panel = document.getElementById(`certpanel-${id}`);
+    const truststoreDiv = document.getElementById(`truststore-certs-${id}`);
+    const clientDiv = document.getElementById(`client-cert-${id}`);
+
+    panel.classList.add('visible');
+
+    // Render truststore certs using safe DOM construction
+    if (data.truststore && data.truststore.certs) {
+      truststoreDiv.textContent = '';
+      data.truststore.certs.forEach(cert => {
+        const item = document.createElement('div');
+        item.className = 'cert-item';
+        if (cert.subject && cert.subject.includes('Root')) item.className += ' root';
+        else if (cert.subject && cert.subject.includes('Intermediate')) item.className += ' intermediate';
+
+        const subjectDiv = document.createElement('div');
+        subjectDiv.className = 'cert-subject';
+        subjectDiv.textContent = cert.subject || 'Unknown';
+        item.appendChild(subjectDiv);
+
+        const issuerDiv = document.createElement('div');
+        issuerDiv.className = 'cert-detail';
+        issuerDiv.textContent = 'Issuer: ' + (cert.issuer || 'N/A');
+        item.appendChild(issuerDiv);
+
+        const validDiv = document.createElement('div');
+        validDiv.className = 'cert-detail';
+        validDiv.textContent = 'Valid: ' + (cert.notBefore || '?') + ' \u2192 ' + (cert.notAfter || '?');
+        item.appendChild(validDiv);
+
+        truststoreDiv.appendChild(item);
+      });
+
+      const countDiv = document.createElement('div');
+      countDiv.className = 'cert-detail';
+      countDiv.style.marginTop = '0.3rem';
+      countDiv.style.color = 'var(--text-dim)';
+      countDiv.textContent = data.truststore.certCount + ' cert(s) in ' + (data.truststore.file || '');
+      truststoreDiv.appendChild(countDiv);
+    }
+
+    // Render client cert using safe DOM construction
+    if (data.clientCert) {
+      let cls = 'cert-item leaf';
+      if (data.clientCert.label && data.clientCert.label.includes('EXPIRED')) cls = 'cert-item expired';
+      if (data.clientCert.label && data.clientCert.label.includes('UNTRUSTED')) cls = 'cert-item untrusted';
+
+      clientDiv.textContent = '';
+      const item = document.createElement('div');
+      item.className = cls;
+
+      const labelDiv = document.createElement('div');
+      labelDiv.className = 'cert-subject';
+      labelDiv.textContent = data.clientCert.label || 'client cert';
+      item.appendChild(labelDiv);
+
+      const subjectDiv = document.createElement('div');
+      subjectDiv.className = 'cert-detail';
+      subjectDiv.textContent = 'Subject: ' + (data.clientCert.subject || 'N/A');
+      item.appendChild(subjectDiv);
+
+      const issuerDiv = document.createElement('div');
+      issuerDiv.className = 'cert-detail';
+      issuerDiv.textContent = 'Issuer: ' + (data.clientCert.issuer || 'N/A');
+      item.appendChild(issuerDiv);
+
+      const validDiv = document.createElement('div');
+      validDiv.className = 'cert-detail';
+      validDiv.textContent = 'Valid: ' + (data.clientCert.notBefore || '?') + ' \u2192 ' + (data.clientCert.notAfter || '?');
+      item.appendChild(validDiv);
+
+      clientDiv.appendChild(item);
+    } else {
+      clientDiv.textContent = '';
+      const noneSpan = document.createElement('span');
+      noneSpan.className = 'cert-item-none';
+      noneSpan.textContent = '\u26a0 No client certificate presented';
+      clientDiv.appendChild(noneSpan);
+    }
+  });
+
+  source.addEventListener('result', (e) => {
+    const data = JSON.parse(e.data);
+    const test = TESTS.find(t => t.id === id);
+
+    // Update badge
+    badge.textContent = data.passed ? '✓ PASS' : '✗ FAIL';
+    badge.className = 'result-badge ' + (data.passed ? 'pass' : 'fail');
+
+    // Update tab
+    tab.classList.remove('running');
+    tab.classList.add(data.passed ? 'pass' : 'fail');
+
+    // Proves line in terminal
+    const provesLine = document.createElement('div');
+    provesLine.className = 'line ' + (data.passed ? 'green' : 'red');
+    provesLine.style.marginTop = '0.75rem';
+    provesLine.textContent = (data.passed ? '✓ ' : '✗ ') + test.proves;
+    term.appendChild(provesLine);
+    term.scrollTop = term.scrollHeight;
+  });
+
+  source.addEventListener('error', (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      const line = document.createElement('div');
+      line.className = 'line red';
+      line.textContent = `Error: ${data.text}`;
+      term.appendChild(line);
+    } catch (_) {}
+  });
+
+  source.addEventListener('done', () => {
+    source.close();
+    running = false;
+    setAllButtonsDisabled(false);
+    btn.textContent = '▶ Run Again';
+  });
+
+  source.onerror = () => {
+    source.close();
+    running = false;
+    setAllButtonsDisabled(false);
+    btn.textContent = '▶ Run Again';
+    tab.classList.remove('running');
+  };
+}
+
+function runTenantTest(tenant) {
+  if (running) return;
+  running = true;
+
+  const term = document.getElementById('term-mt');
+  const badge = document.getElementById('badge-mt');
+  const certPanel = document.getElementById('certpanel-mt');
+
+  setAllButtonsDisabled(true);
+  const btnId = tenant === 'tenant-a' ? 'btn-mt-a' : 'btn-mt-b';
+  const activeBtn = document.getElementById(btnId);
+  activeBtn.textContent = '';
+  const spinnerEl = document.createElement('span');
+  spinnerEl.className = 'spinner';
+  activeBtn.appendChild(spinnerEl);
+  activeBtn.appendChild(document.createTextNode('Running...'));
+
+  term.textContent = '';
+  badge.className = 'result-badge';
+  badge.style.display = 'none';
+  certPanel.classList.remove('visible');
+
+  const tsMtReset = document.getElementById('truststore-certs-mt');
+  tsMtReset.textContent = '';
+  const tsMtLoading = document.createElement('span');
+  tsMtLoading.className = 'cert-item-none';
+  tsMtLoading.textContent = 'Loading...';
+  tsMtReset.appendChild(tsMtLoading);
+
+  const ccMtReset = document.getElementById('client-cert-mt');
+  ccMtReset.textContent = '';
+  const ccMtLoading = document.createElement('span');
+  ccMtLoading.className = 'cert-item-none';
+  ccMtLoading.textContent = 'Loading...';
+  ccMtReset.appendChild(ccMtLoading);
+
+  const source = new EventSource(`/api/tenant-test/${tenant}`);
+
+  source.addEventListener('output', (e) => {
+    const data = JSON.parse(e.data);
+    const line = document.createElement('div');
+    line.className = 'line' + (data.text.startsWith('  ') ? ' dim' : '');
+    line.textContent = data.text;
+    term.appendChild(line);
+    term.scrollTop = term.scrollHeight;
+  });
+
+  source.addEventListener('certinfo', (e) => {
+    const data = JSON.parse(e.data);
+    certPanel.classList.add('visible');
+    const truststoreDiv = document.getElementById('truststore-certs-mt');
+    const clientDiv = document.getElementById('client-cert-mt');
+
+    if (data.truststore && data.truststore.certs) {
+      truststoreDiv.textContent = '';
+      data.truststore.certs.forEach(cert => {
+        const item = document.createElement('div');
+        item.className = 'cert-item';
+        if (cert.subject && cert.subject.includes('Root')) item.className += ' root';
+        else if (cert.subject && cert.subject.includes('Intermediate')) item.className += ' intermediate';
+
+        const subjectDiv = document.createElement('div');
+        subjectDiv.className = 'cert-subject';
+        subjectDiv.textContent = cert.subject || 'Unknown';
+        item.appendChild(subjectDiv);
+
+        const issuerDiv = document.createElement('div');
+        issuerDiv.className = 'cert-detail';
+        issuerDiv.textContent = 'Issuer: ' + (cert.issuer || 'N/A');
+        item.appendChild(issuerDiv);
+
+        truststoreDiv.appendChild(item);
+      });
+
+      const countDiv = document.createElement('div');
+      countDiv.className = 'cert-detail';
+      countDiv.style.marginTop = '0.3rem';
+      countDiv.style.color = 'var(--text-dim)';
+      countDiv.textContent = data.truststore.certCount + " cert(s) \u2014 both tenants' certs chain to this truststore";
+      truststoreDiv.appendChild(countDiv);
+    }
+
+    if (data.clientCert) {
+      clientDiv.textContent = '';
+      const item = document.createElement('div');
+      item.className = 'cert-item leaf';
+
+      const labelDiv = document.createElement('div');
+      labelDiv.className = 'cert-subject';
+      labelDiv.textContent = data.clientCert.label || 'client cert';
+      item.appendChild(labelDiv);
+
+      const subjectDiv = document.createElement('div');
+      subjectDiv.className = 'cert-detail';
+      subjectDiv.textContent = 'Subject: ' + (data.clientCert.subject || 'N/A');
+      item.appendChild(subjectDiv);
+
+      const issuerDiv = document.createElement('div');
+      issuerDiv.className = 'cert-detail';
+      issuerDiv.textContent = 'Issuer: ' + (data.clientCert.issuer || 'N/A');
+      item.appendChild(issuerDiv);
+
+      const validDiv = document.createElement('div');
+      validDiv.className = 'cert-detail';
+      validDiv.textContent = 'Valid: ' + (data.clientCert.notBefore || '?') + ' \u2192 ' + (data.clientCert.notAfter || '?');
+      item.appendChild(validDiv);
+
+      clientDiv.appendChild(item);
+    }
+  });
+
+  source.addEventListener('result', (e) => {
+    const data = JSON.parse(e.data);
+    badge.textContent = data.passed ? '✓ PASS' : '✗ FAIL';
+    badge.className = 'result-badge ' + (data.passed ? 'pass' : 'fail');
+  });
+
+  source.addEventListener('done', () => {
+    source.close();
+    running = false;
+    setAllButtonsDisabled(false);
+    document.getElementById('btn-mt-a').textContent = '▶ Tenant A';
+    document.getElementById('btn-mt-b').textContent = '▶ Tenant B';
+  });
+
+  source.onerror = () => {
+    source.close();
+    running = false;
+    setAllButtonsDisabled(false);
+    document.getElementById('btn-mt-a').textContent = '▶ Tenant A';
+    document.getElementById('btn-mt-b').textContent = '▶ Tenant B';
+  };
+}
+
+function fetchAuthorizerLogs() {
+  const term = document.getElementById('term-mt');
+  term.textContent = '';
+  const loadingLine = document.createElement('div');
+  loadingLine.className = 'line dim';
+  loadingLine.textContent = 'Fetching authorizer CloudWatch logs...';
+  term.appendChild(loadingLine);
+
+  fetch('/api/tenant-logs')
+    .then(r => r.json())
+    .then(data => {
+      term.textContent = '';
+      if (data.error) {
+        const errLine = document.createElement('div');
+        errLine.className = 'line red';
+        errLine.textContent = 'Error: ' + data.error;
+        term.appendChild(errLine);
+        return;
+      }
+
+      const headerLine = document.createElement('div');
+      headerLine.className = 'line';
+      headerLine.textContent = 'CloudWatch Log Group: ' + (data.logGroup || '');
+      term.appendChild(headerLine);
+
+      const separator = document.createElement('div');
+      separator.className = 'line';
+      separator.textContent = '\u2500'.repeat(57);
+      term.appendChild(separator);
+
+      if (data.messages && data.messages.length > 0) {
+        data.messages.forEach(msg => {
+          let cls = 'line dim';
+          if (msg.includes('===')) cls = 'line';
+          if (msg.includes('Subject DN') || msg.includes('Issuer DN') || msg.includes('Serial Number')) cls = 'line';
+          if (msg.includes('Tenant identified') || msg.includes('Extracted CN')) cls = 'line green';
+          if (msg.includes('Authorization: ALLOW')) cls = 'line green';
+          if (msg.includes('Authorization: DENY') || msg.includes('REVOKED')) cls = 'line red';
+          if (msg.includes('Revocation Check')) cls = 'line';
+          if (msg.includes('INIT_START') || msg.includes('Request:')) cls = 'line dim';
+          const line = document.createElement('div');
+          line.className = cls;
+          line.textContent = msg;
+          term.appendChild(line);
+        });
+      } else {
+        const noLogs = document.createElement('div');
+        noLogs.className = 'line dim';
+        noLogs.textContent = 'No authorizer log entries found yet. Run a tenant test first.';
+        term.appendChild(noLogs);
+      }
+      term.scrollTop = term.scrollHeight;
+    })
+    .catch(err => {
+      term.textContent = '';
+      const errLine = document.createElement('div');
+      errLine.className = 'line red';
+      errLine.textContent = 'Error fetching logs: ' + err;
+      term.appendChild(errLine);
+    });
+}
+
+renderTabs();
+renderContent();
+</script>
+</body>
+</html>

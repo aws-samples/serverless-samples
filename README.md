@@ -1,13 +1,6 @@
 # Serverless Samples
 
 
-## [apigw-openapi-transform](./apigw-openapi-transform/)
-
-Importing an existing OpenAPI specification into Amazon API Gateway rarely works on the first try — API Gateway supports most but not all of OpenAPI 2.0 and 3.0, a single unsupported construct fails the whole import, and OAuth2 security definitions are silently dropped, leaving a protected API deployed with no authentication. This sample packages that migration work as an [Agent Skill](https://agentskills.io), the open format supported by Claude Code, Cursor, GitHub Copilot, OpenAI Codex, Kiro, and other agents. An AI coding agent drives a tested TypeScript CLI that rewrites the spec into an API Gateway-compatible form, generates AWS SAM templates with mock integrations and deny-by-default Lambda authorizers, optionally deploys them for end-to-end verification, and reports every feature it had to change or drop. The transformation logic lives in the CLI rather than the prompt, so results are reproducible; transform, validate, and report run entirely locally without an AWS account.
-
-  [[README]](./apigw-openapi-transform/README.md)
-
-
 ## [claude-hub](./claude-hub/)
 
 Claude Hub is a reference implementation for centralized Claude Code configuration management. It syncs CLAUDE.md files, skills, MCP server connections, and plugin configurations from a single Git repository to every developer's machine and project. Teams get different guidance layered on a shared organizational baseline, while org-level policies can be enforced through MDM-managed system paths that users cannot override. The included sync script, plugin hooks, and deployment scripts are functional and tested, but designed to be forked and adapted to your infrastructure.
@@ -137,6 +130,12 @@ This is example implementation of the Amazon API Gateway routing rules based on 
   The API Gateway VTL Editor provides a browser-based environment for testing Apache Velocity Template Language (VTL) transformations used in AWS API Gateway. Instead of deploying templates to AWS and testing them live—which creates slow iteration cycles and complex debugging processes — developers can now locally test test VTL templates with immediate feedback. This tool accelerates API development by enabling rapid template iteration and reducing deployment errors before templates reach production. 
   
   [[README]](./apigw-vtl-editor/)
+
+
+## [apigw-mtls-multi-tenant](./apigw-mtls-multi-tenant)
+  This sample demonstrates how to build and operate multi-tenant mTLS on Amazon API Gateway at scale. It covers full certificate chain validation, intermediate CA rotation without downtime, expiry enforcement behavior, and tenant routing via Lambda Authorizer. The project includes a deployable SAM stack, an automated CLI test suite validating 7 scenarios, and an interactive demo web app for visual presentation of each mTLS behavior.
+
+  [[README]](./apigw-mtls-multi-tenant)
 
 
 ## [das-lambda-java-sam](./das-lambda-java-sam)
