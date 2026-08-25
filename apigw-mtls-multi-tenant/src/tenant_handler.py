@@ -42,13 +42,14 @@ TENANT_DATA = {
 
 def lambda_handler(event, context):
     """Handle multi-tenant API requests — same path, different cert = different tenant."""
-    logger.info(f"Tenant handler invoked: {json.dumps(event, default=str)}")
-
-    # Extract tenant context from authorizer (set by the Lambda Authorizer based on cert CN)
     request_context = event.get("requestContext", {})
     authorizer = request_context.get("authorizer", {})
     auth_context = authorizer.get("lambda", {})
+    logger.info(f"Tenant handler invoked: path={event.get('rawPath', '/')}, "
+                f"tenantId={auth_context.get('tenantId', 'unknown')}, "
+                f"requestId={request_context.get('requestId', 'N/A')}")
 
+    # Extract tenant context from authorizer (set by the Lambda Authorizer based on cert CN)
     tenant_id = auth_context.get("tenantId", "unknown")
     tenant_name = auth_context.get("tenantName", "Unknown")
     cert_subject = auth_context.get("certSubject", "N/A")

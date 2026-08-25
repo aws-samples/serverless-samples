@@ -44,7 +44,10 @@ def lambda_handler(event, context):
     Receives the full request context including mTLS client cert.
     """
     logger.info("=== mTLS Authorizer Invoked ===")
-    logger.info(f"Request: {json.dumps(event, default=str)}")
+    request_context = event.get("requestContext", {})
+    logger.info(f"Request: routeKey={event.get('routeKey', '')}, "
+                f"path={event.get('rawPath', '/')}, "
+                f"requestId={request_context.get('requestId', 'N/A')}")
 
     # Extract client certificate from request context
     request_context = event.get("requestContext", {})

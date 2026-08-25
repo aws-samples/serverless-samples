@@ -68,6 +68,11 @@ fi
 echo "  Uploading truststore.pem..."
 aws s3 cp "${CERT_DIR}/truststore.pem" "s3://${TRUSTSTORE_BUCKET}/truststore.pem" \
   --region "${AWS_REGION}"
+
+# Get the S3 version ID (required for API Gateway mTLS with versioned buckets)
+TRUSTSTORE_VERSION=$(aws s3api head-object --bucket "${TRUSTSTORE_BUCKET}" --key "truststore.pem" \
+  --region "${AWS_REGION}" --query "VersionId" --output text)
+echo "  Truststore version: ${TRUSTSTORE_VERSION}"
 echo "  Done."
 echo ""
 
@@ -93,7 +98,8 @@ sam deploy \
     "HostedZoneId=${HOSTED_ZONE_ID}" \
     "CertificateArn=${CERTIFICATE_ARN}" \
     "TruststoreBucket=${TRUSTSTORE_BUCKET}" \
-    "TruststoreKey=truststore.pem"
+    "TruststoreKey=truststore.pem" \
+    "TruststoreVersion=${TRUSTSTORE_VERSION}"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

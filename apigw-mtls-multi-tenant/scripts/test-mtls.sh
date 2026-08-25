@@ -261,7 +261,7 @@ if [[ -f "${EXPIRED_DIR}/expired.pem" ]]; then
 else
   echo "  ⚠️  SKIP — Failed to generate expired cert."
   echo "     Ensure python3 with 'cryptography' package is installed:"
-  echo "       pip3 install cryptography"
+  echo "       pip3 install cryptography==50.0.0"
   ((SKIP++))
 fi
 

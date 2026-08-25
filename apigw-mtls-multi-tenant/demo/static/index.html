@@ -389,45 +389,121 @@ let activeView = 'test'; // 'test' or 'mt'
 let running = false;
 
 function renderTabs() {
-  document.getElementById('test-tabs').innerHTML = TESTS.map(t => `
-    <div class="tab ${activeView === 'test' && t.id === activeTest ? 'active' : ''}" id="tab-${t.id}" onclick="switchTab(${t.id})">
-      <span class="tab-num" id="tab-num-${t.id}">${t.id}</span>
-      <span class="tab-title">${t.title}</span>
-    </div>
-  `).join('');
+  const container = document.getElementById('test-tabs');
+  container.textContent = '';
+  TESTS.forEach(t => {
+    const tab = document.createElement('div');
+    tab.className = 'tab' + (activeView === 'test' && t.id === activeTest ? ' active' : '');
+    tab.id = 'tab-' + t.id;
+    tab.setAttribute('onclick', 'switchTab(' + t.id + ')');
+
+    const num = document.createElement('span');
+    num.className = 'tab-num';
+    num.id = 'tab-num-' + t.id;
+    num.textContent = t.id;
+    tab.appendChild(num);
+
+    const title = document.createElement('span');
+    title.className = 'tab-title';
+    title.textContent = t.title;
+    tab.appendChild(title);
+
+    container.appendChild(tab);
+  });
 }
 
 function renderContent() {
-  document.getElementById('test-panels').innerHTML = TESTS.map(t => `
-    <div class="scenario ${activeView === 'test' && t.id === activeTest ? 'active' : ''}" id="scenario-${t.id}">
-      <div class="scenario-header">
-        <h2>Test ${t.id}: ${t.fullTitle}</h2>
-        <p class="desc">${t.description}</p>
-        <div class="meta">
-          <button class="run-btn" id="btn-${t.id}" onclick="runTest(${t.id})">▶ Run Test</button>
-          <span class="expected-badge ${t.expectedResult === 'pass' ? 'expect-pass' : 'expect-fail'}">
-            ${t.expectedText}
-          </span>
-          <span class="result-badge" id="badge-${t.id}"></span>
-        </div>
-      </div>
-      <div class="terminal-area">
-        <div class="cert-panel" id="certpanel-${t.id}">
-          <div class="cert-panel-section">
-            <h4>🔒 Truststore (on API Gateway)</h4>
-            <div id="truststore-certs-${t.id}"><span class="cert-item-none">Not loaded yet</span></div>
-          </div>
-          <div class="cert-panel-section">
-            <h4>📄 Client Certificate (presented by caller)</h4>
-            <div id="client-cert-${t.id}"><span class="cert-item-none">Not loaded yet</span></div>
-          </div>
-        </div>
-        <div class="terminal" id="term-${t.id}">
-          <div class="placeholder">Click "Run Test" to execute this scenario</div>
-        </div>
-      </div>
-    </div>
-  `).join('');
+  const container = document.getElementById('test-panels');
+  container.textContent = '';
+  TESTS.forEach(t => {
+    const scenario = document.createElement('div');
+    scenario.className = 'scenario' + (activeView === 'test' && t.id === activeTest ? ' active' : '');
+    scenario.id = 'scenario-' + t.id;
+
+    const header = document.createElement('div');
+    header.className = 'scenario-header';
+
+    const h2 = document.createElement('h2');
+    h2.textContent = 'Test ' + t.id + ': ' + t.fullTitle;
+    header.appendChild(h2);
+
+    const desc = document.createElement('p');
+    desc.className = 'desc';
+    desc.textContent = t.description;
+    header.appendChild(desc);
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+
+    const btn = document.createElement('button');
+    btn.className = 'run-btn';
+    btn.id = 'btn-' + t.id;
+    btn.setAttribute('onclick', 'runTest(' + t.id + ')');
+    btn.textContent = '\u25b6 Run Test';
+    meta.appendChild(btn);
+
+    const expectedBadge = document.createElement('span');
+    expectedBadge.className = 'expected-badge ' + (t.expectedResult === 'pass' ? 'expect-pass' : 'expect-fail');
+    expectedBadge.textContent = t.expectedText;
+    meta.appendChild(expectedBadge);
+
+    const resultBadge = document.createElement('span');
+    resultBadge.className = 'result-badge';
+    resultBadge.id = 'badge-' + t.id;
+    meta.appendChild(resultBadge);
+
+    header.appendChild(meta);
+    scenario.appendChild(header);
+
+    const termArea = document.createElement('div');
+    termArea.className = 'terminal-area';
+
+    const certPanel = document.createElement('div');
+    certPanel.className = 'cert-panel';
+    certPanel.id = 'certpanel-' + t.id;
+
+    const tsSection = document.createElement('div');
+    tsSection.className = 'cert-panel-section';
+    const tsH4 = document.createElement('h4');
+    tsH4.textContent = '\ud83d\udd12 Truststore (on API Gateway)';
+    tsSection.appendChild(tsH4);
+    const tsDiv = document.createElement('div');
+    tsDiv.id = 'truststore-certs-' + t.id;
+    const tsPlaceholder = document.createElement('span');
+    tsPlaceholder.className = 'cert-item-none';
+    tsPlaceholder.textContent = 'Not loaded yet';
+    tsDiv.appendChild(tsPlaceholder);
+    tsSection.appendChild(tsDiv);
+    certPanel.appendChild(tsSection);
+
+    const ccSection = document.createElement('div');
+    ccSection.className = 'cert-panel-section';
+    const ccH4 = document.createElement('h4');
+    ccH4.textContent = '\ud83d\udcc4 Client Certificate (presented by caller)';
+    ccSection.appendChild(ccH4);
+    const ccDiv = document.createElement('div');
+    ccDiv.id = 'client-cert-' + t.id;
+    const ccPlaceholder = document.createElement('span');
+    ccPlaceholder.className = 'cert-item-none';
+    ccPlaceholder.textContent = 'Not loaded yet';
+    ccDiv.appendChild(ccPlaceholder);
+    ccSection.appendChild(ccDiv);
+    certPanel.appendChild(ccSection);
+
+    termArea.appendChild(certPanel);
+
+    const terminal = document.createElement('div');
+    terminal.className = 'terminal';
+    terminal.id = 'term-' + t.id;
+    const placeholder = document.createElement('div');
+    placeholder.className = 'placeholder';
+    placeholder.textContent = 'Click "Run Test" to execute this scenario';
+    terminal.appendChild(placeholder);
+    termArea.appendChild(terminal);
+
+    scenario.appendChild(termArea);
+    container.appendChild(scenario);
+  });
 }
 
 function switchTab(id) {
@@ -470,10 +546,14 @@ function runTest(id) {
 
   // Disable all buttons
   setAllButtonsDisabled(true);
-  btn.innerHTML = '<span class="spinner"></span>Running...';
+  btn.textContent = '';
+  const spinner = document.createElement('span');
+  spinner.className = 'spinner';
+  btn.appendChild(spinner);
+  btn.appendChild(document.createTextNode('Running...'));
 
   // Reset terminal and badge
-  term.innerHTML = '';
+  term.textContent = '';
   badge.className = 'result-badge';
   badge.style.display = 'none';
   tab.classList.remove('pass', 'fail');
@@ -482,8 +562,20 @@ function runTest(id) {
   // Reset cert panel
   const certPanel = document.getElementById(`certpanel-${id}`);
   certPanel.classList.remove('visible');
-  document.getElementById(`truststore-certs-${id}`).innerHTML = '<span class="cert-item-none">Loading...</span>';
-  document.getElementById(`client-cert-${id}`).innerHTML = '<span class="cert-item-none">Loading...</span>';
+
+  const truststoreReset = document.getElementById(`truststore-certs-${id}`);
+  truststoreReset.textContent = '';
+  const tsLoading = document.createElement('span');
+  tsLoading.className = 'cert-item-none';
+  tsLoading.textContent = 'Loading...';
+  truststoreReset.appendChild(tsLoading);
+
+  const clientReset = document.getElementById(`client-cert-${id}`);
+  clientReset.textContent = '';
+  const ccLoading = document.createElement('span');
+  ccLoading.className = 'cert-item-none';
+  ccLoading.textContent = 'Loading...';
+  clientReset.appendChild(ccLoading);
 
   const source = new EventSource(`/api/test/${id}`);
 
@@ -504,36 +596,78 @@ function runTest(id) {
 
     panel.classList.add('visible');
 
-    // Render truststore certs
+    // Render truststore certs using safe DOM construction
     if (data.truststore && data.truststore.certs) {
-      truststoreDiv.innerHTML = data.truststore.certs.map(cert => {
-        let cls = 'cert-item';
-        if (cert.subject && cert.subject.includes('Root')) cls += ' root';
-        else if (cert.subject && cert.subject.includes('Intermediate')) cls += ' intermediate';
-        return `<div class="${cls}">
-          <div class="cert-subject">${cert.subject || 'Unknown'}</div>
-          <div class="cert-detail">Issuer: ${cert.issuer || 'N/A'}</div>
-          <div class="cert-detail">Valid: ${cert.notBefore || '?'} → ${cert.notAfter || '?'}</div>
-        </div>`;
-      }).join('');
-      truststoreDiv.innerHTML += `<div class="cert-detail" style="margin-top:0.3rem;color:var(--text-dim)">
-        ${data.truststore.certCount} cert(s) in ${data.truststore.file}
-      </div>`;
+      truststoreDiv.textContent = '';
+      data.truststore.certs.forEach(cert => {
+        const item = document.createElement('div');
+        item.className = 'cert-item';
+        if (cert.subject && cert.subject.includes('Root')) item.className += ' root';
+        else if (cert.subject && cert.subject.includes('Intermediate')) item.className += ' intermediate';
+
+        const subjectDiv = document.createElement('div');
+        subjectDiv.className = 'cert-subject';
+        subjectDiv.textContent = cert.subject || 'Unknown';
+        item.appendChild(subjectDiv);
+
+        const issuerDiv = document.createElement('div');
+        issuerDiv.className = 'cert-detail';
+        issuerDiv.textContent = 'Issuer: ' + (cert.issuer || 'N/A');
+        item.appendChild(issuerDiv);
+
+        const validDiv = document.createElement('div');
+        validDiv.className = 'cert-detail';
+        validDiv.textContent = 'Valid: ' + (cert.notBefore || '?') + ' \u2192 ' + (cert.notAfter || '?');
+        item.appendChild(validDiv);
+
+        truststoreDiv.appendChild(item);
+      });
+
+      const countDiv = document.createElement('div');
+      countDiv.className = 'cert-detail';
+      countDiv.style.marginTop = '0.3rem';
+      countDiv.style.color = 'var(--text-dim)';
+      countDiv.textContent = data.truststore.certCount + ' cert(s) in ' + (data.truststore.file || '');
+      truststoreDiv.appendChild(countDiv);
     }
 
-    // Render client cert
+    // Render client cert using safe DOM construction
     if (data.clientCert) {
       let cls = 'cert-item leaf';
       if (data.clientCert.label && data.clientCert.label.includes('EXPIRED')) cls = 'cert-item expired';
       if (data.clientCert.label && data.clientCert.label.includes('UNTRUSTED')) cls = 'cert-item untrusted';
-      clientDiv.innerHTML = `<div class="${cls}">
-        <div class="cert-subject">${data.clientCert.label || 'client cert'}</div>
-        <div class="cert-detail">Subject: ${data.clientCert.subject || 'N/A'}</div>
-        <div class="cert-detail">Issuer: ${data.clientCert.issuer || 'N/A'}</div>
-        <div class="cert-detail">Valid: ${data.clientCert.notBefore || '?'} → ${data.clientCert.notAfter || '?'}</div>
-      </div>`;
+
+      clientDiv.textContent = '';
+      const item = document.createElement('div');
+      item.className = cls;
+
+      const labelDiv = document.createElement('div');
+      labelDiv.className = 'cert-subject';
+      labelDiv.textContent = data.clientCert.label || 'client cert';
+      item.appendChild(labelDiv);
+
+      const subjectDiv = document.createElement('div');
+      subjectDiv.className = 'cert-detail';
+      subjectDiv.textContent = 'Subject: ' + (data.clientCert.subject || 'N/A');
+      item.appendChild(subjectDiv);
+
+      const issuerDiv = document.createElement('div');
+      issuerDiv.className = 'cert-detail';
+      issuerDiv.textContent = 'Issuer: ' + (data.clientCert.issuer || 'N/A');
+      item.appendChild(issuerDiv);
+
+      const validDiv = document.createElement('div');
+      validDiv.className = 'cert-detail';
+      validDiv.textContent = 'Valid: ' + (data.clientCert.notBefore || '?') + ' \u2192 ' + (data.clientCert.notAfter || '?');
+      item.appendChild(validDiv);
+
+      clientDiv.appendChild(item);
     } else {
-      clientDiv.innerHTML = `<div class="cert-item-none">⚠ No client certificate presented</div>`;
+      clientDiv.textContent = '';
+      const noneSpan = document.createElement('span');
+      noneSpan.className = 'cert-item-none';
+      noneSpan.textContent = '\u26a0 No client certificate presented';
+      clientDiv.appendChild(noneSpan);
     }
   });
 
@@ -594,14 +728,31 @@ function runTenantTest(tenant) {
 
   setAllButtonsDisabled(true);
   const btnId = tenant === 'tenant-a' ? 'btn-mt-a' : 'btn-mt-b';
-  document.getElementById(btnId).innerHTML = '<span class="spinner"></span>Running...';
+  const activeBtn = document.getElementById(btnId);
+  activeBtn.textContent = '';
+  const spinnerEl = document.createElement('span');
+  spinnerEl.className = 'spinner';
+  activeBtn.appendChild(spinnerEl);
+  activeBtn.appendChild(document.createTextNode('Running...'));
 
-  term.innerHTML = '';
+  term.textContent = '';
   badge.className = 'result-badge';
   badge.style.display = 'none';
   certPanel.classList.remove('visible');
-  document.getElementById('truststore-certs-mt').innerHTML = '<span class="cert-item-none">Loading...</span>';
-  document.getElementById('client-cert-mt').innerHTML = '<span class="cert-item-none">Loading...</span>';
+
+  const tsMtReset = document.getElementById('truststore-certs-mt');
+  tsMtReset.textContent = '';
+  const tsMtLoading = document.createElement('span');
+  tsMtLoading.className = 'cert-item-none';
+  tsMtLoading.textContent = 'Loading...';
+  tsMtReset.appendChild(tsMtLoading);
+
+  const ccMtReset = document.getElementById('client-cert-mt');
+  ccMtReset.textContent = '';
+  const ccMtLoading = document.createElement('span');
+  ccMtLoading.className = 'cert-item-none';
+  ccMtLoading.textContent = 'Loading...';
+  ccMtReset.appendChild(ccMtLoading);
 
   const source = new EventSource(`/api/tenant-test/${tenant}`);
 
@@ -621,26 +772,60 @@ function runTenantTest(tenant) {
     const clientDiv = document.getElementById('client-cert-mt');
 
     if (data.truststore && data.truststore.certs) {
-      truststoreDiv.innerHTML = data.truststore.certs.map(cert => {
-        let cls = 'cert-item';
-        if (cert.subject && cert.subject.includes('Root')) cls += ' root';
-        else if (cert.subject && cert.subject.includes('Intermediate')) cls += ' intermediate';
-        return `<div class="${cls}">
-          <div class="cert-subject">${cert.subject || 'Unknown'}</div>
-          <div class="cert-detail">Issuer: ${cert.issuer || 'N/A'}</div>
-        </div>`;
-      }).join('') + `<div class="cert-detail" style="margin-top:0.3rem;color:var(--text-dim)">
-        ${data.truststore.certCount} cert(s) — both tenants' certs chain to this truststore
-      </div>`;
+      truststoreDiv.textContent = '';
+      data.truststore.certs.forEach(cert => {
+        const item = document.createElement('div');
+        item.className = 'cert-item';
+        if (cert.subject && cert.subject.includes('Root')) item.className += ' root';
+        else if (cert.subject && cert.subject.includes('Intermediate')) item.className += ' intermediate';
+
+        const subjectDiv = document.createElement('div');
+        subjectDiv.className = 'cert-subject';
+        subjectDiv.textContent = cert.subject || 'Unknown';
+        item.appendChild(subjectDiv);
+
+        const issuerDiv = document.createElement('div');
+        issuerDiv.className = 'cert-detail';
+        issuerDiv.textContent = 'Issuer: ' + (cert.issuer || 'N/A');
+        item.appendChild(issuerDiv);
+
+        truststoreDiv.appendChild(item);
+      });
+
+      const countDiv = document.createElement('div');
+      countDiv.className = 'cert-detail';
+      countDiv.style.marginTop = '0.3rem';
+      countDiv.style.color = 'var(--text-dim)';
+      countDiv.textContent = data.truststore.certCount + " cert(s) \u2014 both tenants' certs chain to this truststore";
+      truststoreDiv.appendChild(countDiv);
     }
 
     if (data.clientCert) {
-      clientDiv.innerHTML = `<div class="cert-item leaf">
-        <div class="cert-subject">${data.clientCert.label || 'client cert'}</div>
-        <div class="cert-detail">Subject: ${data.clientCert.subject || 'N/A'}</div>
-        <div class="cert-detail">Issuer: ${data.clientCert.issuer || 'N/A'}</div>
-        <div class="cert-detail">Valid: ${data.clientCert.notBefore || '?'} → ${data.clientCert.notAfter || '?'}</div>
-      </div>`;
+      clientDiv.textContent = '';
+      const item = document.createElement('div');
+      item.className = 'cert-item leaf';
+
+      const labelDiv = document.createElement('div');
+      labelDiv.className = 'cert-subject';
+      labelDiv.textContent = data.clientCert.label || 'client cert';
+      item.appendChild(labelDiv);
+
+      const subjectDiv = document.createElement('div');
+      subjectDiv.className = 'cert-detail';
+      subjectDiv.textContent = 'Subject: ' + (data.clientCert.subject || 'N/A');
+      item.appendChild(subjectDiv);
+
+      const issuerDiv = document.createElement('div');
+      issuerDiv.className = 'cert-detail';
+      issuerDiv.textContent = 'Issuer: ' + (data.clientCert.issuer || 'N/A');
+      item.appendChild(issuerDiv);
+
+      const validDiv = document.createElement('div');
+      validDiv.className = 'cert-detail';
+      validDiv.textContent = 'Valid: ' + (data.clientCert.notBefore || '?') + ' \u2192 ' + (data.clientCert.notAfter || '?');
+      item.appendChild(validDiv);
+
+      clientDiv.appendChild(item);
     }
   });
 
@@ -669,16 +854,34 @@ function runTenantTest(tenant) {
 
 function fetchAuthorizerLogs() {
   const term = document.getElementById('term-mt');
-  term.innerHTML = '<div class="line dim">Fetching authorizer CloudWatch logs...</div>';
+  term.textContent = '';
+  const loadingLine = document.createElement('div');
+  loadingLine.className = 'line dim';
+  loadingLine.textContent = 'Fetching authorizer CloudWatch logs...';
+  term.appendChild(loadingLine);
 
   fetch('/api/tenant-logs')
     .then(r => r.json())
     .then(data => {
+      term.textContent = '';
       if (data.error) {
-        term.innerHTML = `<div class="line red">Error: ${data.error}</div>`;
+        const errLine = document.createElement('div');
+        errLine.className = 'line red';
+        errLine.textContent = 'Error: ' + data.error;
+        term.appendChild(errLine);
         return;
       }
-      let html = `<div class="line">CloudWatch Log Group: ${data.logGroup}</div><div class="line">─────────────────────────────────────────────────────────</div>`;
+
+      const headerLine = document.createElement('div');
+      headerLine.className = 'line';
+      headerLine.textContent = 'CloudWatch Log Group: ' + (data.logGroup || '');
+      term.appendChild(headerLine);
+
+      const separator = document.createElement('div');
+      separator.className = 'line';
+      separator.textContent = '\u2500'.repeat(57);
+      term.appendChild(separator);
+
       if (data.messages && data.messages.length > 0) {
         data.messages.forEach(msg => {
           let cls = 'line dim';
@@ -689,16 +892,25 @@ function fetchAuthorizerLogs() {
           if (msg.includes('Authorization: DENY') || msg.includes('REVOKED')) cls = 'line red';
           if (msg.includes('Revocation Check')) cls = 'line';
           if (msg.includes('INIT_START') || msg.includes('Request:')) cls = 'line dim';
-          html += `<div class="${cls}">${msg}</div>`;
+          const line = document.createElement('div');
+          line.className = cls;
+          line.textContent = msg;
+          term.appendChild(line);
         });
       } else {
-        html += '<div class="line dim">No authorizer log entries found yet. Run a tenant test first.</div>';
+        const noLogs = document.createElement('div');
+        noLogs.className = 'line dim';
+        noLogs.textContent = 'No authorizer log entries found yet. Run a tenant test first.';
+        term.appendChild(noLogs);
       }
-      term.innerHTML = html;
       term.scrollTop = term.scrollHeight;
     })
     .catch(err => {
-      term.innerHTML = `<div class="line red">Error fetching logs: ${err}</div>`;
+      term.textContent = '';
+      const errLine = document.createElement('div');
+      errLine.className = 'line red';
+      errLine.textContent = 'Error fetching logs: ' + err;
+      term.appendChild(errLine);
     });
 }
 

@@ -92,7 +92,7 @@ Edit `config.env` with your values:
 ### 2. Deploy
 
 ```bash
-bash scripts/deploy.sh
+scripts/deploy.sh
 ```
 
 This will:
@@ -114,26 +114,30 @@ Wait for `AVAILABLE` before testing.
 
 ### 4. Run tests
 
+You have two options for running tests: 
+1. Automated script via CLI
+2. Visual web app run locally 
+
 **CLI test suite (7 automated tests):**
 
 ```bash
-bash scripts/test-mtls.sh
+scripts/test-mtls.sh
 ```
 
 **Visual demo web app:**
 
 ```bash
-bash scripts/run-demo.sh
+scripts/run-demo.sh
 # Open http://localhost:5001
 ```
 
 ### 5. Cleanup
 
 ```bash
-bash scripts/teardown.sh
+scripts/teardown.sh
 ```
 
-Removes the CloudFormation stack, empties and deletes the S3 bucket. Local certs are not removed.
+Removes the CloudFormation stack, empties and deletes the S3 bucket. Local certs are not removed.  You will need to perform that step manually when you are ready to delete them.  
 
 ## Demo Web App
 

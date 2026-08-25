@@ -216,7 +216,8 @@ def run_test(test_id):
             if result:
                 q.put(sse_event("result", result))
         except Exception as e:
-            q.put(sse_event("error", {"text": str(e)}))
+            app.logger.error(f"Test {test_id} failed: {type(e).__name__}")
+            q.put(sse_event("error", {"text": "An internal error occurred while running the test."}))
         q.put(sse_event("done", {}))
         q.put(None)  # Sentinel to signal stream end
 
@@ -271,13 +272,24 @@ def curl_with_cert(domain, cert=None, key=None, path="/"):
 
 def update_truststore_and_wait(pem_path, bucket, region, domain):
     """Upload truststore and wait for propagation. Yields SSE events."""
-    # Upload
+    # Upload with retry (handles transient credential/network issues)
     yield sse_event("output", {"text": f"Uploading truststore: {Path(pem_path).name}"})
-    subprocess.run(
-        ["aws", "s3", "cp", str(pem_path), f"s3://{bucket}/truststore.pem",
-         "--region", region, "--quiet"],
-        capture_output=True,
-    )
+    upload_ok = False
+    for upload_attempt in range(3):
+        upload_result = subprocess.run(
+            ["aws", "s3", "cp", str(pem_path), f"s3://{bucket}/truststore.pem",
+             "--region", region],
+            capture_output=True, text=True,
+        )
+        if upload_result.returncode == 0:
+            upload_ok = True
+            break
+        if upload_attempt < 2:
+            time.sleep(3)
+    if not upload_ok:
+        err_msg = upload_result.stderr.strip() or upload_result.stdout.strip() or f"exit code {upload_result.returncode}"
+        yield sse_event("output", {"text": f"  ⚠ S3 upload failed: {err_msg[:200]}"})
+        return
 
     # Get version and trigger reimport
     yield sse_event("output", {"text": "Triggering domain truststore reimport..."})
@@ -287,32 +299,48 @@ def update_truststore_and_wait(pem_path, bucket, region, domain):
         capture_output=True, text=True,
     )
     version = version_result.stdout.strip()
+    if version_result.returncode != 0 or not version:
+        yield sse_event("output", {"text": "  ⚠ Could not retrieve S3 object version"})
 
     mtls_arg = f"TruststoreUri=s3://{bucket}/truststore.pem"
     if version and version != "None":
         mtls_arg += f",TruststoreVersion={version}"
 
-    subprocess.run(
+    update_result = subprocess.run(
         ["aws", "apigatewayv2", "update-domain-name", "--domain-name", domain,
          "--region", region, "--mutual-tls-authentication", mtls_arg],
-        capture_output=True,
+        capture_output=True, text=True,
     )
+    if update_result.returncode != 0:
+        err_msg = update_result.stderr.strip() or update_result.stdout.strip()
+        # If domain is already updating from a previous operation, wait for it
+        if "ConflictException" in err_msg or "update is in progress" in err_msg.lower():
+            yield sse_event("output", {"text": "  Domain is already updating, waiting for current update..."})
+        else:
+            yield sse_event("output", {"text": f"  ⚠ update-domain-name failed: {err_msg[:150]}"})
+            return
 
-    # Poll for AVAILABLE
+    # Poll for AVAILABLE with exponential backoff (avoids API throttling)
     yield sse_event("output", {"text": "Waiting for propagation..."})
+    wait_seconds = 10
     for attempt in range(12):
+        time.sleep(wait_seconds)
         status_result = subprocess.run(
             ["aws", "apigatewayv2", "get-domain-name", "--domain-name", domain,
              "--region", region, "--query",
              "DomainNameConfigurations[0].DomainNameStatus", "--output", "text"],
             capture_output=True, text=True,
         )
+        if status_result.returncode != 0:
+            # Likely throttled — back off and retry
+            yield sse_event("output", {"text": f"  Status check throttled (attempt {attempt+1}/12), backing off..."})
+            wait_seconds = min(wait_seconds + 5, 30)
+            continue
         status = status_result.stdout.strip()
         if status == "AVAILABLE":
             yield sse_event("output", {"text": f"Domain status: AVAILABLE ✓"})
             return
         yield sse_event("output", {"text": f"Domain status: {status} (attempt {attempt+1}/12)"})
-        time.sleep(15)
 
     yield sse_event("output", {"text": "⚠ Domain did not reach AVAILABLE in time"})
 
@@ -748,7 +776,8 @@ def run_tenant_test(tenant):
             if result:
                 q.put(sse_event("result", result))
         except Exception as e:
-            q.put(sse_event("error", {"text": str(e)}))
+            app.logger.error(f"Tenant test '{tenant}' failed: {type(e).__name__}")
+            q.put(sse_event("error", {"text": "An internal error occurred while running the tenant test."}))
         q.put(sse_event("done", {}))
         q.put(None)
 
@@ -791,8 +820,9 @@ def get_tenant_logs():
         capture_output=True, text=True,
     )
     function_name = result.stdout.strip()
-    if not function_name:
-        return jsonify({"error": "Could not find authorizer function"}), 404
+    if not function_name or result.returncode != 0:
+        err_detail = result.stderr.strip() or result.stdout.strip() or "empty response"
+        return jsonify({"error": f"Could not find authorizer function: {err_detail[:200]}"}), 404
 
     log_group = f"/aws/lambda/{function_name}"
 

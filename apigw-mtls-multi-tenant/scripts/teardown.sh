@@ -42,19 +42,42 @@ aws s3 rm "s3://${TRUSTSTORE_BUCKET}" --recursive --region "${AWS_REGION}" 2>/de
 echo "        Done."
 
 echo "  [3/3] Deleting S3 bucket..."
-# Delete all object versions (required for versioned buckets)
+# Delete all object versions AND delete markers (required for versioned buckets)
+echo "        Removing object versions..."
 aws s3api list-object-versions --bucket "${TRUSTSTORE_BUCKET}" --region "${AWS_REGION}" \
-  --query 'Versions[].{Key:Key,VersionId:VersionId}' --output json 2>/dev/null | \
+  --query '{Objects: Versions[].{Key:Key,VersionId:VersionId}}' --output json 2>/dev/null | \
   python3 -c "
 import json, sys, subprocess
-versions = json.load(sys.stdin)
-if versions:
-    for v in versions:
-        subprocess.run(['aws', 's3api', 'delete-object',
+data = json.load(sys.stdin)
+objects = data.get('Objects') or []
+if objects:
+    # Use batch delete for efficiency (max 1000 per call)
+    for i in range(0, len(objects), 1000):
+        batch = objects[i:i+1000]
+        delete_payload = json.dumps({'Objects': batch, 'Quiet': True})
+        subprocess.run(['aws', 's3api', 'delete-objects',
             '--bucket', '${TRUSTSTORE_BUCKET}',
-            '--key', v['Key'],
-            '--version-id', v['VersionId'],
-            '--region', '${AWS_REGION}'], check=False)
+            '--region', '${AWS_REGION}',
+            '--delete', delete_payload], check=False, capture_output=True)
+    print(f'        Deleted {len(objects)} version(s)')
+" 2>/dev/null || true
+
+echo "        Removing delete markers..."
+aws s3api list-object-versions --bucket "${TRUSTSTORE_BUCKET}" --region "${AWS_REGION}" \
+  --query '{Objects: DeleteMarkers[].{Key:Key,VersionId:VersionId}}' --output json 2>/dev/null | \
+  python3 -c "
+import json, sys, subprocess
+data = json.load(sys.stdin)
+objects = data.get('Objects') or []
+if objects:
+    for i in range(0, len(objects), 1000):
+        batch = objects[i:i+1000]
+        delete_payload = json.dumps({'Objects': batch, 'Quiet': True})
+        subprocess.run(['aws', 's3api', 'delete-objects',
+            '--bucket', '${TRUSTSTORE_BUCKET}',
+            '--region', '${AWS_REGION}',
+            '--delete', delete_payload], check=False, capture_output=True)
+    print(f'        Deleted {len(objects)} delete marker(s)')
 " 2>/dev/null || true
 
 aws s3api delete-bucket --bucket "${TRUSTSTORE_BUCKET}" --region "${AWS_REGION}" 2>/dev/null || true

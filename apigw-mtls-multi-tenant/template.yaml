@@ -27,6 +27,10 @@ Parameters:
     Default: truststore.pem
     Description: S3 object key for the truststore PEM file
 
+  TruststoreVersion:
+    Type: String
+    Description: S3 version ID of the truststore PEM (required for versioned buckets)
+
 Globals:
   Function:
     Timeout: 10
@@ -49,6 +53,12 @@ Resources:
             Path: /
             Method: GET
             Auth:
+              # SECURITY NOTE: Authorizer intentionally bypassed for root path.
+              # This endpoint is still protected by mTLS at the API Gateway level —
+              # only clients with a valid certificate in the truststore can reach it.
+              # It returns generic, non-tenant-specific information (API status/metadata)
+              # and does not expose any tenant data, so tenant-based authorization
+              # via the Lambda Authorizer is not required here.
               Authorizer: NONE
         HealthGet:
           Type: HttpApi
@@ -57,6 +67,12 @@ Resources:
             Path: /health
             Method: GET
             Auth:
+              # SECURITY NOTE: Authorizer intentionally bypassed for health check.
+              # This endpoint is still protected by mTLS — only clients presenting a
+              # valid certificate from the truststore can access it. It returns only
+              # a generic health status with no tenant-specific or sensitive data.
+              # Bypassing the authorizer allows monitoring systems with valid certs
+              # to check API availability without tenant-level identity mapping.
               Authorizer: NONE
 
   # ─── HTTP API with mTLS ─────────────────────────────────────────────────────
@@ -132,6 +148,7 @@ Resources:
           SecurityPolicy: TLS_1_2
       MutualTlsAuthentication:
         TruststoreUri: !Sub "s3://${TruststoreBucket}/${TruststoreKey}"
+        TruststoreVersion: !Ref TruststoreVersion
 
   # ─── API Mapping ────────────────────────────────────────────────────────────
   ApiMapping:
