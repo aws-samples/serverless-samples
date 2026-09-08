@@ -9,8 +9,8 @@
     "@aws-sdk/util-dynamodb": "^3.43.0",
     "aws-embedded-metrics": "^2.0.4",
     "aws-xray-sdk": "^3.3.4",
-    "body-parser": "^1.20.5",
-    "express": "^4.22.2",
+    "body-parser": "^1.20.8",
+    "express": "^5.2.1",
     "uuid": "^14.0.0"
   },
   "scripts": {
