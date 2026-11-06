@@ -4,9 +4,9 @@
   "description": "AWS Lambda function for OpenAPI validation using Spectral",
   "main": "index.js",
   "dependencies": {
-    "@stoplight/spectral-core": "^1.16.1",
+    "@stoplight/spectral-core": "^1.24.0",
     "@stoplight/spectral-ruleset-bundler": "^1.5.2",
-    "@stoplight/spectral-rulesets": "^1.16.1",
+    "@stoplight/spectral-rulesets": "^1.23.0",
     "@stoplight/spectral-parsers":"^1.0.5"
   }
 }
