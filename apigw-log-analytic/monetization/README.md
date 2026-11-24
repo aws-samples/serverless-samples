@@ -5,6 +5,19 @@ This module extends the [API Gateway Log Analytics](../README.md) solution to ge
 > [!NOTE]
 > This module requires the `apigw-log-analytic` stack to be deployed first. It uses the same S3 bucket and Glue database created by that stack.
 
+> [!WARNING]
+> **This sample's billing API has no authentication.**
+>
+> As shipped, `template.yaml` deploys every pricing and reports API method with no authorizer. Anyone who can reach the endpoint can read every customer's billing reports and create, change, or delete pricing plans. The `curl` examples in this README work only because the API is open.
+>
+> Use this sample for learning and testing only. Before you use it with real customers, billing data, or pricing plans, add authentication and authorization to every method, for example:
+>
+> - an [Amazon Cognito user pool authorizer](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-integrate-with-cognito.html),
+> - [IAM authorization](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-control-access-using-iam-policies-to-invoke-api.html) (`AWS_IAM`), or
+> - a [Lambda authorizer](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-use-lambda-authorizer.html).
+>
+> Restrict the pricing-plan management methods to administrators, and make sure callers can read only their own billing reports.
+
 ## Overview
 
 The `apigw-log-analytic` solution already captures every API request: API Gateway → Firehose → S3, enriched with the customer's API key name and usage plan. This module queries that data with Athena, applies a pricing plan, generates per-customer reports, and compiles a consolidated billing file (JSON + CSV) ready for download or import into billing systems.
@@ -143,6 +156,9 @@ python3 sample-plans/seed_plans.py <ProjectName>-pricing-plans --region <region>
 ## Testing
 
 To test end-to-end, you need API Gateway access logs flowing into S3 with API key data. Follow these steps in order.
+
+> [!IMPORTANT]
+> The commands below call the pricing and reports API without credentials because this sample deploys it with no authentication. See the warning at the top of this README before using it with real data.
 
 ### 1. Set the API URL
 
